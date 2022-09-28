@@ -4,3 +4,4 @@ local/
 #ignore emacs directories
 elpa/
 packages/
+auto-save-list/
