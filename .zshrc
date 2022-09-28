@@ -191,7 +191,6 @@ setopt HIST_IGNORE_ALL_DUPS    # History ignores duplicate commands
 setopt INC_APPEND_HISTORY      # immediatly insert history into history file
 HISTSIZE=1000000               # Sets history size to 1,000,000 lines
 SAVEHIST=$HISTSIZE             # Sets save history size to equal to history size
-HISTFILE=~/.config/zsh/history
 
 #######################################################################
 ####################     Configure ZSH Options     ####################
