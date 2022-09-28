@@ -67,11 +67,6 @@ alias tf='terraform'
 # Adds a Terraform auto approve alias
 alias tfaa='tf apply -auto-approve'
 
-# Adds a zip cleaning function
-zip-clean() {
-  zip -d "$1" "*/.idea/*" "__MACOSX/*" "*/*.DS_Store"
-}
-
 # Create template Terraform Module
 tf_module_new() {
   mkdir $1
