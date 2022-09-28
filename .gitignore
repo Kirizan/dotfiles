@@ -5,3 +5,6 @@ local/
 elpa/
 packages/
 auto-save-list/
+
+# Ignore swap files
+*.swp
