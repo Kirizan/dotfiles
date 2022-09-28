@@ -6,5 +6,7 @@ elpa/
 packages/
 auto-save-list/
 
-# Ignore swap files
+# Ignore emacs files
 *.swp
+\#init.el\#
+.\#init.el
