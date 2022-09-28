@@ -16,4 +16,4 @@ echo "Message: ${message}"
 
 git add $file
 git commit -m "${message}"
-#git push
+git push
