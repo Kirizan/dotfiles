@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+file="."
+message="Committing changes"
+
+while getopts f:m: arg
+do
+  case "${arg}" in
+    f ) file=${OPTARG};;
+    m ) message=${OPTARG};;
+  esac
+done
+
+echo "File: ${file}"
+echo "Message: ${message}"
+
+git add $file
+git commit -m "${message}"
+#git push
