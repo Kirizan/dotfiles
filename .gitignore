@@ -1,2 +1,6 @@
 # ignores local directory
 local/
+
+#ignore emacs directories
+elpa/
+packages/
