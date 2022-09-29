@@ -24,6 +24,7 @@
 ; configure line numbers
 (column-number-mode)
 (global-display-line-numbers-mode t)
+(setq display-line-numbers-type 'relative)
 
 ; enable rainbow-delimiters
 (use-package rainbow-delimiters
@@ -39,7 +40,7 @@
   :init (which-key-mode)
   :diminish which-key-mode
   :config
-  (setq which-key-idle-delay 0.1))
+  (setq which-key-idle-delay 0.2))
 
 (use-package doom-themes
   :ensure t
@@ -47,7 +48,7 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-dracula t)
+  (load-theme 'doom-palenight t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -82,7 +83,7 @@
 
 (use-package command-log-mode)
 
-(use-package swiper :ensure t
+(use-package swiper :ensure t)
   
 (use-package ivy
   :diminish
@@ -109,7 +110,7 @@
 	 :map minibuffer-local-map
 	 ("C-r" . 'counsel-minibuffer-history))
   :config
-  (setq ivy-initial-inputs-alist nil)) ;; Don't start searches with ^
+  (setq ivy-initial-inputs-alist nil)) ;; Don't start searches with ^ automatically
 
 (use-package ivy-rich
   :init
@@ -151,13 +152,77 @@
   ([remap describe-key] . helpful-key))
 
 
+(use-package general
+  :config
+  (general-evil-setup t)
+
+  (general-create-definer kirby/leader-keys
+    :keymaps '(normal insert visual emacs)
+    :prefix "SPC"
+    :global-prefix "C-SPC"))
+
+(kirby/leader-keys
+  "t"  '(:ignore t :which-key "toggles"))
+
+(general-define-key
+ "C-M-j" 'counsel-switch-buffer)
+
+; Modes that should start with evil disabled. C-z to activate evil.
+;(defun kirby/evil-hook ()
+;  (dolist (mode '(custom-mode
+;                  eshell-mode
+;                  git-rebase-mode
+;                  erc-mode
+;                  circe-server-mode
+;                  circe-chat-mode
+;                  circe-query-mode
+;                  sauron-mode
+;                  term-mode))
+;   (add-to-list 'evil-emacs-state-modes mode)))
+
+(use-package evil
+  :init
+  (setq evil-want-integration t)
+  (setq evil-want-keybinding nil)
+  (setq evil-want-C-u-scroll t)
+  (setq evil-want-C-i-jump nil)
+  ; :hook (evil-mode . kirby/evil-hook)
+  :config
+  (evil-mode 1)
+  (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+
+  ;; Use visual line motions even outside of visual-line-mode buffers
+  (evil-global-set-key 'motion "j" 'evil-next-visual-line)
+  (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
+  ; Makes horizontal movement cross lines
+  (setq-default evil-cross-lines t)
+
+  (evil-set-initial-state 'messages-buffer-mode 'normal)
+  (evil-set-initial-state 'dashboard-mode 'normal))
+
+(use-package evil-collection
+  :after evil
+  :config
+  (evil-collection-init))
+
+(use-package hydra)
+
+(defhydra hydra-text-scale (:timeout 5)
+  "scale text"
+  ("j" text-scale-increase "in")
+  ("k" text-scale-decrease "out")
+  ("f" nil "finished" :exit t))
+
+(kirby/leader-keys
+  "ts" '(hydra-text-scale/body :which-key "scale text"))
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(counsel ivy-rich which-key rainbow-delimiters doom-themes all-the-icons doom-modeline swiper command-log-mode ivy use-package)))
+   '(evil-collection evil general helpful counsel ivy-rich which-key rainbow-delimiters doom-themes all-the-icons doom-modeline swiper command-log-mode ivy use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
