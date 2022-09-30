@@ -135,7 +135,9 @@
 
 (use-package doom-modeline
   :ensure t
-  :init (doom-modeline-mode 1))
+  :init (doom-modeline-mode 1)
+  :config
+  (setq doom-modeline-modal-icon nil))
 
 (use-package all-the-icons
   :ensure t)
@@ -198,7 +200,16 @@
   (setq-default evil-cross-lines t)
 
   (evil-set-initial-state 'messages-buffer-mode 'normal)
-  (evil-set-initial-state 'dashboard-mode 'normal))
+  (evil-set-initial-state 'dashboard-mode 'normal)
+  ;; Color the evil tag
+  (setq evil-normal-state-tag   (propertize "N" 'face '((:background "yellow1"     :foreground "black")))
+        evil-emacs-state-tag    (propertize "E" 'face '((:background "dark red"    :foreground "black")))
+        evil-insert-state-tag   (propertize "I" 'face '((:background "light green" :foreground "black")))
+        evil-replace-state-tag  (propertize "R" 'face '((:background "chocolate"   :foreground "black")))
+        evil-motion-state-tag   (propertize "M" 'face '((:background "plum3"       :foreground "black")))
+        evil-visual-state-tag   (propertize "V" 'face '((:background "gray"        :foreground "black")))
+        evil-operator-state-tag (propertize "O" 'face '((:background "sandy brown" :foreground "black")))))
+
 
 (use-package evil-collection
   :after evil
