@@ -1,5 +1,5 @@
-# Configure zsh profile to source zshrc
+# Configure zsh profile to source profile 
 
-if test -f "~/.zshrc"; then
-  source "~/.zshrc"
+if test -f "~/.profile"; then
+  source "~/.profile"
 fi
