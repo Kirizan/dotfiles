@@ -18,8 +18,11 @@
 ; Set font size
 (set-face-attribute 'default nil :font "Fira Code Retina" :height 200)
 
-; Sets the theme
-;(load-theme 'tango-dark)
+; Set the fixed pitch face
+(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 200)
+
+; Set the variable pitch face
+(set-face-attribute 'variable-pitch nil :font "Helvetica" :height 200)
 
 ; configure line numbers
 (column-number-mode)
