@@ -270,6 +270,12 @@
   :init
   (setq auth-sources '("~/.authinfo")))
 
+
+; Windows will open to the side instead of to the bottom
+(setq split-height-threshold nil)
+
+(setq split-width-threshold 0)
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
