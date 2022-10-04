@@ -8,5 +8,5 @@ auto-save-list/
 
 # Ignore emacs files
 *.swp
-\#init.el\#
-.\#init.el
+\#*\#
+.\#*
