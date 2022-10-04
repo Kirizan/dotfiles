@@ -288,6 +288,24 @@
   :config
   (setq org-ellipsis " ▾"))
 
+;; For more information on the following items: https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-06.org
+;; Set org-agenda file locations and name
+;; (setq org-directory "~/Projects/Code/emacs-from-scratch/OrgFiles")
+;; (setq org-agenda-files '("Tasks.org" "Birthdays.org" "Habits.org"))
+
+;; If you only want to see the agenda for today
+;; (setq org-agenda-span 'day)
+
+;; Enables logs of closed and scheduled tasks (shows hours of the day)
+;; (setq org-agenda-start-with-log-mode t)
+
+;; org-agenda will track closing time when task
+
+;; (setq org-log-done 'time)
+
+;; Sets the log drawer to be collapsible
+;; (setq org-log-into-drawer t)
+
 (use-package org-bullets
   :after org
   :hook (org-mode . org-bullets-mode)
