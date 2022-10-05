@@ -310,7 +310,9 @@
   :after org
   :hook (org-mode . org-bullets-mode)
   :custom
-  (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
+  (org-bullets-bullet-list '("➀" "➁" "➂" "➃" "➄" "➅" "➆" "➇" "➈" "➉")))
+;; Copied encircled numbers from here: https://www.webnots.com/alt-code-shortcuts-for-encircled-numbers/
+
 
 ;; Replace list hyphen with dot
 (font-lock-add-keywords 'org-mode
