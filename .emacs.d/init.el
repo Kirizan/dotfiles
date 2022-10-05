@@ -271,10 +271,10 @@
   (setq auth-sources '("~/.authinfo")))
 
 
-; Windows will open to the side instead of to the bottom
-(setq split-height-threshold nil)
+;; To make windows split to the side set nil and 0
+(setq split-height-threshold 80) ; 80 default. Set to nil to make windows open to the side
 
-(setq split-width-threshold 0)
+(setq split-width-threshold 160) ; 160 default. Set to 0 to make windows open to the side
 
 (defun kirby/org-mode-setup ()
   (org-indent-mode)
