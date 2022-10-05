@@ -307,7 +307,8 @@
                       (expand-file-name "~/.dotfiles/emacs.org")) 
     ;; Dynamic scoping to the rescue
     (let ((org-confirm-babel-evaluate nil))
-      (org-babel-tangle))))
+      (org-babel-tangle)
+      (load-file user-init-file))))
 
 (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'kirby/org-babel-tangle-config)))
 
