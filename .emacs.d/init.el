@@ -17,8 +17,7 @@
 
 ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
 (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
-      url-history-file (expand-file-name "url/history" user-emacs-directory)
-      backup-directory-alist '(("." . ,(concat user-emacs-directory "autosave"))))
+      url-history-file (expand-file-name "url/history" user-emacs-directory))
 
 ;; Use no-littering to automatically set common paths to the new user-emacs-directory
 (use-package no-littering)
