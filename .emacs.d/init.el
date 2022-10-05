@@ -1,7 +1,10 @@
-; Disables the initial startup screen
+;; NOTE: init.el is now generated from Emacs.org.  Please edit that file
+;;       in Emacs and init.el will be generated automatically!
+
+;; Disables the initial startup screen
 (setq inhibit-startup-message t)
 
-; Configure the general UI
+;; Configure the general UI
 
 (scroll-bar-mode -1)        ; Disable visible scrollbar
 (tool-bar-mode -1)          ; Disable the toolbar
@@ -9,62 +12,23 @@
 (set-fringe-mode 10)        ; Give some breathing room
 (menu-bar-mode -1)          ; Disable the menu bar
 
-;; Set up the visible bell
-; (setq visible-bell t)
-
-; Disable bell sound
+;; Disable bell sound
 (setq ring-bell-function 'ignore)
 
-; Set font size
-(set-face-attribute 'default nil :font "Fira Code Retina" :height 200)
+;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
+(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
+      url-history-file (expand-file-name "url/history" user-emacs-directory)
+      backup-directory-alist '(("." . ,(concat user-emacs-directory "autosave"))))
 
-; Set the fixed pitch face
-(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 200)
+;; Use no-littering to automatically set common paths to the new user-emacs-directory
+(use-package no-littering)
 
-; Set the variable pitch face
-(set-face-attribute 'variable-pitch nil :font "Helvetica" :height 200)
-
-; configure line numbers
-(column-number-mode)
-(global-display-line-numbers-mode t)
-(setq display-line-numbers-type 'relative)
-
-; enable rainbow-delimiters
-(use-package rainbow-delimiters
-  :hook (prog-mode . rainbow-delimiters-mode))
-
-;; Disable line numbers for some modes
-(dolist (mode '(org-mode-hook
-                term-mode-hook
-                eshell-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers-mode 0))))
-
-(use-package which-key
-  :init (which-key-mode)
-  :diminish which-key-mode
-  :config
-  (setq which-key-idle-delay 0.2))
-
-(use-package doom-themes
-  :ensure t
-  :config
-  ;; Global settings (defaults)
-  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
-        doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-palenight t)
-
-  ;; Enable flashing mode-line on errors
-  (doom-themes-visual-bell-config)
-  ;; Enable custom neotree theme (all-the-icons must be installed!)
-  (doom-themes-neotree-config)
-  ;; or for treemacs users
-  (setq doom-themes-treemacs-theme "doom-colors") ; use "doom-colors" for less minimal icon theme
-  (doom-themes-treemacs-config)
-  ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config))
-
-;; Make ESC quit prompts
-(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+;; Keep customization settings in a temporary file (thanks Ambrevar!)
+(setq custom-file
+      (if (boundp 'server-socket-dir)
+          (expand-file-name "custom.el" server-socket-dir)
+        (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
+(load custom-file t)
 
 ;; Initialize package sources
 (require 'package)
@@ -81,13 +45,64 @@
 (unless (package-installed-p 'use-package)
    (package-install 'use-package))
 
+;; Packages will download when evaluated. 
 (require 'use-package)
 (setq use-package-always-ensure t)
 
-(use-package command-log-mode)
+;; Set font size
+(set-face-attribute 'default nil :font "Fira Code Retina" :height 200)
 
-(use-package swiper :ensure t)
-  
+;; Set the fixed pitch face
+(set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height 200)
+
+;; Set the variable pitch face
+(set-face-attribute 'variable-pitch nil :font "Helvetica" :height 200)
+
+(use-package all-the-icons)
+
+;; configure line numbers
+(column-number-mode)
+(global-display-line-numbers-mode t)
+(setq display-line-numbers-type 'relative)
+
+
+;; Disable line numbers for some modes
+(dolist (mode '(org-mode-hook
+                term-mode-hook
+                eshell-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 0))))
+
+(use-package doom-themes
+  :config
+  ;; Global settings (defaults)
+  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+        doom-themes-enable-italic t) ; if nil, italics is universally disabled
+  (load-theme 'doom-palenight t)
+
+  ;; Enable flashing mode-line on errors
+  (doom-themes-visual-bell-config)
+  ;; Enable custom neotree theme (all-the-icons must be installed!)
+  (doom-themes-neotree-config)
+  ;; or for treemacs users
+  (setq doom-themes-treemacs-theme "doom-colors") ; use "doom-colors" for less minimal icon theme
+  (doom-themes-treemacs-config)
+  ;; Corrects (and improves) org-mode's native fontification.
+  (doom-themes-org-config))
+
+(use-package doom-modeline
+
+  :init (doom-modeline-mode 1)
+  :config
+  (setq doom-modeline-modal-icon nil))
+
+(use-package which-key
+  :init (which-key-mode)
+  :diminish which-key-mode
+  :config
+  (setq which-key-idle-delay 0.2))
+
+(use-package swiper)
+
 (use-package ivy
   :diminish
   :bind (("C-s" . swiper)
@@ -105,15 +120,6 @@
          ("C-d" . ivy-reverse-i-search-kill))
   :config
   (ivy-mode 1))
-
-(use-package counsel
-  :bind (("M-x" . counsel-M-x)
-	 ("C-x b" . counsel-ibuffer)
-	 ("C-x C-f" . counsel-find-file)
-	 :map minibuffer-local-map
-	 ("C-r" . 'counsel-minibuffer-history))
-  :config
-  (setq ivy-initial-inputs-alist nil)) ;; Don't start searches with ^ automatically
 
 (use-package ivy-rich
   :init
@@ -136,17 +142,16 @@
                            (with-current-buffer buffer
                              (not (derived-mode-p 'exwm-mode)))))))))
 
-(use-package doom-modeline
-  :ensure t
-  :init (doom-modeline-mode 1)
+(use-package counsel
+  :bind (("M-x" . counsel-M-x)
+         ("C-x b" . counsel-ibuffer)
+         ("C-x C-f" . counsel-find-file)
+         :map minibuffer-local-map
+         ("C-r" . 'counsel-minibuffer-history))
   :config
-  (setq doom-modeline-modal-icon nil))
-
-(use-package all-the-icons
-  :ensure t)
+  (setq ivy-initial-inputs-alist nil)) ;; Don't start searches with ^ automatically
 
 (use-package helpful
-  :ensure t
   :custom
   (counsel-describe-function-function #'helpful-callable)
   (counsel-describe-variable-function #'helpful-variable)
@@ -155,7 +160,6 @@
   ([remap describe-command] . helpful-command)
   ([remap describe-variable] . counsel-describe-variable)
   ([remap describe-key] . helpful-key))
-
 
 (use-package general
   :config
@@ -167,23 +171,34 @@
     :global-prefix "C-SPC"))
 
 (kirby/leader-keys
-  "t"  '(:ignore t :which-key "toggles"))
+    "t"  '(:ignore t :which-key "Toggles"))
+
+(kirby/leader-keys
+  "tr" '(auto-revert-mode :which-key "Auto-reload file"))
 
 (general-define-key
  "C-M-j" 'counsel-switch-buffer)
 
-; Modes that should start with evil disabled. C-z to activate evil.
-;(defun kirby/evil-hook ()
-;  (dolist (mode '(custom-mode
-;                  eshell-mode
-;                  git-rebase-mode
-;                  erc-mode
-;                  circe-server-mode
-;                  circe-chat-mode
-;                  circe-query-mode
-;                  sauron-mode
-;                  term-mode))
-;   (add-to-list 'evil-emacs-state-modes mode)))
+;; Make ESC quit prompts
+(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+
+(use-package hydra)
+
+(defhydra hydra-text-scale (:timeout 5)
+  "scale text"
+  ("j" text-scale-increase "in")
+  ("k" text-scale-decrease "out")
+  ("f" nil "finished" :exit t))
+
+(kirby/leader-keys
+  "ts" '(hydra-text-scale/body :which-key "scale text"))
+
+;; Modes that should start with evil disabled. C-z to activate evil.
+(defun kirby/evil-hook ()
+  (dolist (mode '(eshell-mode
+                  git-rebase-mode
+                  term-mode))
+    (add-to-list 'evil-emacs-state-modes mode)))
 
 (use-package evil
   :init
@@ -191,7 +206,7 @@
   (setq evil-want-keybinding nil)
   (setq evil-want-C-u-scroll t)
   (setq evil-want-C-i-jump nil)
-  ; :hook (evil-mode . kirby/evil-hook)
+  :hook (evil-mode . kirby/evil-hook)
   :config
   (evil-mode 1)
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
@@ -199,7 +214,7 @@
   ;; Use visual line motions even outside of visual-line-mode buffers
   (evil-global-set-key 'motion "j" 'evil-next-visual-line)
   (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
-  ; Makes horizontal movement cross lines
+  ;; Makes horizontal movement cross lines
   (setq-default evil-cross-lines t)
 
   (evil-set-initial-state 'messages-buffer-mode 'normal)
@@ -213,37 +228,85 @@
         evil-visual-state-tag   (propertize "V" 'face '((:background "gray"        :foreground "black")))
         evil-operator-state-tag (propertize "O" 'face '((:background "sandy brown" :foreground "black")))))
 
-
 (use-package evil-collection
   :after evil
   :config
   (evil-collection-init))
 
-(use-package hydra)
+(defun kirby/org-mode-setup ()
+  (org-indent-mode)
+  (variable-pitch-mode 1)
+  (auto-fill-mode 0)
+  (visual-line-mode 1)
+  (setq evil-auto-indent nil))
 
-(defhydra hydra-text-scale (:timeout 5)
-  "scale text"
-  ("j" text-scale-increase "in")
-  ("k" text-scale-decrease "out")
-  ("f" nil "finished" :exit t))
+(use-package org
+  :hook (org-mode . kirby/org-mode-setup)
+  :config
+  (setq org-ellipsis " ▾"))
 
-(kirby/leader-keys
-  "ts" '(hydra-text-scale/body :which-key "scale text"))
+;; Replace list hyphen with dot
+(font-lock-add-keywords 'org-mode
+                        '(("^ *\\([-]\\) "
+                          (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
 
-;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
-(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
-      url-history-file (expand-file-name "url/history" user-emacs-directory)
-      backup-directory-alist '(("." . ,(concat user-emacs-directory "autosave"))))
+;; Make sure org-indent face is available
+(require 'org-indent)
 
-;; Use no-littering to automatically set common paths to the new user-emacs-directory
-(use-package no-littering)
+(use-package org-bullets
+  :after org
+  :hook (org-mode . org-bullets-mode)
+  :custom
+  (org-bullets-bullet-list '("➀" "➁" "➂" "➃" "➄" "➅" "➆" "➇" "➈" "➉")))
 
-;; Keep customization settings in a temporary file (thanks Ambrevar!)
-(setq custom-file
-      (if (boundp 'server-socket-dir)
-          (expand-file-name "custom.el" server-socket-dir)
-        (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
-(load custom-file t)
+(require 'org-faces)
+
+  (dolist (face '((org-level-1 . 1.2)
+                  (org-level-2 . 1.1)
+                  (org-level-3 . 1.05)
+                  (org-level-4 . 1.0)
+                  (org-level-5 . 1.0)
+                  (org-level-6 . 1.0)
+                  (org-level-7 . 1.0)
+                  (org-level-8 . 1.0)))
+      (set-face-attribute (car face) nil :font "Fira Code Retina" :weight 'regular :height (cdr face)))
+
+;; Run describe-face and search for org to find other faces that might need fixed pitch
+;; Ensure that anything that should be fixed-pitch in Org files appears that way
+(set-face-attribute 'org-block nil           :foreground nil :inherit 'fixed-pitch)
+(set-face-attribute 'org-code nil            :inherit '(shadow fixed-pitch))
+(set-face-attribute 'org-table nil           :inherit '(shadow fixed-pitch))
+(set-face-attribute 'org-indent nil          :inherit '(org-hide fixed-pitch))
+(set-face-attribute 'org-verbatim nil        :inherit '(shadow fixed-pitch))
+(set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
+(set-face-attribute 'org-meta-line nil       :inherit '(font-lock-comment-face fixed-pitch))
+(set-face-attribute 'org-checkbox nil        :inherit 'fixed-pitch)
+
+;; enables org babel
+(org-babel-do-load-languages
+  'org-babel-load-languages
+  '((emacs-lisp . t)   ; Enables emacs-lisp language
+    (python . t)))     ; Enables python language
+
+;; Enabled config file configuration in org babel
+(push '("conf-unix" . conf-unix) org-src-lang-modes)
+
+;; Enables tab completion of "<sh" to a shell code block. Same for other characters
+(require 'org-tempo)
+
+(add-to-list 'org-structure-template-alist '("sh" . "src shell"))
+(add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+(add-to-list 'org-structure-template-alist '("py" . "src python"))
+
+;; Automatically tangle our Emacs.org config file when we save it
+(defun kirby/org-babel-tangle-config ()
+  (when (string-equal (buffer-file-name)
+                      (expand-file-name "~/.dotfiles/emacs.org")) 
+    ;; Dynamic scoping to the rescue
+    (let ((org-confirm-babel-evaluate nil))
+      (org-babel-tangle))))
+
+(add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'kirby/org-babel-tangle-config)))
 
 (use-package projectile
   :diminish projectile-mode
@@ -270,123 +333,6 @@
   :init
   (setq auth-sources '("~/.authinfo")))
 
-
-;; To make windows split to the side set nil and 0
-(setq split-height-threshold 80) ; 80 default. Set to nil to make windows open to the side
-
-(setq split-width-threshold 160) ; 160 default. Set to 0 to make windows open to the side
-
-(defun kirby/org-mode-setup ()
-  (org-indent-mode)
-  (variable-pitch-mode 1)
-  (auto-fill-mode 0)
-  (visual-line-mode 1)
-  (setq evil-auto-indent nil))
-
-(use-package org
-  :hook (org-mode . kirby/org-mode-setup)
-  :config
-  (setq org-ellipsis " ▾"))
-
-;; For more information on the following items: https://github.com/daviwil/emacs-from-scratch/blob/master/show-notes/Emacs-06.org
-;; Set org-agenda file locations and name
-;; (setq org-directory "~/Projects/Code/emacs-from-scratch/OrgFiles")
-;; (setq org-agenda-files '("Tasks.org" "Birthdays.org" "Habits.org"))
-
-;; If you only want to see the agenda for today
-;; (setq org-agenda-span 'day)
-
-;; Enables logs of closed and scheduled tasks (shows hours of the day)
-;; (setq org-agenda-start-with-log-mode t)
-
-;; org-agenda will track closing time when task
-
-;; (setq org-log-done 'time)
-
-;; Sets the log drawer to be collapsible
-;; (setq org-log-into-drawer t)
-
-(use-package org-bullets
-  :after org
-  :hook (org-mode . org-bullets-mode)
-  :custom
-  (org-bullets-bullet-list '("➀" "➁" "➂" "➃" "➄" "➅" "➆" "➇" "➈" "➉")))
-;; Copied encircled numbers from here: https://www.webnots.com/alt-code-shortcuts-for-encircled-numbers/
-
-
-;; Replace list hyphen with dot
-(font-lock-add-keywords 'org-mode
-                        '(("^ *\\([-]\\) "
-                          (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
-
-(require 'org-faces)
-
-(dolist (face '((org-level-1 . 1.2)
-                (org-level-2 . 1.1)
-                (org-level-3 . 1.05)
-                (org-level-4 . 1.0)
-                (org-level-5 . 1.0)
-                (org-level-6 . 1.0)
-                (org-level-7 . 1.0)
-                (org-level-8 . 1.0)))
-    (set-face-attribute (car face) nil :font "Fira Code Retina" :weight 'regular :height (cdr face)))
-
-;; Make sure org-indent face is available
-(require 'org-indent)
-
-;; enables org babel
-(org-babel-do-load-languages
-  'org-babel-load-languages
-  '((emacs-lisp . t)   ; Enables emacs-lisp language
-    (python . t)))     ; Enables python language
-
-;; Troubleshoot this later, it seems to cause EMACS to crash
-;; (require 'virtualenvwrapper)
-;; (venv-initialize-interactive-shells) ; if you want interactive shell support
-;; (venv-initialize-eshell)             ; if you want eshell support
-;; (setq venv-location "~/.pyenv/versions")
-
-
-(setq org-confirm-babel-evaluate nil)
-
-;; Enables tab completion of "<sh" to a shell code block. Same for other characters
-(require 'org-tempo)
-
-(add-to-list 'org-structure-template-alist '("sh" . "src shell"))
-(add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
-(add-to-list 'org-structure-template-alist '("py" . "src python"))
-
-;; Run describe-face and search for org to find other faces that might need fixed pitch
-
-;; Ensure that anything that should be fixed-pitch in Org files appears that way
-(set-face-attribute 'org-block nil :foreground nil :inherit 'fixed-pitch)
-(set-face-attribute 'org-code nil   :inherit '(shadow fixed-pitch))
-(set-face-attribute 'org-table nil   :inherit '(shadow fixed-pitch))
-(set-face-attribute 'org-indent nil :inherit '(org-hide fixed-pitch))
-(set-face-attribute 'org-verbatim nil :inherit '(shadow fixed-pitch))
-(set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
-(set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
-(set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch)
-
-(defun kirby/org-mode-visual-fill ()
-  (setq visual-fill-column-width 100
-	visual-fill-column-center-text t)
-  (visual-fill-column-mode 1))
-
-(use-package visual-fill-column
-  :defer t
-  :hook (org-mode . kirby/org-mode-visual-fill))
-
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(no-littering hydra evil-collection evil general helpful counsel ivy-rich which-key rainbow-delimiters doom-themes all-the-icons doom-modeline swiper command-log-mode ivy use-package)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+;; enable rainbow-delimiters
+(use-package rainbow-delimiters
+  :hook (prog-mode . rainbow-delimiters-mode))
