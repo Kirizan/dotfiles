@@ -334,6 +334,28 @@
 ;; Make sure org-indent face is available
 (require 'org-indent)
 
+;; enables org babel
+(org-babel-do-load-languages
+  'org-babel-load-languages
+  '((emacs-lisp . t)   ; Enables emacs-lisp language
+    (python . t)))     ; Enables python language
+
+;; Troubleshoot this later, it seems to cause EMACS to crash
+;; (require 'virtualenvwrapper)
+;; (venv-initialize-interactive-shells) ; if you want interactive shell support
+;; (venv-initialize-eshell)             ; if you want eshell support
+;; (setq venv-location "~/.pyenv/versions")
+
+
+(setq org-confirm-babel-evaluate nil)
+
+;; Enables tab completion of "<sh" to a shell code block. Same for other characters
+(require 'org-tempo)
+
+(add-to-list 'org-structure-template-alist '("sh" . "src shell"))
+(add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+(add-to-list 'org-structure-template-alist '("py" . "src python"))
+
 ;; Run describe-face and search for org to find other faces that might need fixed pitch
 
 ;; Ensure that anything that should be fixed-pitch in Org files appears that way
