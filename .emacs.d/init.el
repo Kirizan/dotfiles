@@ -171,8 +171,7 @@
     :global-prefix "C-SPC"))
 
 (kirby/leader-keys
-    "t"  '(:ignore t :which-key "Toggles"))
-
+  "t"  '(:ignore t :which-key "Toggles"))
 (kirby/leader-keys
   "tr" '(auto-revert-mode :which-key "Auto-reload file"))
 
@@ -206,7 +205,7 @@
   (setq evil-want-keybinding nil)
   (setq evil-want-C-u-scroll t)
   (setq evil-want-C-i-jump nil)
-  :hook (evil-mode . kirby/evil-hook)
+  ;;:hook (evil-mode . kirby/evil-hook)
   :config
   (evil-mode 1)
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
@@ -290,6 +289,10 @@
 
 ;; Enabled config file configuration in org babel
 (push '("conf-unix" . conf-unix) org-src-lang-modes)
+
+
+;; Allows evaluation of code blocks without prompts
+(setq org-confirm-babel-evaluate nil)
 
 ;; Enables tab completion of "<sh" to a shell code block. Same for other characters
 (require 'org-tempo)

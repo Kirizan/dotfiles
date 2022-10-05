@@ -152,7 +152,7 @@ This is the basic configuration of the package manager.
                   term-mode-hook
                   eshell-mode-hook))
     (add-hook mode (lambda () (display-line-numbers-mode 0))))
-  
+
 #+end_src
 
 ** Themes
@@ -323,22 +323,9 @@ https://github.com/noctuid/general.el
       :keymaps '(normal insert visual emacs)
       :prefix "SPC"
       :global-prefix "C-SPC"))
-#+end_src
-
-** Custom leader key 
-
-#+begin_src emacs-lisp
 
   (kirby/leader-keys
-      "t"  '(:ignore t :which-key "Toggles"))
-
-#+end_src
-
-*** Custom bindings
-
-Custom bindings that use the above leader key setup.
-
-#+begin_src emacs-lisp
+    "t"  '(:ignore t :which-key "Toggles"))
   (kirby/leader-keys
     "tr" '(auto-revert-mode :which-key "Auto-reload file"))
 
@@ -381,7 +368,7 @@ https://github.com/abo-abo/hydra
 
 #+end_src
 
-** Evil mode
+** Evil
 
 https://evil.readthedocs.io/en/latest/index.html
 
@@ -397,33 +384,33 @@ https://evil.readthedocs.io/en/latest/index.html
 #+end_src
 
 #+begin_src emacs-lisp
-    (use-package evil
-      :init
-      (setq evil-want-integration t)
-      (setq evil-want-keybinding nil)
-      (setq evil-want-C-u-scroll t)
-      (setq evil-want-C-i-jump nil)
-      :hook (evil-mode . kirby/evil-hook)
-      :config
-      (evil-mode 1)
-      (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+  (use-package evil
+    :init
+    (setq evil-want-integration t)
+    (setq evil-want-keybinding nil)
+    (setq evil-want-C-u-scroll t)
+    (setq evil-want-C-i-jump nil)
+    ;;:hook (evil-mode . kirby/evil-hook)
+    :config
+    (evil-mode 1)
+    (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
 
-      ;; Use visual line motions even outside of visual-line-mode buffers
-      (evil-global-set-key 'motion "j" 'evil-next-visual-line)
-      (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
-      ;; Makes horizontal movement cross lines
-      (setq-default evil-cross-lines t)
+    ;; Use visual line motions even outside of visual-line-mode buffers
+    (evil-global-set-key 'motion "j" 'evil-next-visual-line)
+    (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
+    ;; Makes horizontal movement cross lines
+    (setq-default evil-cross-lines t)
 
-      (evil-set-initial-state 'messages-buffer-mode 'normal)
-      (evil-set-initial-state 'dashboard-mode 'normal)
-      ;; Color the evil tag
-      (setq evil-normal-state-tag   (propertize "N" 'face '((:background "yellow1"     :foreground "black")))
-            evil-emacs-state-tag    (propertize "E" 'face '((:background "dark red"    :foreground "black")))
-            evil-insert-state-tag   (propertize "I" 'face '((:background "light green" :foreground "black")))
-            evil-replace-state-tag  (propertize "R" 'face '((:background "chocolate"   :foreground "black")))
-            evil-motion-state-tag   (propertize "M" 'face '((:background "plum3"       :foreground "black")))
-            evil-visual-state-tag   (propertize "V" 'face '((:background "gray"        :foreground "black")))
-            evil-operator-state-tag (propertize "O" 'face '((:background "sandy brown" :foreground "black")))))
+    (evil-set-initial-state 'messages-buffer-mode 'normal)
+    (evil-set-initial-state 'dashboard-mode 'normal)
+    ;; Color the evil tag
+    (setq evil-normal-state-tag   (propertize "N" 'face '((:background "yellow1"     :foreground "black")))
+          evil-emacs-state-tag    (propertize "E" 'face '((:background "dark red"    :foreground "black")))
+          evil-insert-state-tag   (propertize "I" 'face '((:background "light green" :foreground "black")))
+          evil-replace-state-tag  (propertize "R" 'face '((:background "chocolate"   :foreground "black")))
+          evil-motion-state-tag   (propertize "M" 'face '((:background "plum3"       :foreground "black")))
+          evil-visual-state-tag   (propertize "V" 'face '((:background "gray"        :foreground "black")))
+          evil-operator-state-tag (propertize "O" 'face '((:background "sandy brown" :foreground "black")))))
 
 #+end_src
 
@@ -571,6 +558,10 @@ Languages available to org-babel: https://orgmode.org/worg/org-contrib/babel/lan
   ;; Enabled config file configuration in org babel
   (push '("conf-unix" . conf-unix) org-src-lang-modes)
 
+
+  ;; Allows evaluation of code blocks without prompts
+  (setq org-confirm-babel-evaluate nil)
+
 #+end_src
 
 ** Structure Templates
@@ -656,9 +647,9 @@ https://magit.vc/
 
 #+begin_src emacs-lisp
 
-  (use-package forge
-    :init
-    (setq auth-sources '("~/.authinfo")))
+    (use-package forge
+      :init
+      (setq auth-sources '("~/.authinfo")))
 
 #+end_src
 
