@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+role="AWSControlTowerExecution"
+secondary_owner="bmperk"
+
+while getopts a:r:s:
+do
+    case "${arg}" in
+	a ) account=${OPTARG};;
+	r ) role=${OPTARG};;
+	s ) secondary_owner=${OPTARG};;
+    esac
+done
+
+isengardcli register-org-accounts $account --role $role --secondary-owner $secondary_owner
+
