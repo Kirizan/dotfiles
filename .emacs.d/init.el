@@ -19,15 +19,21 @@
 (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
       url-history-file (expand-file-name "url/history" user-emacs-directory))
 
-;; Use no-littering to automatically set common paths to the new user-emacs-directory
-(use-package no-littering)
+;; Configure no-littering defaults before loading
+(setq no-littering-etc-directory (expand-file-name "etc/" user-emacs-directory)
+      no-littering-var-directory (expand-file-name "var/" user-emacs-directory))
 
-;; Keep customization settings in a temporary file (thanks Ambrevar!)
-(setq custom-file
-      (if (boundp 'server-socket-dir)
-          (expand-file-name "custom.el" server-socket-dir)
-        (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
-(load custom-file t)
+;; Use no-littering to automatically set common paths to the new user-emacs-directory
+(require 'no-littering)
+
+;; Moves customizations to custom.el
+(setq custom-file (no-littering-expand-etc-file-name "custom.el"))
+
+;; Moves the auto save files
+(setq auto-save-file-name-transforms `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+
+;; Sets the directory used to install packages
+(setq package-user-dir (expand-file-name "packages/" user-emacs-directory))
 
 ;; Initialize package sources
 (require 'package)
@@ -307,7 +313,11 @@
     ;; Dynamic scoping to the rescue
     (let ((org-confirm-babel-evaluate nil))
       (org-babel-tangle)
-      (load-file user-init-file))))
+      (load-file user-init-file)))
+  (when (string-equal (buffer-file-name)
+                      (expand-file-name "~/.dotfiles/system.org"))
+    (let ((org-confirm-babel-evaluate nil))
+      (org-babel-tangle))))
 
 (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'kirby/org-babel-tangle-config)))
 

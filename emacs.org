@@ -66,21 +66,58 @@ Fringe Mode: https://www.gnu.org/software/emacs/manual/html_node/emacs/Fringes.h
 
 ** Clean .emacs.d
 
+*** Change user directory
+
 #+begin_src emacs-lisp
 
   ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
   (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
         url-history-file (expand-file-name "url/history" user-emacs-directory))
 
-  ;; Use no-littering to automatically set common paths to the new user-emacs-directory
-  (use-package no-littering)
+#+end_src
 
-  ;; Keep customization settings in a temporary file (thanks Ambrevar!)
-  (setq custom-file
-        (if (boundp 'server-socket-dir)
-            (expand-file-name "custom.el" server-socket-dir)
-          (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
-  (load custom-file t)
+*** Configure no-littering
+
+https://github.com/emacscollective/no-littering
+
+#+begin_src emacs-lisp
+
+  ;; Configure no-littering defaults before loading
+  (setq no-littering-etc-directory (expand-file-name "etc/" user-emacs-directory)
+        no-littering-var-directory (expand-file-name "var/" user-emacs-directory))
+
+  ;; Use no-littering to automatically set common paths to the new user-emacs-directory
+  (require 'no-littering)
+
+#+end_src
+
+*** Change where customizations are stored
+
+https://www.gnu.org/software/emacs/manual/html_node/emacs/Saving-Customizations.html
+
+#+begin_src emacs-lisp
+
+  ;; Moves customizations to custom.el
+  (setq custom-file (no-littering-expand-etc-file-name "custom.el"))
+
+#+end_src
+
+*** Auto-save location
+
+#+begin_src emacs-lisp
+
+  ;; Moves the auto save files
+  (setq auto-save-file-name-transforms `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+
+#+end_src
+
+*** Package installation location
+*NOTE*: This must be before (require 'package) is set.
+
+#+begin_src emacs-lisp
+
+  ;; Sets the directory used to install packages
+  (setq package-user-dir (expand-file-name "packages/" user-emacs-directory))
 
 #+end_src
 
@@ -584,16 +621,20 @@ https://orgmode.org/manual/Structure-Templates.html
 
 #+begin_src emacs-lisp
 
-    ;; Automatically tangle our Emacs.org config file when we save it
-    (defun kirby/org-babel-tangle-config ()
-      (when (string-equal (buffer-file-name)
-                          (expand-file-name "~/.dotfiles/emacs.org")) 
-        ;; Dynamic scoping to the rescue
-        (let ((org-confirm-babel-evaluate nil))
-          (org-babel-tangle)
-          (load-file user-init-file))))
+  ;; Automatically tangle our Emacs.org config file when we save it
+  (defun kirby/org-babel-tangle-config ()
+    (when (string-equal (buffer-file-name)
+                        (expand-file-name "~/.dotfiles/emacs.org")) 
+      ;; Dynamic scoping to the rescue
+      (let ((org-confirm-babel-evaluate nil))
+        (org-babel-tangle)
+        (load-file user-init-file)))
+    (when (string-equal (buffer-file-name)
+                        (expand-file-name "~/.dotfiles/system.org"))
+      (let ((org-confirm-babel-evaluate nil))
+        (org-babel-tangle))))
 
-    (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'kirby/org-babel-tangle-config)))
+  (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'kirby/org-babel-tangle-config)))
 
 
 #+end_src
