@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+npx ts-node /Users/nikirby/Applications/account-guardian-onboarding/index.ts
