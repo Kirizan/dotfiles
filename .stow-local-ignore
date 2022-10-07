@@ -21,4 +21,10 @@ _darcs
 ^/COPYING
 # Custom Stow Ignore
 
-bin
+bin         # Personal bin directory
+
+.DS_Store   # Mac OS
+
+^/.*\.org   # Orgmode files
+
+^/.*\.bak   # Backup files
