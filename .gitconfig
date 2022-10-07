@@ -1,0 +1,11 @@
+[user]
+	name = Nick Kirby 
+	email = 33106137+Kirizan@users.noreply.github.com
+[core]
+	autocrlf = false
+[github]
+	user = Kirizan
+	email = 33106137+Kirizan@users.noreply.github.com
+[gitlab "aws.dev"]
+	user = @nikirby
+	email = nikirby@amazon.com
