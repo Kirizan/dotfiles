@@ -1,0 +1,348 @@
+#+title: System Configuration 
+#+PROPERTY: header-args:shell :tangle .profile :mkdirp yes
+
+* Other config files
+
+This is for all the config files that will source the .profile file.
+
+** .zprofile
+
+#+begin_src shell :tangle .zprofile
+
+  # Configure zsh profile to source profile
+
+  if [ -f ~/.profile ]; then
+    source ~/.profile
+  fi
+
+#+end_src
+
+** .zshrc
+
+#+begin_src shell :tangle .zshrc
+
+  # Configure zshrc to source .profile
+
+  if [ -f ~/.profile ]; then
+    source ~/.profile
+  fi
+
+#+end_src
+
+* PowerLevel10k setup
+
+** Enable PowerLevel10K
+
+Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc. Initialization code that may require console input (password prompts, [y/n] confirmations, etc.) must go above this block; everything else may go below.
+
+#+begin_src shell
+
+  if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+  fi
+
+#+end_src
+
+** Source theme
+
+#+begin_src shell
+
+  source /opt/homebrew/opt/powerlevel10k/powerlevel10k.zsh-theme
+
+#+end_src
+
+** Load customizations
+
+#+begin_src shell
+
+  # To customize prompt, run `p10k configure` or edit ~/.config/powerlevel10k/p10k.zsh.
+  [[ ! -f ~/.config/powerlevel10k/p10k.zsh ]] || source ~/.config/powerlevel10k/p10k.zsh
+ 
+#+end_src
+
+* Path expansion
+
+** Add curl-openssl
+
+#+begin_src shell
+
+  # configures curl-openssl path options.
+  export PATH="/usr/local/opt/curl-openssl/bin:$PATH"
+  
+#+end_src
+
+** Add homebrew's sbin
+
+#+begin_src shell
+
+  # add brew's sbin to path
+  export PATH="/usr/local/sbin:$PATH"
+
+#+end_src
+
+** Add homebrew's bin
+
+#+begin_src shell
+
+  # add homebrew's bin to path
+  if [ -d "/opt/homebrew" ]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  fi
+
+#+end_src
+
+** Add fzf
+
+#+begin_src shell
+
+  # add fzf to path
+  if [[ ! "$PATH" == */opt/homebrew/opt/fzf/bin* ]]; then
+    PATH="${PATH:+${PATH}:}/opt/homebrew/opt/fzf/bin"
+  fi
+
+#+end_src
+
+** Add JetBrains toolbox scripts
+
+#+begin_src shell
+
+  # Added by JetBrains Toolbox App
+  export PATH="$PATH:/Users/nikirby/Library/Application Support/JetBrains/Toolbox/scripts"
+
+#+end_src
+
+** Add personal bin
+
+#+begin_src shell
+
+  # Add custom bin directory
+  export PATH="$PATH:/Users/nikirby/.dotfiles/bin"
+
+#+end_src
+
+* Aliases
+** Directory search
+
+#+begin_src shell
+
+  alias lsa='gls -liahF --group-directories-first --color=auto'
+
+#+end_src
+
+** Terraform
+
+#+begin_src shell
+
+  # Changes terraform to tf
+  alias tf='terraform'
+
+  # Adds a Terraform auto approve alias
+  alias tfaa='tf apply -auto-approve'
+
+#+end_src
+
+** VIM
+
+#+begin_src shell
+
+  # using neovim instead of vim
+  alias vim="nvim"
+  alias vi="nvim"
+
+#+end_src
+
+** AWS CDK
+
+#+begin_src shell
+
+  # Force the CDK to use the AWS_PROFILE variable
+  alias cdkp='cdk --profile $AWS_PROFILE'
+
+#+end_src
+
+* Bash Completions
+
+** Move completion files
+
+#+begin_src shell
+
+  #move the completion file to ~/.config/zsh directory
+  compinit -d ~/.config/zsh/zcompdump
+
+#+end_src
+
+** Add completion directory
+
+#+begin_src shell
+
+  #add completion directory to fpath
+  fpath=(~/.config/zsh/completion $fpath)
+
+#+end_src
+
+** Configure completion settings
+
+#+begin_src shell
+
+  # configure zsh completion
+  setopt noautomenu
+  setopt nomenucomplete
+
+  # partial completion suggestions
+  zstyle ':completion:*' list-suffixes zstyle ':completion:*' expand prefix suffix 
+
+#+end_src
+
+** Load completion scripts
+
+#+begin_src shell
+
+  # load bash completion scripts
+  autoload -U +X bashcompinit && bashcompinit
+  autoload -U +X compinit && compinit
+
+  if type brew &>/dev/null
+  then
+    FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+    FPATH="$(brew --prefix)/share/zsh-completions:$FPATH"
+
+    autoload -Uz compinit
+    compinit
+  fi
+
+#+end_src
+
+** Enabled application specific completion
+
+*** AWS CLI
+
+#+begin_src shell
+
+  # enable AWS cli completion
+  complete -C aws_completer aws
+
+#+end_src
+
+*** FZF
+
+#+begin_src shell
+
+  # add fzf auto-completion
+  [[ $- == *i* ]] && source "/opt/homebrew/opt/fzf/shell/completion.bash" 2> /dev/null
+
+#+end_src
+
+* Eval Commands
+
+** Pyenv
+
+#+begin_src shell
+
+  ######################## enable pyenv shims and autocomplete #########
+  if command -v pyenv 1>/dev/null 2>&1; then
+    eval "$(pyenv init --path)"
+    export PYENV_ROOT="$HOME/.pyenv"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+  fi
+
+#+end_src
+
+** direnv
+
+#+begin_src shell
+
+  ######################## enable direnv ################################
+  if command -v direnv 1>/dev/null 2>&1; then
+    eval "$(direnv hook zsh)"
+  fi
+
+#+end_src
+
+** isengardcli
+
+#+begin_src shell
+
+  ######################## enable isengardcli shell integration #########
+  if command -v isengardcli 1>/dev/null 2>&1; then
+    eval "$(isengardcli shell-profile)"
+  fi
+
+#+end_src
+
+** homebrew
+
+#+begin_src shell
+
+  # Add homebrew
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+
+#+end_src
+
+* ZSH Configuration
+
+** ZSH History
+
+#+begin_src shell
+
+  ######################### history options ############################
+  setopt EXTENDED_HISTORY        # store time in history
+  setopt HIST_EXPIRE_DUPS_FIRST  # unique events are more usefull to me
+  setopt HIST_VERIFY             # Make those history commands nice
+  setopt HIST_IGNORE_SPACE       # Make history ignore commands that start with a space. Good for exporting passwords without storing them to history.
+  setopt HIST_IGNORE_ALL_DUPS    # History ignores duplicate commands
+  setopt INC_APPEND_HISTORY      # immediatly insert history into history file
+  HISTSIZE=1000000               # Sets history size to 1,000,000 lines
+  SAVEHIST=$HISTSIZE             # Sets save history size to equal to history size
+
+#+end_src
+
+** ZSH Options
+
+#+begin_src shell
+  # Disable terminal beebs
+  setopt NO_BEEP
+  # configures local to ensure proper sorting
+  # default is LC_COLLATE="en_US.UTF-8"
+  export LC_COLLATE="cs_CZ.ISO8859-2"
+
+#+end_src
+
+
+
+* Keybindings
+
+** fzf
+
+#+begin_src shell
+
+  # fzf key bindings
+  source "/opt/homebrew/opt/fzf/shell/key-bindings.zsh"
+
+#+end_src
+
+* Application Specific
+
+** GO Lang
+
+#+begin_src shell
+
+  # Stops go lang from using Google managed proxies
+  go env -w GOPROXY=direct
+
+#+end_src
+
+* Miscellaneous
+
+** Local Configurations
+
+#+begin_src shell
+
+  # This section is for configurations that shouldn't get synced to github
+  # Mainly used for configurations unique to my work environment
+
+  if test -f "~/.config/zsh/zshrc"; then
+    source "~/.config/zsh/zshrc"
+  fi
+
+#+end_src
