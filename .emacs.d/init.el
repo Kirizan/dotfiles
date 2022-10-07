@@ -1,6 +1,35 @@
 ;; NOTE: init.el is now generated from Emacs.org.  Please edit that file
 ;;       in Emacs and init.el will be generated automatically!
 
+;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
+(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
+      url-history-file (expand-file-name "url/history" user-emacs-directory))
+
+;; Sets the directory used to install packages
+(setq package-user-dir (expand-file-name "packages/" user-emacs-directory))
+
+(add-to-list 'load-path "/Users/nikirby/.cache/emacs/packages/")
+
+(package-initialize)
+
+;; Initialize package sources
+(require 'package)
+
+(setq package-archives '(("melpa" . "https://melpa.org/packages/")
+                         ("org" . "https://orgmode.org/elpa/")
+                         ("elpa" . "https://elpa.gnu.org/packages/")))
+
+(unless package-archive-contents
+ (package-refresh-contents))
+
+;; Initialize use-package on non-Linux platforms
+(unless (package-installed-p 'use-package)
+   (package-install 'use-package))
+
+;; Packages will download when evaluated. 
+(require 'use-package)
+(setq use-package-always-ensure t)
+
 ;; Disables the initial startup screen
 (setq inhibit-startup-message t)
 
@@ -15,10 +44,6 @@
 ;; Disable bell sound
 (setq ring-bell-function 'ignore)
 
-;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
-(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
-      url-history-file (expand-file-name "url/history" user-emacs-directory))
-
 ;; Configure no-littering defaults before loading
 (setq no-littering-etc-directory (expand-file-name "etc/" user-emacs-directory)
       no-littering-var-directory (expand-file-name "var/" user-emacs-directory))
@@ -31,28 +56,6 @@
 
 ;; Moves the auto save files
 (setq auto-save-file-name-transforms `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
-
-;; Sets the directory used to install packages
-(setq package-user-dir (expand-file-name "packages/" user-emacs-directory))
-
-;; Initialize package sources
-(require 'package)
-
-(setq package-archives '(("melpa" . "https://melpa.org/packages/")
-                         ("org" . "https://orgmode.org/elpa/")
-                         ("elpa" . "https://elpa.gnu.org/packages/")))
-
-(package-initialize)
-(unless package-archive-contents
- (package-refresh-contents))
-
-;; Initialize use-package on non-Linux platforms
-(unless (package-installed-p 'use-package)
-   (package-install 'use-package))
-
-;; Packages will download when evaluated. 
-(require 'use-package)
-(setq use-package-always-ensure t)
 
 ;; Set font size
 (set-face-attribute 'default nil :font "Fira Code Retina" :height 200)
@@ -151,6 +154,7 @@
   :bind (("M-x" . counsel-M-x)
          ("C-x b" . counsel-ibuffer)
          ("C-x C-f" . counsel-find-file)
+         ("C-M-j" . counsel-switch-buffer)
          :map minibuffer-local-map
          ("C-r" . 'counsel-minibuffer-history))
   :config
@@ -179,9 +183,6 @@
   "t"  '(:ignore t :which-key "Toggles"))
 (kirby/leader-keys
   "tr" '(auto-revert-mode :which-key "Auto-reload file"))
-
-(general-define-key
- "C-M-j" 'counsel-switch-buffer)
 
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
