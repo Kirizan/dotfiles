@@ -45,6 +45,7 @@ alias vi="nvim"
 alias cdkp='cdk --profile $AWS_PROFILE'
 
 #move the completion file to ~/.config/zsh directory
+autoload -Uz compinit
 compinit -d ~/.config/zsh/zcompdump
 
 #add completion directory to fpath

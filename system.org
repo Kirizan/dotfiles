@@ -162,11 +162,13 @@ Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc. I
 
 * Bash Completions
 
+
 ** Move completion files
 
 #+begin_src shell
 
   #move the completion file to ~/.config/zsh directory
+  autoload -Uz compinit
   compinit -d ~/.config/zsh/zcompdump
 
 #+end_src
