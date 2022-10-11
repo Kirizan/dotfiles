@@ -714,7 +714,7 @@ https://github.com/Fanael/rainbow-delimiters
 
 #+end_src
 
-** Development Configuration
+** IDE Configuration
 
 *** Language Server Protocol 
 
@@ -738,7 +738,9 @@ https://emacs-lsp.github.io/lsp-mode/
 
   (use-package lsp-mode
     :commands (lsp lsp-deferred)
-    :hook (lsp-mode . kirby/lsp-mode-setup)
+    :hook
+    (lsp-mode . kirby/lsp-mode-setup)
+    (sh-mode . lsp)			; Enable Bash LSP
     :init
     (setq lsp-keymap-prefix "SPC l") 
     :config
@@ -806,14 +808,7 @@ https://emacs-lsp.github.io/lsp-mode/page/languages/
 
 **** Bash
 
-#+begin_src emacs-lisp
-
-  (use-package lsp-mode
-    :commands lsp
-    :hook
-    (sh-mode . lsp))
-  
-#+end_src
+Bash LSP is enabled as a hook to the LSP enabler.
 
 **** Python
 

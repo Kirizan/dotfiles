@@ -358,7 +358,9 @@
 
 (use-package lsp-mode
   :commands (lsp lsp-deferred)
-  :hook (lsp-mode . kirby/lsp-mode-setup)
+  :hook
+  (lsp-mode . kirby/lsp-mode-setup)
+  (sh-mode . lsp)			; Enable Bash LSP
   :init
   (setq lsp-keymap-prefix "SPC l") 
   :config
@@ -387,8 +389,3 @@
 
 (use-package evil-nerd-commenter
   :bind ("M-/" . evilnc-comment-or-uncomment-lines))
-
-(use-package lsp-mode
-  :commands lsp
-  :hook
-  (sh-mode . lsp))
