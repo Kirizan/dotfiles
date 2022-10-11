@@ -181,8 +181,8 @@
 
 (kirby/leader-keys
   "t"  '(:ignore t :which-key "Toggles"))
-(kirby/leader-keys
-  "tr" '(auto-revert-mode :which-key "Auto-reload file"))
+  "tr" '(auto-revert-mode :which-key "Auto-reload file")
+  "to" '(org-mode :which-key "Toggle Org Mode"))
 
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)

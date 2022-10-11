@@ -368,10 +368,18 @@ https://github.com/noctuid/general.el
       :prefix "SPC"
       :global-prefix "C-SPC"))
 
+#+end_src
+
+** Custom Leader Key configurations
+
+*** Toggles
+
+#+begin_src emacs-lisp
+
   (kirby/leader-keys
     "t"  '(:ignore t :which-key "Toggles"))
-  (kirby/leader-keys
-    "tr" '(auto-revert-mode :which-key "Auto-reload file"))
+    "tr" '(auto-revert-mode :which-key "Auto-reload file")
+    "to" '(org-mode :which-key "Toggle Org Mode"))
 
 #+end_src
 
