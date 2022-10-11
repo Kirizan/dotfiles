@@ -790,6 +790,15 @@ https://github.com/emacs-lsp/lsp-treemacs
 
 #+end_src
 
+**** Line commenting
+
+#+begin_src emacs-lisp
+
+  (use-package evil-nerd-commenter
+    :bind ("M-/" . evilnc-comment-or-uncomment-lines))
+
+#+end_src
+
 
 *** Python
 This will be for configurating pythong eventually. Disabled for now to prevent causing issues

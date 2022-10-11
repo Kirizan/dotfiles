@@ -385,3 +385,6 @@
 (use-package lsp-treemacs		
   :after lsp-mode)
 
+(use-package evil-nerd-commenter
+  :bind ("M-/" . evilnc-comment-or-uncomment-lines))
+
