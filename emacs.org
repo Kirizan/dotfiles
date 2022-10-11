@@ -713,7 +713,38 @@ https://github.com/Fanael/rainbow-delimiters
 
 #+end_src
 
-** Languages
+** Development Configuration
+
+*** Language Server Protocol 
+
+**** Functions
+
+***** Enable Breadcrumbs
+
+#+begin_src emacs-lisp
+
+  (defun kirby/lsp-mode-setup ()
+    (setq lsp-headerline-breadcrumb-segments '(path-up-to-project file symbols))
+    (lsp-headerline-breadcrumb-mode))
+  
+#+end_src
+
+**** Enable LSP
+
+https://emacs-lsp.github.io/lsp-mode/
+
+#+begin_src emacs-lisp
+
+  (use-package lsp-mode
+    :commands (lsp lsp-deferred)
+    :hook (lsp-mode . kirby/lsp-mode-setup)
+    :init
+    (setq lsp-keymap-prefix "SPC l") 
+    :config
+    (lsp-enable-which-key-integration t))
+
+#+end_src
+
 
 *** Python
 This will be for configurating pythong eventually. Disabled for now to prevent causing issues

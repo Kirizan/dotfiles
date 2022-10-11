@@ -350,3 +350,15 @@
 ;; enable rainbow-delimiters
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
+
+(defun kirby/lsp-mode-setup ()
+  (setq lsp-headerline-breadcrumb-segments '(path-up-to-project file symbols))
+  (lsp-headerline-breadcrumb-mode))
+
+(use-package lsp-mode
+  :commands (lsp lsp-deferred)
+  :hook (lsp-mode . kirby/lsp-mode-setup)
+  :init
+  (setq lsp-keymap-prefix "SPC l") 
+  :config
+  (lsp-enable-which-key-integration t))
