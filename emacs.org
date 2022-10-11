@@ -779,6 +779,17 @@ https://emacs-lsp.github.io/lsp-ui/
 
 #+end_src
 
+**** LSP Treemacs
+
+https://github.com/emacs-lsp/lsp-treemacs
+
+#+begin_src emacs-lisp
+
+  (use-package lsp-treemacs		
+    :after lsp-mode)
+
+#+end_src
+
 
 *** Python
 This will be for configurating pythong eventually. Disabled for now to prevent causing issues

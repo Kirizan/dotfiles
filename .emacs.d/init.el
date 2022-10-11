@@ -77,6 +77,7 @@
 ;; Disable line numbers for some modes
 (dolist (mode '(org-mode-hook
                 term-mode-hook
+                treemacs-mode-hook
                 eshell-mode-hook))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
@@ -380,4 +381,7 @@
 (use-package lsp-ui
   :after lsp-mode
   :hook (lsp-mode . lsp-ui-mode))
+
+(use-package lsp-treemacs		
+  :after lsp-mode)
 
