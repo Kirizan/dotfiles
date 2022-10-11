@@ -767,6 +767,18 @@ https://company-mode.github.io/
 
 #+end_src
 
+**** LSP UI Mode
+
+https://emacs-lsp.github.io/lsp-ui/
+
+#+begin_src emacs-lisp
+
+  (use-package lsp-ui
+    :after lsp-mode
+    :hook (lsp-mode . lsp-ui-mode))
+
+#+end_src
+
 
 *** Python
 This will be for configurating pythong eventually. Disabled for now to prevent causing issues

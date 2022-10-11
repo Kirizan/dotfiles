@@ -377,3 +377,7 @@
 (use-package company-box
   :hook (company-mode . company-box-mode))
 
+(use-package lsp-ui
+  :after lsp-mode
+  :hook (lsp-mode . lsp-ui-mode))
+
