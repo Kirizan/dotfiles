@@ -362,3 +362,18 @@
   (setq lsp-keymap-prefix "SPC l") 
   :config
   (lsp-enable-which-key-integration t))
+
+(use-package company
+  :after lsp-mode
+  :hook (lsp-mode . company-mode)
+  :bind (:map company-active-map
+         ("<tab>" . company-complete-selection))
+        (:map lsp-mode-map
+         ("<tab>" . company-indent-or-complete-common))
+  :custom
+  (company-minimum-prefix-length 1) ; Minimum characters before completions show up
+  (company-idle-delay 0.0))         ; Delay before completion shows up
+
+(use-package company-box
+  :hook (company-mode . company-box-mode))
+
