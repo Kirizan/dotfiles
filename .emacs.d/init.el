@@ -180,7 +180,7 @@
     :global-prefix "C-SPC"))
 
 (kirby/leader-keys
-  "t"  '(:ignore t :which-key "Toggles"))
+  "t"  '(:ignore t :which-key "Toggles")
   "tr" '(auto-revert-mode :which-key "Auto-reload file")
   "to" '(org-mode :which-key "Toggle Org Mode"))
 
