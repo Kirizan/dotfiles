@@ -388,3 +388,7 @@
 (use-package evil-nerd-commenter
   :bind ("M-/" . evilnc-comment-or-uncomment-lines))
 
+(use-package lsp-mode
+  :commands lsp
+  :hook
+  (sh-mode . lsp))

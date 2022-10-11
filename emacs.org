@@ -193,6 +193,7 @@ https://www.gnu.org/software/emacs/manual/html_node/emacs/Saving-Customizations.
   ;; Disable line numbers for some modes
   (dolist (mode '(org-mode-hook
                   term-mode-hook
+                  treemacs-mode-hook
                   eshell-mode-hook))
     (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
@@ -803,6 +804,17 @@ https://github.com/emacs-lsp/lsp-treemacs
 
 https://emacs-lsp.github.io/lsp-mode/page/languages/
 
+**** Bash
+
+#+begin_src emacs-lisp
+
+  (use-package lsp-mode
+    :commands lsp
+    :hook
+    (sh-mode . lsp))
+  
+#+end_src
+
 **** Python
 
 This will be for configurating pythong eventually. Disabled for now to prevent causing issues
@@ -815,4 +827,5 @@ This will be for configurating pythong eventually. Disabled for now to prevent c
   (setq venv-location "~/.pyenv/versions")
 
 #+end_src
+
 
