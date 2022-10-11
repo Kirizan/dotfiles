@@ -799,8 +799,12 @@ https://github.com/emacs-lsp/lsp-treemacs
 
 #+end_src
 
+*** Languages
 
-*** Python
+https://emacs-lsp.github.io/lsp-mode/page/languages/
+
+**** Python
+
 This will be for configurating pythong eventually. Disabled for now to prevent causing issues
 
 #+begin_src emacs-lisp :tangle no
