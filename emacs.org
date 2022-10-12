@@ -692,6 +692,15 @@ https://magit.vc/
 
 #+end_src
 
+*** Disable git non-empty second line warning
+
+#+begin_src emacs-lisp
+
+  (setq git-commit-style-convention-checks
+        (remove 'non-empty-second-line git-commit-style-convention-checks))
+
+#+end_src
+
 *** Forge
 
 #+begin_src emacs-lisp
