@@ -342,10 +342,8 @@
 (use-package magit
   :commands (magit-status magit-get-current-branch)
   :custom
+  (git-commit-style-convention-checks 'nil)
   (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
-
-(setq git-commit-style-convention-checks
-      (remove 'non-empty-second-line git-commit-style-convention-checks))
 
 (use-package forge
   :init
