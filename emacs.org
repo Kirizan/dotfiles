@@ -193,11 +193,14 @@ https://www.gnu.org/software/emacs/manual/html_node/emacs/Saving-Customizations.
   ;; Disable line numbers for some modes
   (dolist (mode '(org-mode-hook
                   term-mode-hook
+                  vterm-mode-hook
                   treemacs-mode-hook
                   eshell-mode-hook))
     (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
 #+end_src
+
+#+RESULTS:
 
 ** Themes
 
@@ -470,6 +473,24 @@ https://github.com/emacs-evil/evil-collection
     (evil-collection-init))
 
 #+end_src
+
+* Terminal Configurations
+
+** vterm
+https://github.com/akermu/emacs-libvterm/
+
+#+begin_src emacs-lisp
+
+  (use-package vterm
+    :commands vterm
+    :config
+    ;; (setq term-prompt-regexp "^[^#$%>\n]*[#$%>] *")
+    (setq vterm-shell "zsh")
+    (setq vterm-max-scrollback 10000))
+
+#+end_src
+
+#+RESULTS:
 
 * Org Mode
 
