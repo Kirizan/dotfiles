@@ -82,6 +82,8 @@
                 eshell-mode-hook))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
+(add-hook 'text-mode-hook 'visual-line-mode)
+
 (use-package doom-themes
   :config
   ;; Global settings (defaults)

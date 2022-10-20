@@ -200,8 +200,15 @@ https://www.gnu.org/software/emacs/manual/html_node/emacs/Saving-Customizations.
 
 #+end_src
 
-#+RESULTS:
+** Visual Line Mode
 
+Enable visual line mode in all text buffers
+
+#+begin_src emacs-lisp
+
+  (add-hook 'text-mode-hook 'visual-line-mode)
+
+#+end_src
 ** Themes
 
 https://github.com/doomemacs/themes
