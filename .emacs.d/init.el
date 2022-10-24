@@ -186,7 +186,9 @@
 (kirby/leader-keys
   "t"  '(:ignore t :which-key "Toggles")
   "tr" '(auto-revert-mode :which-key "Auto-reload file")
-  "to" '(org-mode :which-key "Toggle Org Mode"))
+  "to" '(org-mode :which-key "Toggle Org Mode")
+  "tw" '(toggle-word-wrap :which-key "Toggle Word Wrap")
+  )
 
 (kirby/leader-keys
   "b"  '(:ignore t :which-key "Buffers")
