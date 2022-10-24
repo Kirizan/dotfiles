@@ -188,6 +188,10 @@
   "tr" '(auto-revert-mode :which-key "Auto-reload file")
   "to" '(org-mode :which-key "Toggle Org Mode"))
 
+(kirby/leader-keys
+  "b"  '(:ignore t :which-key "Buffers")
+  "bb" '(ibuffer :which-key "iBuffer"))
+
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 

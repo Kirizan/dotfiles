@@ -394,6 +394,16 @@ https://github.com/noctuid/general.el
 
 #+end_src
 
+*** Buffer
+
+#+begin_src emacs-lisp
+
+  (kirby/leader-keys
+    "b"  '(:ignore t :which-key "Buffers")
+    "bb" '(ibuffer :which-key "iBuffer"))
+
+#+end_src
+
 ** Key remapping
 
 #+begin_src emacs-lisp
@@ -496,8 +506,6 @@ https://github.com/akermu/emacs-libvterm/
     (setq vterm-max-scrollback 10000))
 
 #+end_src
-
-#+RESULTS:
 
 ** eshell
 
