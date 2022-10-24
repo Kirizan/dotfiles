@@ -190,7 +190,9 @@
 
 (kirby/leader-keys
   "b"  '(:ignore t :which-key "Buffers")
-  "bb" '(ibuffer :which-key "iBuffer"))
+  "bb" '(ibuffer :which-key "iBuffer")
+  "bk" '(kill-this-buffer :which-key "Kill Current Buffer")
+  )
 
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
