@@ -283,6 +283,54 @@
 (use-package eshell-git-prompt
   :after eshell)
 
+(use-package dired
+  :ensure nil
+  :commands (dired dired-jump)
+  :bind (("C-x C-j" . dired-jump))
+  :custom ((dired-listing-switches "-liahF --group-directories-first --time-style=iso"))
+  :config
+  (evil-collection-define-key 'normal 'dired-mode-map
+    "h" 'dired-single-up-directory
+    "l" 'dired-single-buffer)
+  :init
+  (setq insert-directory-program "gls" dired-use-ls-dired t)
+  )
+
+(use-package dired-single)
+
+(defun kirby/my-dired-init ()
+  (define-key dired-mode-map [remap dired-find-file]
+    'dired-single-buffer)
+  (define-key dired-mode-map [remap dired-mouse-find-file-other-window]
+    'dired-single-buffer-mouse)
+  (define-key dired-mode-map [remap dired-up-directory]
+    'dired-single-up-directory))
+
+;; if dired's already loaded, then the keymap will be bound
+(if (boundp 'dired-mode-map)
+    ;; we're good to go; just add our bindings
+    (kirby/my-dired-init)
+  ;; it's not loaded yet, so add our bindings to the load-hook
+  (add-hook 'dired-load-hook 'kirby/my-dired-init))
+
+(use-package all-the-icons-dired
+  :hook (dired-mode . all-the-icons-dired-mode)
+  :init (setq all-the-icons-dired-monochrome nil)
+  )
+
+(use-package dired-hide-dotfiles
+  :hook (dired-mode . dired-hide-dotfiles-mode)
+  :config
+  (evil-collection-define-key 'normal 'dired-mode-map
+    "H" 'dired-hide-dotfiles-mode))
+
+(use-package dired-open
+  :config
+  ;; (add-to-list 'dired-open-function #'dired-open-xdg t)
+  ;; To configure an extension add ("<extention>" . "file")
+  (setq dired-open-extensions '(("pdf" . "open"))
+        ))
+
 (defun kirby/org-mode-setup ()
   (org-indent-mode)
   (variable-pitch-mode 1)
