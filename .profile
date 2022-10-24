@@ -29,7 +29,7 @@ export PATH="$PATH:/Users/nikirby/Library/Application Support/JetBrains/Toolbox/
 # Add custom bin directory
 export PATH="$PATH:/Users/nikirby/.dotfiles/bin"
 
-alias lsa='gls -liahF --group-directories-first --color=auto'
+alias lsa='gls -liahF --group-directories-first --color=auto --time-style=iso'
 
 # Changes terraform to tf
 alias tf='terraform'

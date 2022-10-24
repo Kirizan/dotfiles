@@ -125,7 +125,7 @@ Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc. I
 
 #+begin_src shell
 
-  alias lsa='gls -liahF --group-directories-first --color=auto'
+  alias lsa='gls -liahF --group-directories-first --color=auto --time-style=iso'
 
 #+end_src
 
