@@ -73,12 +73,12 @@
 (global-display-line-numbers-mode t)
 (setq display-line-numbers-type 'relative)
 
-
 ;; Disable line numbers for some modes
 (dolist (mode '(org-mode-hook
                 term-mode-hook
                 vterm-mode-hook
                 treemacs-mode-hook
+                which-key-mode-hook
                 eshell-mode-hook))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
