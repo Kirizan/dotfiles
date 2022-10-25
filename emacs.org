@@ -209,6 +209,7 @@ Enable visual line mode in all text buffers
   (add-hook 'text-mode-hook 'visual-line-mode)
 
 #+end_src
+
 ** Themes
 
 https://github.com/doomemacs/themes
@@ -576,7 +577,7 @@ https://www.gnu.org/software/emacs/refcards/pdf/dired-ref.pdf
     :ensure nil
     :commands (dired dired-jump)
     :bind (("C-x C-j" . dired-jump))
-    :custom ((dired-listing-switches "-liahF --group-directories-first --time-style=iso"))
+    :custom ((dired-listing-switches "-liahAF --group-directories-first --time-style=iso"))
     :config
     (evil-collection-define-key 'normal 'dired-mode-map
       "h" 'dired-single-up-directory

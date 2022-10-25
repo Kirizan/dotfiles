@@ -291,7 +291,7 @@
   :ensure nil
   :commands (dired dired-jump)
   :bind (("C-x C-j" . dired-jump))
-  :custom ((dired-listing-switches "-liahF --group-directories-first --time-style=iso"))
+  :custom ((dired-listing-switches "-liahAF --group-directories-first --time-style=iso"))
   :config
   (evil-collection-define-key 'normal 'dired-mode-map
     "h" 'dired-single-up-directory
@@ -486,3 +486,4 @@
 
 (use-package evil-nerd-commenter
   :bind ("M-/" . evilnc-comment-or-uncomment-lines))
+(put 'dired-find-alternate-file 'disabled nil)
