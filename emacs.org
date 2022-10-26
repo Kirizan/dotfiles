@@ -383,7 +383,6 @@ https://github.com/noctuid/general.el
 #+end_src
 
 ** Custom Leader Key configurations
-
 *** Toggles
 
 #+begin_src emacs-lisp
@@ -406,6 +405,17 @@ https://github.com/noctuid/general.el
     "bb" '(ibuffer :which-key "iBuffer")
     "bk" '(kill-this-buffer :which-key "Kill Current Buffer")
     )
+
+#+end_src
+
+*** Open
+
+#+begin_src emacs-lisp
+
+  (kirby/leader-keys
+    "o"  '(:ignore t :which-key "Open")
+    "ot" '(vterm  :which-key "VTerminal")
+     )
 
 #+end_src
 

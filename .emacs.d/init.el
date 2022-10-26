@@ -196,6 +196,11 @@
   "bk" '(kill-this-buffer :which-key "Kill Current Buffer")
   )
 
+(kirby/leader-keys
+  "o"  '(:ignore t :which-key "Open")
+  "ot" '(vterm  :which-key "VTerminal")
+   )
+
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
@@ -486,4 +491,3 @@
 
 (use-package evil-nerd-commenter
   :bind ("M-/" . evilnc-comment-or-uncomment-lines))
-(put 'dired-find-alternate-file 'disabled nil)
