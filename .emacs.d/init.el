@@ -199,6 +199,7 @@
 (kirby/leader-keys
   "o"  '(:ignore t :which-key "Open")
   "ot" '(vterm  :which-key "VTerminal")
+  "od" '(dired-single-magic-buffer :which-key "Dired")
    )
 
 ;; Make ESC quit prompts
