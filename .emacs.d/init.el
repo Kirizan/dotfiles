@@ -297,31 +297,35 @@
   :ensure nil
   :commands (dired dired-jump)
   :bind (("C-x C-j" . dired-jump))
-  :custom ((dired-listing-switches "-liahAF --group-directories-first --time-style=iso"))
+  :custom (
+           (dired-listing-switches "-liahAF --group-directories-first --time-style=iso")
+           (dired-kill-when-opening-new-dired-buffer t))
   :config
   (evil-collection-define-key 'normal 'dired-mode-map
-    "h" 'dired-single-up-directory
-    "l" 'dired-single-buffer)
+    ;; "h" 'dired-single-up-directory
+    ;; "l" 'dired-single-buffer)
+    "h" 'dired-up-directory
+    "l" 'dired-find-file)
   :init
   (setq insert-directory-program "gls" dired-use-ls-dired t)
   )
 
 (use-package dired-single)
 
-(defun kirby/my-dired-init ()
-  (define-key dired-mode-map [remap dired-find-file]
-    'dired-single-buffer)
-  (define-key dired-mode-map [remap dired-mouse-find-file-other-window]
-    'dired-single-buffer-mouse)
-  (define-key dired-mode-map [remap dired-up-directory]
-    'dired-single-up-directory))
+;; (defun kirby/my-dired-init ()
+;;   (define-key dired-mode-map [remap dired-find-file]
+;;     'dired-single-buffer)
+;;   (define-key dired-mode-map [remap dired-mouse-find-file-other-window]
+;;     'dired-single-buffer-mouse)
+;;   (define-key dired-mode-map [remap dired-up-directory]
+;;     'dired-single-up-directory))
 
-;; if dired's already loaded, then the keymap will be bound
-(if (boundp 'dired-mode-map)
-    ;; we're good to go; just add our bindings
-    (kirby/my-dired-init)
-  ;; it's not loaded yet, so add our bindings to the load-hook
-  (add-hook 'dired-load-hook 'kirby/my-dired-init))
+;; ;; if dired's already loaded, then the keymap will be bound
+;; (if (boundp 'dired-mode-map)
+;;     ;; we're good to go; just add our bindings
+;;     (kirby/my-dired-init)
+;;   ;; it's not loaded yet, so add our bindings to the load-hook
+;;   (add-hook 'dired-load-hook 'kirby/my-dired-init))
 
 (use-package all-the-icons-dired
   :hook (dired-mode . all-the-icons-dired-mode)
