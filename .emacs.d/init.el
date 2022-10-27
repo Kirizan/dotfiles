@@ -256,6 +256,20 @@
   :config
   (evil-collection-init))
 
+(defun kirby/disable-tabs (n)
+  (setq indent-tabs-mode nil)
+  (setq tab-width n))
+
+(defun kirby/enable-tabs (n)
+  (local-set-key (kbd "TAB") 'tab-to-tab-stop)
+  (setq indent-tabs-mode t)
+  (setq tab-width n))
+
+;; use spaces instead of tabs
+(setq-default indent-tabs-mode nil)
+;; indent with 2 spaces
+(setq-default tab-width 2)
+
 (use-package vterm
   :commands vterm
   :config

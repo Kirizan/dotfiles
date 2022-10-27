@@ -507,6 +507,45 @@ https://github.com/emacs-evil/evil-collection
 
 #+end_src
 
+** Tab setup
+
+*** Tab setup functions
+
+**** Disable Tabs
+When this function is called, tabs will be replaced by spaces
+
+#+begin_src emacs-lisp
+
+  (defun kirby/disable-tabs (n)
+    (setq indent-tabs-mode nil)
+    (setq tab-width n))
+
+#+end_src
+
+**** Enable Tabs
+
+When this function is called, tabs are used
+
+#+begin_src emacs-lisp
+
+  (defun kirby/enable-tabs (n)
+    (local-set-key (kbd "TAB") 'tab-to-tab-stop)
+    (setq indent-tabs-mode t)
+    (setq tab-width n))
+
+#+end_src
+
+**** Configure default tabs
+
+#+begin_src emacs-lisp
+
+  ;; use spaces instead of tabs
+  (setq-default indent-tabs-mode nil)
+  ;; indent with 2 spaces
+  (setq-default tab-width 2)
+
+#+end_src
+
 * Terminal Configurations
 
 ** vterm
