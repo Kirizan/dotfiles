@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+git config --local user.name "Nick Kirby"
+git config --local user.email "nikirby@amazon.com"
