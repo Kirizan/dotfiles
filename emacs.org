@@ -761,7 +761,7 @@ https://www.webnots.com/alt-code-shortcuts-for-encircled-numbers/
     :after org
     :hook (org-mode . org-bullets-mode)
     :custom
-    (org-bullets-bullet-list '("➀" "➁" "➂" "➃" "➄" "➅" "➆" "➇" "➈" "➉")))
+    (org-bullets-bullet-list '("➀" "➁" "➂" "➃" "➄" "➅" "➆" "➇" "➈")))
 
 #+end_src
 
