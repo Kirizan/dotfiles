@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+if [[ -z "${ISENGARD_ACOUNT_EMAIL}" ]]; then
+    isengardcli assume "${ISENGARD_ACCOUNT_EMAIL}"
+else
+    echo "No existing Isengard credentials to assume"
+fi
+    
