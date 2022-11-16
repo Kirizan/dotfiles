@@ -123,6 +123,6 @@ go env -w GOPROXY=direct
 # This section is for configurations that shouldn't get synced to github
 # Mainly used for configurations unique to my work environment
 
-if test -f "~/.config/zsh/zshrc"; then
-  source "~/.config/zsh/zshrc"
+if test -f "/Users/nikirby/.config/zsh/zshrc"; then
+  source "/Users/nikirby/.config/zsh/zshrc"
 fi
