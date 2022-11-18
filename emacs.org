@@ -1035,6 +1035,15 @@ https://github.com/emacs-lsp/lsp-treemacs
 
 #+end_src
 
+*** Debug Adapter Protocol (DAP)
+
+#+begin_src emacs-lisp :tangle no
+
+  (use-package dap-mode)
+  
+#+end_src
+
+
 *** Languages
 
 https://emacs-lsp.github.io/lsp-mode/page/languages/
