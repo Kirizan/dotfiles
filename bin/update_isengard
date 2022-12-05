@@ -3,9 +3,9 @@
 role="AWSControlTowerExecution"
 secondary_owner="bmperk"
 
-while getopts a:r:s:
+while getopts "a:r:s:" arg
 do
-    case "${arg}" in
+    case $arg in
 	a ) account=${OPTARG};;
 	r ) role=${OPTARG};;
 	s ) secondary_owner=${OPTARG};;
