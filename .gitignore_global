@@ -1,3 +1,9 @@
+### ASH ###
+
+#ignore ASH output
+aggregated_results.txt
+
+
 ### OSX ###
 
 # Ignore MAC file
