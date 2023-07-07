@@ -483,7 +483,7 @@
   (lsp-mode . kirby/lsp-mode-setup)
   (sh-mode . lsp)			; Enable Bash LSP
   :init
-  (setq lsp-keymap-prefix "SPC l") 
+  (setq lsp-keymap-prefix "C-SPC l") 
   :config
   (lsp-enable-which-key-integration t))
 
