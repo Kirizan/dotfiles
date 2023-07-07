@@ -27,7 +27,12 @@ fi
 export PATH="$PATH:/Users/nikirby/Library/Application Support/JetBrains/Toolbox/scripts"
 
 # Add custom bin directory
-export PATH="$PATH:/Users/nikirby/.dotfiles/bin"
+export PATH="$PATH:$HOME/.dotfiles/bin"
+
+#Check if local/bin exists and add to path if it does
+if [ -d "$HOME/.dotfiles/local/bin" ]; then
+    export PATH="$PATH:$HOME/.dotfiles/local/bin"
+fi
 
 alias lsa='gls -liahF --group-directories-first --color=auto --time-style=iso'
 

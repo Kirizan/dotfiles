@@ -116,8 +116,18 @@ Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc. I
 #+begin_src shell
 
   # Add custom bin directory
-  export PATH="$PATH:/Users/nikirby/.dotfiles/bin"
+  export PATH="$PATH:$HOME/.dotfiles/bin"
 
+#+end_src
+
+** Add local bin if present
+
+#+begin_src shell
+
+  #Check if local/bin exists and add to path if it does
+  if [ -d "$HOME/.dotfiles/local/bin" ]; then
+      export PATH="$PATH:$HOME/.dotfiles/local/bin"
+  fi
 #+end_src
 
 * Aliases
