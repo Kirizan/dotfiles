@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 role="AWSControlTowerExecution"
-secondary_owner="bmperk"
+secondary_owner="adobaani"
 
 while getopts "a:r:s:" arg
 do
