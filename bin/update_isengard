@@ -3,6 +3,10 @@
 role="AWSControlTowerExecution"
 secondary_owner="adobaani"
 
+if [[ ! -z "$ISENGARD_ACCOUNT_EMAIL" ]]; then
+    account=$ISENGARD_ACCOUNT_EMAIL
+fi
+
 while getopts "a:r:s:" arg
 do
     case $arg in
@@ -11,6 +15,7 @@ do
 	s ) secondary_owner=${OPTARG};;
     esac
 done
+
 echo "Registering accounts for $account"
 isengardcli register-org-accounts $account --role $role --secondary-owner $secondary_owner
 
