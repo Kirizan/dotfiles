@@ -23,6 +23,8 @@ _darcs
 
 bin         # Personal bin directory
 
+Brewfile    # Brew bundle dump file
+
 makefile    # Makefile for configuration
 
 .DS_Store   # Mac OS
