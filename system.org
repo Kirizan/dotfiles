@@ -17,6 +17,42 @@ This is for all the config files that will source the .profile file.
 
 #+end_src
 
+
+* PowerLevel10k setup
+
+** Enable PowerLevel10K
+
+Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc. Initialization code that may require console input (password prompts, [y/n] confirmations, etc.) must go above this block; everything else may go below.
+
+#+begin_src shell :tangle .zshrc
+
+  if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+  fi
+
+#+end_src
+
+** Source theme
+
+#+begin_src shell :tangle .zshrc
+
+  source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
+
+#+end_src
+
+** Load customizations
+
+#+begin_src shell :tangle .zshrc
+
+  # To customize prompt, run `p10k configure` or edit ~/.config/powerlevel10k/p10k.zsh.
+  [[ ! -f ~/.config/powerlevel10k/p10k.zsh ]] || source ~/.config/powerlevel10k/p10k.zsh
+ 
+#+end_src
+
+* .zshrc configuration
+
+This ensure the Powerlevel10k is enabled before loading the generic profile.
+
 ** .zshrc
 
 #+begin_src shell :tangle .zshrc
@@ -28,38 +64,6 @@ This is for all the config files that will source the .profile file.
   fi
 
 #+end_src
-
-* PowerLevel10k setup
-
-** Enable PowerLevel10K
-
-Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc. Initialization code that may require console input (password prompts, [y/n] confirmations, etc.) must go above this block; everything else may go below.
-
-#+begin_src shell
-
-  if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-  fi
-
-#+end_src
-
-** Source theme
-
-#+begin_src shell
-
-  source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
-
-#+end_src
-
-** Load customizations
-
-#+begin_src shell
-
-  # To customize prompt, run `p10k configure` or edit ~/.config/powerlevel10k/p10k.zsh.
-  [[ ! -f ~/.config/powerlevel10k/p10k.zsh ]] || source ~/.config/powerlevel10k/p10k.zsh
- 
-#+end_src
-
 * Path expansion
 
 ** Add curl-openssl
