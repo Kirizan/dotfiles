@@ -20,7 +20,10 @@ install_doom_emacs:
 stow:
 	stow .
 
-setup_new: install_brew brew_packages_install install_doom_emacs stow
+install_fonts:
+	brew search '/font-.*-nerd-font/' | awk '{ print $1 }' | xargs brew install --cask
+
+setup_new: install_brew brew_packages_install install_doom_emacs stow install_fonts
 
 
 
