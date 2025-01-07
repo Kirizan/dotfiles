@@ -30,6 +30,10 @@ if [ -d "$HOME/.config/emacs/bin" ]; then
   export PATH="$PATH:$HOME/.config/emacs/bin"
 fi
 
+# Add gnu versions of tools to path
+if [ -d "/opt/homebrew/opt/grep/libexec/gnubin" ]; then
+  PATH="/opt/homebrew/opt/grep/libexec/gnubin:$PATH"
+fi
 
 alias lsa='gls -liahF --group-directories-first --color=auto --time-style=iso'
 
