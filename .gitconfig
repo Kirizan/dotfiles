@@ -7,8 +7,5 @@
 [github]
 	user = Kirizan
 	email = 33106137+Kirizan@users.noreply.github.com
-[gitlab "aws.dev"]
-	user = @nikirby
-	email = nikirby@amazon.com
 [alias]
 	dag = log --graph --format='format:%C(yellow)%h%C(reset) %C(blue)%an <%ae>%C(reset) %C(magenta)%cr%C(reset)%C(auto)%d%C(reset)%n%s' --date-order

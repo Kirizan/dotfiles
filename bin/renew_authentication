@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-if [[ ! -z "$ISENGARD_ACCOUNT_EMAIL" ]]; then
-    echo "Renewing $ISENGARD_ACCOUNT_EMAIL"
-    isengardcli assume "$ISENGARD_ACCOUNT_EMAIL"
-else
-    echo "No existing Isengard credentials to assume"
-fi
-    
