@@ -23,6 +23,8 @@ _darcs
 
 bin         # Personal bin directory
 
+makefile    # Makefile for configuration
+
 .DS_Store   # Mac OS
 
 ^/.*\.org   # Orgmode files

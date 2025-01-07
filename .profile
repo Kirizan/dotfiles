@@ -73,9 +73,6 @@ complete -C aws_completer aws
 # add fzf auto-completion
 [[ $- == *i* ]] && source "/opt/homebrew/opt/fzf/shell/completion.bash" 2> /dev/null
 
-#add terraform-docs auto-completion
-terraform-docs completion zsh > ~/.config/zsh/completion_terraform-docs
-
 ######################## enable pyenv shims and autocomplete #########
 if command -v pyenv 1>/dev/null 2>&1; then
   eval "$(pyenv init --path)"
@@ -87,11 +84,6 @@ fi
 ######################## enable direnv ################################
 if command -v direnv 1>/dev/null 2>&1; then
   eval "$(direnv hook zsh)"
-fi
-
-######################## enable isengardcli shell integration #########
-if command -v isengardcli 1>/dev/null 2>&1; then
-  eval "$(isengardcli shell-profile)"
 fi
 
 # Add homebrew
