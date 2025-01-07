@@ -25,6 +25,12 @@ if [ -d "$HOME/.dotfiles/local/bin" ]; then
     export PATH="$PATH:$HOME/.dotfiles/local/bin"
 fi
 
+# Add doom emacs to path
+if [ -d "$HOME/.config/emacs/bin" ]; then
+  export PATH="$PATH:$HOME/.config/emacs/bin"
+fi
+
+
 alias lsa='gls -liahF --group-directories-first --color=auto --time-style=iso'
 
 # Changes terraform to tf
