@@ -33,4 +33,4 @@ makefile    # Makefile for configuration
 
 ^/.*\.bak   # Backup files
 
-*.app       # Applications
+^/.*\.app   # Applications
