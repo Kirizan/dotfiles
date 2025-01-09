@@ -32,3 +32,5 @@ makefile    # Makefile for configuration
 ^/.*\.org   # Orgmode files
 
 ^/.*\.bak   # Backup files
+
+*.app       # Applications
