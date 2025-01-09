@@ -16,6 +16,7 @@ brew_packages_update: Brewfile
 
 install_doom_emacs:
 	git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs
+	ln -s ./Emacs.app /Application/Emacs.app
 
 stow:
 	stow .
