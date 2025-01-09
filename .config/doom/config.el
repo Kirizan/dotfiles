@@ -42,7 +42,8 @@
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
-(setq org-directory "~/org/")
+;; Moved Org Mode from ~/org to ~/Documents/org_mode/ to ensure they are backed up
+(setq org-directory "~/Documents/org_mode/")
 
 
 ;; Whenever you reconfigure a package, make sure to wrap your config in an
