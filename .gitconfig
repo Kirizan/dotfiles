@@ -3,7 +3,7 @@
 	email = 33106137+Kirizan@users.noreply.github.com
 [core]
 	autocrlf = false
-	excludesfile = /Users/nikirby/.gitignore_global
+	excludesFile = ~/.gitignore_global
 [github]
 	user = Kirizan
 	email = 33106137+Kirizan@users.noreply.github.com

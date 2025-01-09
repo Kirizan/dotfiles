@@ -3,7 +3,7 @@
 <plist version="1.0">
   <dict>
     <key>Label</key>
-    <string>com.mine.StartNcmpcpp</string>
+    <string>com.mine.EmacsServer</string>
       <!-- Run as a shell program -->
     <key>EnvironmentVariables</key>
     <dict>

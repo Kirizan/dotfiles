@@ -23,6 +23,8 @@ _darcs
 
 bin         # Personal bin directory
 
+scripts     # Scripts directory
+
 Brewfile    # Brew bundle dump file
 
 makefile    # Makefile for configuration

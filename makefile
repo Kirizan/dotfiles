@@ -16,7 +16,6 @@ brew_packages_update: Brewfile
 
 install_doom_emacs:
 	git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs
-	ln -s ./Emacs.app /Application/Emacs.app
 
 stow:
 	stow .
@@ -26,6 +25,9 @@ install_fonts:
 
 default_emacs:
 	set_emacs_default
+
+set_global_git_ignore: 
+	git config --global core.excludesFile "~/.gitignore_global"
 
 setup_new: install_brew brew_packages_install install_doom_emacs stow install_fonts set_emacs_default
 
