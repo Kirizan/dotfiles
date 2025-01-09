@@ -59,11 +59,11 @@
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string>emacsclient -c -a '' &amp; &gt;/dev/null 2&gt;&amp;1</string>
+					<string>/opt/homebrew/bin/emacsclient -n -c -a ""</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
 					<key>inputMethod</key>
-					<integer>0</integer>
+					<integer>1</integer>
 					<key>shell</key>
 					<string>/bin/zsh</string>
 					<key>source</key>
@@ -84,7 +84,7 @@
 				<key>Class Name</key>
 				<string>RunShellScriptAction</string>
 				<key>InputUUID</key>
-				<string>E7BEACCB-CA78-4679-9C94-048A1FFE85DD</string>
+				<string>785F7619-B35E-4DAA-B011-BE07DC5C2AF0</string>
 				<key>Keywords</key>
 				<array>
 					<string>Shell</string>
@@ -94,9 +94,9 @@
 					<string>Unix</string>
 				</array>
 				<key>OutputUUID</key>
-				<string>1E52F56C-14FF-4565-A2F1-239DAAE2DA13</string>
+				<string>6D605229-6535-430D-8226-54C359FF3B79</string>
 				<key>UUID</key>
-				<string>8EC5356E-4356-4AD1-B4D7-931468D9F0D9</string>
+				<string>C2F82C7A-ABE7-4092-92B3-570B893E293D</string>
 				<key>UnlocalizedApplications</key>
 				<array>
 					<string>Automator</string>
@@ -169,10 +169,12 @@
 						<string>4</string>
 					</dict>
 				</dict>
+				<key>conversionLabel</key>
+				<integer>0</integer>
 				<key>isViewVisible</key>
 				<integer>1</integer>
 				<key>location</key>
-				<string>309.000000:252.000000</string>
+				<string>477.000000:252.000000</string>
 				<key>nibPath</key>
 				<string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
 			</dict>
