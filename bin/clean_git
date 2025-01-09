@@ -1,2 +1,4 @@
 git rm -r --cached .
 git add .
+git commit -m "Cleaned out ignored files"
+git status
