@@ -1,28 +1,18 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd"> 
 <plist version="1.0">
-  <dict>
+  <dict> 
     <key>Label</key>
-    <string>com.mine.EmacsServer</string>
-      <!-- Run as a shell program -->
-    <key>EnvironmentVariables</key>
-    <dict>
-      <key>PATH</key>
-      <string>/usr/local/opt/util-linux/bin:/usr/local/bin:/usr/bin:/bin:/sbin:/usr/sbin</string>
-    </dict>
-    <key>StandardOutPath</key>
-    <string>/tmp/emacs.stdout</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/emacs.stderr</string>
+    <string>gnu.emacs.daemon</string>
     <key>ProgramArguments</key>
     <array>
-      <string>emacs</string>
+      <string>/opt/homebrew/bin/emacs</string>
       <string>--daemon</string>
     </array>
-    <key>KeepAlive</key>
-    <false/>
-      <!-- Run immediately when loaded (on login) -->
-    <key>RunAtLoad</key>
-    <true/>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ServiceDescription</key>
+  <string>Emacs Daemon</string>
   </dict>
 </plist>
