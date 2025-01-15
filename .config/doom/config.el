@@ -95,3 +95,13 @@
    (setq tree-sitter-debug-jump-buttons t
          ;; and this highlights the entire sub tree in your code
          tree-sitter-debug-highlight-jump-region t))
+
+;;; Winum
+
+;;;(use-package winum
+;;;  :config
+;;;  (winum-mode))
+
+(require 'winum)
+
+(winum-mode)
