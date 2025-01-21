@@ -35,7 +35,11 @@ if [ -d "/opt/homebrew/opt/grep/libexec/gnubin" ]; then
   PATH="/opt/homebrew/opt/grep/libexec/gnubin:$PATH"
 fi
 
+#Create alias for ls
 alias lsa='gls -liahF --group-directories-first --color=auto --time-style=iso'
+
+# Creates alias to launch Spacemacs config
+alias spacemacs='emacs --with-profile spacemacs &'
 
 # Changes terraform to tf
 alias tf='terraform'
