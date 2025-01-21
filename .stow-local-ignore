@@ -25,6 +25,8 @@ bin         # Personal bin directory
 
 scripts     # Scripts directory
 
+spacemacs_layers  # Personal layers for spacemacs
+
 Brewfile    # Brew bundle dump file
 
 makefile    # Makefile for configuration
