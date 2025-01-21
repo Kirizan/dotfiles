@@ -26,8 +26,8 @@ if [ -d "$HOME/.dotfiles/local/bin" ]; then
 fi
 
 # Add doom emacs to path
-if [ -d "$HOME/.config/emacs/bin" ]; then
-  export PATH="$PATH:$HOME/.config/emacs/bin"
+if [ -d "$HOME/.config/emacs-doom/bin" ]; then
+  export PATH="$PATH:$HOME/.config/emacs-doom/bin"
 fi
 
 # Add gnu versions of tools to path
