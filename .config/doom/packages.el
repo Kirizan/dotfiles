@@ -51,11 +51,11 @@
 (package! tldr)
 (package! tree-sitter)
 (package! tree-sitter-langs)
-(package! typst-ts-mode
-  :recipe (:type git :host codeberg :repo "meow_king/typst-ts-mode" :branch "develop"
-                 :files (:defaults "*.el"))
-  :custom
-  (typst-ts-mode-watch-options "--open"))
+;;(package! typst-ts-mode
+;;  :recipe (:type git :host codeberg :repo "meow_king/typst-ts-mode" :branch "develop"
+;;                 :files (:defaults "*.el"))
+;;  :custom
+;;  (typst-ts-mode-watch-options "--open"))
 
 (package! winum
   :recipe (:type git :host github :repo "deb0ch/emacs-winum"))

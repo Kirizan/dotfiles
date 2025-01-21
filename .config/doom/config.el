@@ -80,24 +80,24 @@
 
 
 ;;; typst
-(use-package! typst-ts-mode
-  :custom
-  (typst-ts-watch-options "--open")
-  (typst-ts-mode-grammar-location (expand-file-name "tree-sitter/libtree-sitter-typst.so" user-emacs-directory))
-  (typst-ts-mode-enable-raw-blocks-highlight t)
-  :config
-  (keymap-set typst-ts-mode-map "C-c C-c" #'typst-ts-tmenu))
+;; (use-package! typst-ts-mode
+;;  :custom
+;;  (typst-ts-watch-options "--open")
+;;  (typst-ts-mode-grammar-location (expand-file-name "tree-sitter/libtree-sitter-typst.so" user-emacs-directory))
+;;  (typst-ts-mode-enable-raw-blocks-highlight t)
+;;  :config
+;;  (keymap-set typst-ts-mode-map "C-c C-c" #'typst-ts-tmenu))
 ;;; Tree Sitter
 
-(use-package! tree-sitter
-   :hook (prog-mode . turn-on-tree-sitter-mode)
-   :hook (tree-sitter-after-on . tree-sitter-hl-mode)
-   :config
-   (require 'tree-sitter-langs)
-   ;; This makes every node a link to a section of code
-   (setq tree-sitter-debug-jump-buttons t
-         ;; and this highlights the entire sub tree in your code
-         tree-sitter-debug-highlight-jump-region t))
+;;(use-package! tree-sitter
+;;   :hook (prog-mode . turn-on-tree-sitter-mode)
+;;   :hook (tree-sitter-after-on . tree-sitter-hl-mode)
+;;   :config
+;;   (require 'tree-sitter-langs)
+;;   ;; This makes every node a link to a section of code
+;;   (setq tree-sitter-debug-jump-buttons t
+;;         ;; and this highlights the entire sub tree in your code
+;;         tree-sitter-debug-highlight-jump-region t))
 
 ;;; Winum
 
