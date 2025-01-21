@@ -39,14 +39,14 @@ This function should only modify configuration layer settings."
      ;; `M-m f e R' (Emacs style) to install them.
      ;; ----------------------------------------------------------------
      ;; auto-completion
-     ;; better-defaults
+     better-defaults
      emacs-lisp
-     ;; git
+     git
      helm
      ;; lsp
-     ;; markdown
+     markdown
      multiple-cursors
-     ;; org
+     org
      ;; (shell :variables
      ;;        shell-default-height 30
      ;;        shell-default-position 'bottom)
@@ -600,3 +600,22 @@ before packages are loaded."
 
 ;; Do not write anything past this comment. This is where Emacs will
 ;; auto-generate custom variable definitions.
+(defun dotspacemacs/emacs-custom-settings ()
+  "Emacs custom settings.
+This is an auto-generated function, do not modify its content directly, use
+Emacs customize menu instead.
+This function is called at the very end of Spacemacs initialization."
+  (custom-set-variables
+   ;; custom-set-variables was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   '(package-selected-packages
+     '(code-review emojify deferred uuidgen a edit-indirect evil-org forge yaml ghub closql emacsql gh-md git-link git-messenger git-modes git-timemachine gitignore-templates gnuplot helm-git-grep helm-ls-git helm-org-rifle htmlize markdown-toc markdown-mode mwim org-cliplink org-contrib org-download org-mime org-pomodoro alert log4e gntp org-present org-rich-yank org-superstar orgit treepy org smeargle space-doc toc-org treemacs-magit magit with-editor transient magit-section unfill which-key treemacs-projectile treemacs-icons-dired treemacs-evil quickrun pcre2el overseer nameless macrostep inspector hybrid-mode holy-mode helm-xref helm-themes helm-swoop helm-projectile helm-org helm-mode-manager helm-make helm-descbinds helm-comint helm-ag evil-mc evil-evilified-state emr elisp-slime-nav elisp-demos elisp-def dotenv-mode diminish bind-map auto-compile ace-jump-helm-line)))
+  (custom-set-faces
+   ;; custom-set-faces was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   )
+  )
