@@ -14,14 +14,21 @@ brew_packages_install:
 brew_packages_update: Brewfile
 	brew bundle dump --file=./Brewfile --force
 
+install_fonts:
+	brew search '/font-.*-nerd-font/' | awk '{ print $1 }' | xargs brew install --cask
+	brew install --cask font-source-code-pro
+
 install_doom_emacs:
-	git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs
+	git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs-doom
+
+install_spacemacs:
+	git clone --depth 1 https://github.com/syl20bnr/spacemacs ~/.config/emacs-spacemacs
+
+install chem2:
+	git clone --depth 1 https://github.com/plexus/chemacs2.git ~/.config/emacs
 
 stow:
 	stow .
-
-install_fonts:
-	brew search '/font-.*-nerd-font/' | awk '{ print $1 }' | xargs brew install --cask
 
 default_emacs:
 	set_emacs_default
