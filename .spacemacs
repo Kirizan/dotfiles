@@ -50,8 +50,8 @@ This function should only modify configuration layer settings."
      ;; (shell :variables
      ;;        shell-default-height 30
      ;;        shell-default-position 'bottom)
-     ;; spell-checking
-     ;; syntax-checking
+     spell-checking
+     syntax-checking
      ;; version-control
      treemacs)
 
@@ -595,6 +595,14 @@ This function is called at the very end of Spacemacs startup, after layer
 configuration.
 Put your configuration code here, except for variables that should be set
 before packages are loaded."
+  (defun save-buffer-and-close ()
+    (interactive)
+    (save-buffer)
+    (kill-buffer)
+    )
+
+  (global-set-key [remap evil-save-modified-and-close] 'save-buffer-and-close)
+  ;;(keymap-global-set [remap evil-save-modified-and-close] `save-buffer-and-close)
   )
 
 
@@ -611,7 +619,7 @@ This function is called at the very end of Spacemacs initialization."
    ;; Your init file should contain only one such instance.
    ;; If there is more than one, they won't work right.
    '(package-selected-packages
-     '(code-review emojify deferred uuidgen a edit-indirect evil-org forge yaml ghub closql emacsql gh-md git-link git-messenger git-modes git-timemachine gitignore-templates gnuplot helm-git-grep helm-ls-git helm-org-rifle htmlize markdown-toc markdown-mode mwim org-cliplink org-contrib org-download org-mime org-pomodoro alert log4e gntp org-present org-rich-yank org-superstar orgit treepy org smeargle space-doc toc-org treemacs-magit magit with-editor transient magit-section unfill which-key treemacs-projectile treemacs-icons-dired treemacs-evil quickrun pcre2el overseer nameless macrostep inspector hybrid-mode holy-mode helm-xref helm-themes helm-swoop helm-projectile helm-org helm-mode-manager helm-make helm-descbinds helm-comint helm-ag evil-mc evil-evilified-state emr elisp-slime-nav elisp-demos elisp-def dotenv-mode diminish bind-map auto-compile ace-jump-helm-line)))
+     '(flycheck-elsa flycheck-package package-lint flycheck-pos-tip pos-tip flycheck flyspell-correct-helm flyspell-correct code-review emojify deferred uuidgen a edit-indirect evil-org forge yaml ghub closql emacsql gh-md git-link git-messenger git-modes git-timemachine gitignore-templates gnuplot helm-git-grep helm-ls-git helm-org-rifle htmlize markdown-toc markdown-mode mwim org-cliplink org-contrib org-download org-mime org-pomodoro alert log4e gntp org-present org-rich-yank org-superstar orgit treepy org smeargle space-doc toc-org treemacs-magit magit with-editor transient magit-section unfill which-key treemacs-projectile treemacs-icons-dired treemacs-evil quickrun pcre2el overseer nameless macrostep inspector hybrid-mode holy-mode helm-xref helm-themes helm-swoop helm-projectile helm-org helm-mode-manager helm-make helm-descbinds helm-comint helm-ag evil-mc evil-evilified-state emr elisp-slime-nav elisp-demos elisp-def dotenv-mode diminish bind-map auto-compile ace-jump-helm-line)))
   (custom-set-faces
    ;; custom-set-faces was added by Custom.
    ;; If you edit it by hand, you could mess it up, so be careful.
