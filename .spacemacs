@@ -602,7 +602,6 @@ before packages are loaded."
     )
 
   (global-set-key [remap evil-save-modified-and-close] 'save-buffer-and-close)
-  ;;(keymap-global-set [remap evil-save-modified-and-close] `save-buffer-and-close)
   )
 
 
