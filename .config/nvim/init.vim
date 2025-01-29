@@ -59,6 +59,12 @@ inoremap <S-Tab> <C-D>
 vnoremap <Tab> >gv
 vnoremap <S-Tab> <gv
 
+" sets system clipboard as default
+nnoremap y "+y
+vnoremap y "+y
+nnoremap p "+p
+vnoremap p "+p
+
 " sets word wrap to only wrap on spaces
 set wrap linebreak breakat&vim
 
