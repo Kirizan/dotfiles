@@ -1,0 +1,37 @@
+#!/bin/bash
+# Script to install a Typst package from a local tar.gz file
+
+PACKAGE=$1
+TARGET_DIR=~/Library/Caches/typst/packages/preview
+
+# Check if package file is provided
+if [ -z "$PACKAGE" ]; then
+  echo "Usage: $0 <package-file.tar.gz>"
+  exit 1
+fi
+
+# Check if file exists
+if [ ! -f "$PACKAGE" ]; then
+  echo "Error: File not found!"
+  exit 1
+fi
+
+# Extract package name and version from the tar.gz file name
+PACKAGE_BASENAME=$(basename "$PACKAGE" .tar.gz)
+PACKAGENAME=$(echo "$PACKAGE_BASENAME" | rev | cut -d'-' -f2- | rev)
+PKGVERSION=$(echo "$PACKAGE_BASENAME" | rev | cut -d'-' -f1 | rev)
+
+# Construct the full target directory path
+FINAL_DIR="$TARGET_DIR/$PACKAGENAME/$PKGVERSION"
+
+# Create target directory if it does not exist
+if [ ! -d "$FINAL_DIR" ]; then
+  echo "Target directory does not exist. Creating $FINAL_DIR..."
+  mkdir -p "$FINAL_DIR"
+fi
+
+# Extract package
+echo "Extracting package to $FINAL_DIR..."
+tar -xvzf "$PACKAGE" -C "$FINAL_DIR"
+
+echo "Package installed to $FINAL_DIR"
