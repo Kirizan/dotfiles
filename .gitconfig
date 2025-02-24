@@ -1,0 +1,15 @@
+[includeIf "gitdir:~/.dotfiles/"]
+  path = .gitconfig_personal
+[includeIf "gitdir:~/github"]
+  path = .gitconfig_personal
+[includeIf "gitdir:~/.dotfile_corp/"]
+  path = .gitconfig_corp
+[includeIf "gitdir:~/projects/"]
+  path = .gitconfig_corp
+[core]
+	autocrlf = false
+	excludesFile = ~/.gitignore_global
+[alias]
+	dag = log --graph --format='format:%C(yellow)%h%C(reset) %C(blue)%an <%ae>%C(reset) %C(magenta)%cr%C(reset)%C(auto)%d%C(reset)%n%s' --date-order
+[http]
+	sslCAInfo = /Users/AD71455/.ssh/wellpoint-full-chain.crt
