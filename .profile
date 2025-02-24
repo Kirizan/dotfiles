@@ -20,6 +20,12 @@ export PATH="$PATH:/Users/nikirby/Library/Application Support/JetBrains/Toolbox/
 # Add custom bin directory
 export PATH="$PATH:$HOME/.dotfiles/bin"
 
+# Add pipx bin to PATH
+
+if [ -d "$HOME/.local/bin" ]; then
+  export PATH="$PATH:$HOME/.local/bin"
+fi
+
 #Check if local/bin exists and add to path if it does
 if [ -d "$HOME/.dotfiles/local/bin" ]; then
     export PATH="$PATH:$HOME/.dotfiles/local/bin"
