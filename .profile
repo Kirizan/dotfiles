@@ -90,6 +90,9 @@ then
   compinit
 fi
 
+# pipx autocompletion
+eval "$(register-python-argcomplete pipx)"
+
 # enable AWS cli completion
 complete -C aws_completer aws
 
