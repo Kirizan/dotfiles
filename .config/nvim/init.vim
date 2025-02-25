@@ -70,3 +70,6 @@ set wrap linebreak breakat&vim
 
 " sets r# to create has box
 nnoremap r#<space> 20I#<Esc>5a<Space><Esc>5A<Space><Esc>20A#<Esc>yy2P<C-V>$r#2j.
+
+" sets :C to clear search
+command C let @/=""
