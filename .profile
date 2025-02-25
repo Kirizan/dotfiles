@@ -60,6 +60,9 @@ alias vi="nvim"
 # Force the CDK to use the AWS_PROFILE variable
 alias cdkp='cdk --profile $AWS_PROFILE'
 
+# Create alias for pipx local run
+alias pipxr='pipx run --spec .'
+
 #move the completion file to ~/.config/zsh directory
 autoload -Uz compinit
 compinit -d ~/.config/zsh/zcompdump
