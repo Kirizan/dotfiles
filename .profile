@@ -63,6 +63,9 @@ alias cdkp='cdk --profile $AWS_PROFILE'
 # Create alias for pipx local run
 alias pipxr='pipx run --spec .'
 
+# Alias to activate poetry environment
+alias activate_poetry='eval $(poetry env activate)'
+
 #move the completion file to ~/.config/zsh directory
 autoload -Uz compinit
 compinit -d ~/.config/zsh/zcompdump
