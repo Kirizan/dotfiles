@@ -19,5 +19,11 @@ if [ -f ~/.profile ]; then
 fi
 
 
+# Configure zshrc to source .profile_corp if it exists
+
+if [ -f ~/.profile_corp ]; then
+  source ~/.profile_corp
+fi
+
 autoload -U +X bashcompinit && bashcompinit
 complete -o nospace -C /opt/homebrew/bin/terraform terraform
