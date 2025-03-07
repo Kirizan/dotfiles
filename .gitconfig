@@ -2,7 +2,7 @@
   path = .gitconfig_personal
 [includeIf "gitdir:~/github"]
   path = .gitconfig_personal
-[includeIf "gitdir:~/.dotfile_corp/"]
+[includeIf "gitdir:~/.dotfiles_corp/"]
   path = .gitconfig_corp
 [includeIf "gitdir:~/projects/"]
   path = .gitconfig_corp
