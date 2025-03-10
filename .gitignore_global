@@ -189,3 +189,7 @@ venv.bak/
 # Ignores MindNode mindmap files.
 .mindnode
 *.mindnode/
+
+### Microsoft Office
+# Ignores Microsoft temp files starting with ~*
+~$*
