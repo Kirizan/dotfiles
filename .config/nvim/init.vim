@@ -64,6 +64,9 @@ nnoremap y "+y
 vnoremap y "+y
 nnoremap p "+p
 vnoremap p "+p
+nnoremap x "+x
+vnoremap x "+x
+
 
 " sets word wrap to only wrap on spaces
 set wrap linebreak breakat&vim
