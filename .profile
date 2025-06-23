@@ -66,6 +66,9 @@ alias pipxr='pipx run --spec .'
 # Alias to activate poetry environment
 alias activate_poetry='eval $(poetry env activate)'
 
+# Alias for terraform
+alias tf='terraform'
+
 #move the completion file to ~/.config/zsh directory
 autoload -Uz compinit
 compinit -d ~/.config/zsh/zcompdump
