@@ -104,6 +104,10 @@ vnoremap <S-Tab> <gv
 " nnoremap x "+x
 " vnoremap x "+x
 
+" Sets @y and @p to copy and paste using system clipboard
+let @p="\"+p"
+let @y="\"+yy"
+
 
 " sets word wrap to only wrap on spaces
 set wrap linebreak breakat&vim

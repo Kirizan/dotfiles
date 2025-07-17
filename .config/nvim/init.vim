@@ -60,14 +60,18 @@ vnoremap <Tab> >gv
 vnoremap <S-Tab> <gv
 
 " sets system clipboard as default
-nnoremap y "+y
-vnoremap y "+y
-nnoremap p "+p
-vnoremap p "+p
-nnoremap P "+P
-vnoremap P "+P
-nnoremap x "+x
-vnoremap x "+x
+" nnoremap y "+y
+" vnoremap y "+y
+" nnoremap p "+p
+" vnoremap p "+p
+" nnoremap P "+P
+" vnoremap P "+P
+" nnoremap x "+x
+" vnoremap x "+x
+
+" sets @y and @p to use system register
+let @p="\"+p"
+let @y="\"+yy"
 
 
 " sets word wrap to only wrap on spaces
