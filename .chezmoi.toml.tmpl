@@ -1,0 +1,50 @@
+{{- /* Determine profile: "work" or "personal" */ -}}
+{{- $profile := "personal" -}}
+
+{{- /* Check for CHEZMOI_PROFILE environment variable first */ -}}
+{{- if env "CHEZMOI_PROFILE" -}}
+{{-   $profile = env "CHEZMOI_PROFILE" -}}
+{{- /* Auto-detect based on hostname patterns */ -}}
+{{- else if contains "work" .chezmoi.hostname -}}
+{{-   $profile = "work" -}}
+{{- else if contains "corp" .chezmoi.hostname -}}
+{{-   $profile = "work" -}}
+{{- else if contains "company" .chezmoi.hostname -}}
+{{-   $profile = "work" -}}
+{{- end -}}
+
+{{- /* Profile-specific settings */ -}}
+{{- $email := "33106137+Kirizan@users.noreply.github.com" -}}
+{{- $name := "Kirizan" -}}
+
+{{- if eq $profile "work" -}}
+{{-   $email = "work.email@company.com" -}}
+{{-   $name = "Your Work Name" -}}
+{{- end -}}
+
+[data]
+    profile = {{ $profile | quote }}
+    email = {{ $email | quote }}
+    name = {{ $name | quote }}
+
+{{- if eq .chezmoi.os "darwin" }}
+[data.packages]
+    manager = "brew"
+    install_cmd = "brew install"
+    update_cmd = "brew update && brew upgrade"
+    search_cmd = "brew search"
+{{- else if eq .chezmoi.osRelease.id "arch" }}
+[data.packages]
+    manager = "pacman"
+    install_cmd = "sudo pacman -S"
+    update_cmd = "sudo pacman -Syu"
+    search_cmd = "pacman -Ss"
+{{- else }}
+[data.packages]
+    manager = "unknown"
+{{- end }}
+
+[data.paths]
+{{- if eq .chezmoi.os "darwin" }}
+    homebrew = "/opt/homebrew"
+{{- end }}

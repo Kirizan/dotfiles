@@ -1,0 +1,51 @@
+# Repository management files
+README.md
+LICENSE
+makefile
+PROFILES.md
+.gitignore
+.git/
+.claude
+
+# Documentation files
+*.org
+system.org
+
+# Temporary files
+pbcopy
+
+# macOS-specific files (ignore on Linux)
+{{- if ne .chezmoi.os "darwin" }}
+Brewfile
+Library/
+Emacs.app/
+.zshrc
+.zprofile
+.p10k.zsh
+{{- end }}
+
+# Linux-specific files (ignore on macOS)
+{{- if ne .chezmoi.os "linux" }}
+.bashrc
+.bash_profile
+{{- end }}
+
+# Scripts and bin directories are handled separately
+# (they're managed but not as dotfiles in home directory)
+
+# Profile-specific ignores
+# Files ending in _work.* are only for work profile
+{{- if ne .profile "work" }}
+*_work
+*_work.*
+.profile_corp
+.config/work
+{{- end }}
+
+# Files ending in _personal.* are only for personal profile
+{{- if ne .profile "personal" }}
+*_personal
+*_personal.*
+.profile_personal
+.config/personal
+{{- end }}
