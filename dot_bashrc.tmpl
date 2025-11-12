@@ -1,0 +1,109 @@
+{{- if eq .chezmoi.os "linux" }}
+# If not running interactively, don't do anything (leave this at the top of this file)
+[[ $- != *i* ]] && return
+
+{{- if eq .chezmoi.osRelease.id "arch" }}
+# All the default Omarchy aliases and functions
+# (don't mess with these directly, just overwrite them here!)
+if [ -f ~/.local/share/omarchy/default/bash/rc ]; then
+  source ~/.local/share/omarchy/default/bash/rc
+fi
+{{- end }}
+
+# Configure sudo askpass helper for non-interactive sudo prompts
+if [ -f "/usr/bin/lxqt-openssh-askpass" ]; then
+  export SUDO_ASKPASS="/usr/bin/lxqt-openssh-askpass"
+fi
+
+# Add custom bin directory
+export PATH="$PATH:$HOME/.dotfiles/bin"
+
+# Add pipx bin to PATH
+if [ -d "$HOME/.local/bin" ]; then
+  export PATH="$PATH:$HOME/.local/bin"
+fi
+
+#Check if local/bin exists and add to path if it does
+if [ -d "$HOME/.dotfiles/local/bin" ]; then
+    export PATH="$PATH:$HOME/.dotfiles/local/bin"
+fi
+
+#Create alias for ls with git status (using eza on Linux)
+if command -v eza &> /dev/null; then
+  alias lsa='eza -lahF --group-directories-first --git --icons'
+else
+  alias lsa='ls -liahF --group-directories-first --color=auto --time-style=iso'
+fi
+
+# Changes terraform to tf
+alias tf='terraform'
+
+# Adds a Terraform auto approve alias
+alias tfaa='tf apply -auto-approve'
+
+# using neovim instead of vim
+alias vim="nvim"
+alias vi="nvim"
+
+# Force the CDK to use the AWS_PROFILE variable
+alias cdkp='cdk --profile $AWS_PROFILE'
+
+# Create alias for pipx local run
+alias pipxr='pipx run --spec .'
+
+# Alias to activate poetry environment
+alias activate_poetry='eval $(poetry env activate)'
+
+# pipx autocompletion
+if command -v register-python-argcomplete &> /dev/null; then
+  eval "$(register-python-argcomplete pipx)"
+fi
+
+# enable AWS cli completion
+if command -v aws_completer &> /dev/null; then
+  complete -C aws_completer aws
+fi
+
+######################## enable pyenv shims and autocomplete #########
+if command -v pyenv 1>/dev/null 2>&1; then
+  eval "$(pyenv init --path)"
+  export PYENV_ROOT="$HOME/.pyenv"
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init -)"
+fi
+
+######################## enable direnv ################################
+if command -v direnv 1>/dev/null 2>&1; then
+  eval "$(direnv hook bash)"
+fi
+
+# Bash history options
+HISTSIZE=1000000
+HISTFILESIZE=$HISTSIZE
+
+# Stops go lang from using Google managed proxies
+if command -v go &> /dev/null; then
+  go env -w GOPROXY=direct
+fi
+
+# Initialize Starship prompt (similar to Powerlevel10k on macOS)
+if command -v starship &> /dev/null; then
+  eval "$(starship init bash)"
+fi
+
+# Profile-specific configurations
+{{- if eq .profile "personal" }}
+if [ -f ~/.profile_personal ]; then
+  source ~/.profile_personal
+fi
+{{- end }}
+
+{{- if eq .profile "work" }}
+if [ -f ~/.profile_work ]; then
+  source ~/.profile_work
+fi
+{{- end }}
+
+# Bash-specific aliases and functions
+# Add your own exports, aliases, and functions here.
+{{- end }}

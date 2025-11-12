@@ -1,0 +1,7 @@
+{{- if eq .chezmoi.os "linux" }}
+#
+# ~/.bash_profile
+#
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+{{- end }}

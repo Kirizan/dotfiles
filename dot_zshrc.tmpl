@@ -1,0 +1,204 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+{{- if eq .chezmoi.os "darwin" }}
+if [[ -f /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme ]]; then
+  source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
+fi
+{{- else if eq .chezmoi.os "linux" }}
+# On Linux, powerlevel10k may be installed via package manager or manually
+if [[ -f /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme ]]; then
+  source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
+fi
+{{- end }}
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS-specific PATH configurations
+# configures curl-openssl path options.
+export PATH="/usr/local/opt/curl-openssl/bin:$PATH"
+
+# add brew's sbin to path
+export PATH="/usr/local/sbin:$PATH"
+
+# add homebrew's bin to path
+if [ -d "/opt/homebrew" ]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+fi
+
+# add fzf to path
+if [[ ! "$PATH" == */opt/homebrew/opt/fzf/bin* ]]; then
+  PATH="${PATH:+${PATH}:}/opt/homebrew/opt/fzf/bin"
+fi
+
+# Added by JetBrains Toolbox App
+export PATH="$PATH:{{ .chezmoi.homeDir }}/Library/Application Support/JetBrains/Toolbox/scripts"
+
+# Add gnu versions of tools to path
+if [ -d "/opt/homebrew/opt/grep/libexec/gnubin" ]; then
+  PATH="/opt/homebrew/opt/grep/libexec/gnubin:$PATH"
+fi
+
+#Create alias for ls with git status (using eza on macOS)
+if command -v eza &> /dev/null; then
+  alias lsa='eza -lahF --group-directories-first --git --icons'
+else
+  alias lsa='gls -liahF --group-directories-first --color=auto --time-style=iso'
+fi
+{{- end }}
+
+# Add custom bin directory
+export PATH="$PATH:$HOME/.dotfiles/bin"
+
+# Add pipx bin to PATH
+if [ -d "$HOME/.local/bin" ]; then
+  export PATH="$PATH:$HOME/.local/bin"
+fi
+
+#Check if local/bin exists and add to path if it does
+if [ -d "$HOME/.dotfiles/local/bin" ]; then
+    export PATH="$PATH:$HOME/.dotfiles/local/bin"
+fi
+
+# Common aliases
+# Changes terraform to tf
+alias tf='terraform'
+
+# Adds a Terraform auto approve alias
+alias tfaa='tf apply -auto-approve'
+
+# using neovim instead of vim
+alias vim="nvim"
+alias vi="nvim"
+
+# Force the CDK to use the AWS_PROFILE variable
+alias cdkp='cdk --profile $AWS_PROFILE'
+
+# Create alias for pipx local run
+alias pipxr='pipx run --spec .'
+
+# Alias to activate poetry environment
+alias activate_poetry='eval $(poetry env activate)'
+
+# Zsh-specific completion configuration
+#move the completion file to ~/.config/zsh directory
+autoload -Uz compinit
+compinit -d ~/.config/zsh/zcompdump
+
+#add completion directory to fpath
+fpath=(~/.config/zsh/completion $fpath)
+
+# configure zsh completion
+setopt noautomenu
+setopt nomenucomplete
+
+# partial completion suggestions
+zstyle ':completion:*' list-suffixes
+zstyle ':completion:*' expand prefix suffix
+
+# load bash completion scripts for cross-compatibility
+autoload -U +X bashcompinit && bashcompinit
+autoload -U +X compinit && compinit
+
+{{- if eq .chezmoi.os "darwin" }}
+# Homebrew completions
+if type brew &>/dev/null; then
+  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+  FPATH="$(brew --prefix)/share/zsh-completions:$FPATH"
+  autoload -Uz compinit
+  compinit
+fi
+
+# Terraform completion
+complete -o nospace -C /opt/homebrew/bin/terraform terraform
+
+# fzf auto-completion and key bindings
+[[ $- == *i* ]] && source "/opt/homebrew/opt/fzf/shell/completion.bash" 2> /dev/null
+source "/opt/homebrew/opt/fzf/shell/key-bindings.zsh"
+{{- else }}
+# On Linux, terraform is typically in /usr/bin
+if command -v terraform &> /dev/null; then
+  complete -o nospace -C $(which terraform) terraform
+fi
+{{- end }}
+
+# pipx autocompletion
+if command -v register-python-argcomplete &> /dev/null; then
+  eval "$(register-python-argcomplete pipx)"
+fi
+
+# enable AWS cli completion
+if command -v aws_completer &> /dev/null; then
+  complete -C aws_completer aws
+fi
+
+######################## enable pyenv shims and autocomplete #########
+if command -v pyenv 1>/dev/null 2>&1; then
+  eval "$(pyenv init --path)"
+  export PYENV_ROOT="$HOME/.pyenv"
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init -)"
+fi
+
+######################## enable direnv ################################
+if command -v direnv 1>/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
+
+{{- if eq .chezmoi.os "darwin" }}
+# Add homebrew
+eval "$(/opt/homebrew/bin/brew shellenv)"
+{{- end }}
+
+######################### zsh history options ############################
+setopt EXTENDED_HISTORY        # store time in history
+setopt HIST_EXPIRE_DUPS_FIRST  # unique events are more usefull to me
+setopt HIST_VERIFY             # Make those history commands nice
+setopt HIST_IGNORE_SPACE       # Make history ignore commands that start with a space
+setopt HIST_IGNORE_ALL_DUPS    # History ignores duplicate commands
+setopt INC_APPEND_HISTORY      # immediately insert history into history file
+
+HISTSIZE=1000000
+SAVEHIST=$HISTSIZE
+
+# Disable terminal beeps
+setopt NO_BEEP
+
+{{- if eq .chezmoi.os "darwin" }}
+# configures locale to ensure proper sorting (macOS specific)
+# default is LC_COLLATE="en_US.UTF-8"
+export LC_COLLATE="cs_CZ.ISO8859-2"
+{{- end }}
+
+# Stops go lang from using Google managed proxies
+if command -v go &> /dev/null; then
+  go env -w GOPROXY=direct
+fi
+
+# Profile-specific configurations
+{{- if eq .profile "personal" }}
+if test -f "{{ .chezmoi.homeDir }}/.profile_personal"; then
+  source "{{ .chezmoi.homeDir }}/.profile_personal"
+fi
+{{- end }}
+
+{{- if eq .profile "work" }}
+if test -f "{{ .chezmoi.homeDir }}/.profile_work"; then
+  source "{{ .chezmoi.homeDir }}/.profile_work"
+fi
+if test -f "{{ .chezmoi.homeDir }}/.profile_corp"; then
+  source "{{ .chezmoi.homeDir }}/.profile_corp"
+fi
+{{- end }}
+
+# This section is for configurations that shouldn't get synced to github
+# Mainly used for configurations unique to work environment
+if test -f "{{ .chezmoi.homeDir }}/.config/zsh/zshrc"; then
+  source "{{ .chezmoi.homeDir }}/.config/zsh/zshrc"
+fi
