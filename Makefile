@@ -28,57 +28,55 @@ CYAN := \033[0;36m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 RED := \033[0;31m
-NC := \033[0m # No Color
+NC := \033[0m
 
 help: ## Show this help message
-	@echo "$(CYAN)Dotfiles Management Makefile$(NC)"
-	@echo ""
-	@echo "Detected OS: $(GREEN)$(OS)$(NC)"
+	@/bin/echo -e "$(CYAN)Dotfiles Management Makefile$(NC)\n"
+	@/bin/echo -e "Detected OS: $(GREEN)$(OS)$(NC)"
 	@if [ "$(OS)" = "linux" ]; then \
-		echo "Distribution: $(GREEN)$(DISTRO)$(NC)"; \
+		/bin/echo -e "Distribution: $(GREEN)$(DISTRO)$(NC)"; \
 	fi
-	@echo "Package Manager: $(GREEN)$(PKG_MANAGER)$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Available targets:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-20s$(NC) %s\n", $$1, $$2}'
+	@/bin/echo -e "Package Manager: $(GREEN)$(PKG_MANAGER)$(NC)\n"
+	@/bin/echo -e "$(YELLOW)Available targets:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[0;36m%-20s\033[0m %s\n", $$1, $$2}'
 
 setup: install-prereqs install-chezmoi apply ## Complete setup: install prerequisites, chezmoi, and apply dotfiles
-	@echo "$(GREEN)✓ Setup complete!$(NC)"
-	@echo ""
-	@echo "Your dotfiles are now managed by chezmoi."
-	@echo "Source directory: ~/.local/share/chezmoi"
-	@echo ""
-	@echo "Useful commands:"
-	@echo "  make apply    - Apply all dotfiles"
-	@echo "  make status   - Check status"
-	@echo "  make update   - Update from git and apply"
-	@echo "  make diff     - Show differences"
+	@/bin/echo -e "$(GREEN)✓ Setup complete!$(NC)\n"
+	@/bin/echo -e "\n"
+	@/bin/echo -e "Your dotfiles are now managed by chezmoi.\n"
+	@/bin/echo -e "Source directory: ~/.local/share/chezmoi\n"
+	@/bin/echo -e "\n"
+	@/bin/echo -e "Useful commands:\n"
+	@/bin/echo -e "  make apply    - Apply all dotfiles\n"
+	@/bin/echo -e "  make status   - Check status\n"
+	@/bin/echo -e "  make update   - Update from git and apply\n"
+	@/bin/echo -e "  make diff     - Show differences\n"
 
 install-prereqs: ## Install system prerequisites
-	@echo "$(CYAN)Installing prerequisites for $(OS)...$(NC)"
+	@/bin/echo -e "$(CYAN)Installing prerequisites for $(OS)...$(NC)\n"
 ifeq ($(OS),macos)
 	@if ! command -v brew >/dev/null 2>&1; then \
-		echo "$(YELLOW)Installing Homebrew...$(NC)"; \
+		/bin/echo -e "$(YELLOW)Installing Homebrew...$(NC)"; \
 		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
 	else \
-		echo "$(GREEN)✓ Homebrew already installed$(NC)"; \
+		/bin/echo -e "$(GREEN)✓ Homebrew already installed$(NC)"; \
 	fi
 else ifeq ($(DISTRO),arch)
-	@echo "$(GREEN)✓ Using pacman (Arch Linux)$(NC)"
+	@/bin/echo -e "$(GREEN)✓ Using pacman (Arch Linux)$(NC)\n"
 	@# Add any Arch-specific prerequisites here
 else ifeq ($(DISTRO),debian)
-	@echo "$(YELLOW)Updating package list...$(NC)"
+	@/bin/echo -e "$(YELLOW)Updating package list...$(NC)\n"
 	@sudo apt update
-	@echo "$(GREEN)✓ Using apt (Debian/Ubuntu)$(NC)"
+	@/bin/echo -e "$(GREEN)✓ Using apt (Debian/Ubuntu)$(NC)\n"
 else
-	@echo "$(YELLOW)⚠ Unknown distribution, skipping prerequisites$(NC)"
+	@/bin/echo -e "$(YELLOW)⚠ Unknown distribution, skipping prerequisites$(NC)\n"
 endif
 
 install-chezmoi: ## Install chezmoi if not present
 	@if command -v chezmoi >/dev/null 2>&1; then \
-		echo "$(GREEN)✓ chezmoi already installed: $$(chezmoi --version | head -1)$(NC)"; \
+		/bin/echo -e "$(GREEN)✓ chezmoi already installed: $$(chezmoi --version | head -1)$(NC)"; \
 	else \
-		echo "$(CYAN)Installing chezmoi...$(NC)"; \
+		/bin/echo -e "$(CYAN)Installing chezmoi...$(NC)"; \
 		if [ "$(OS)" = "macos" ]; then \
 			brew install chezmoi; \
 		elif [ "$(DISTRO)" = "arch" ]; then \
@@ -88,77 +86,77 @@ install-chezmoi: ## Install chezmoi if not present
 		else \
 			sh -c "$$(curl -fsLS get.chezmoi.io)"; \
 		fi; \
-		echo "$(GREEN)✓ chezmoi installed$(NC)"; \
+		/bin/echo -e "$(GREEN)✓ chezmoi installed$(NC)"; \
 	fi
 
 apply: check ## Apply dotfiles to system
-	@echo "$(CYAN)Applying dotfiles...$(NC)"
+	@/bin/echo -e "$(CYAN)Applying dotfiles...$(NC)\n"
 	@chezmoi apply -v
-	@echo "$(GREEN)✓ Dotfiles applied$(NC)"
+	@/bin/echo -e "$(GREEN)✓ Dotfiles applied$(NC)\n"
 
 init: ## Initialize chezmoi with this repository
-	@echo "$(CYAN)Initializing chezmoi...$(NC)"
+	@/bin/echo -e "$(CYAN)Initializing chezmoi...$(NC)\n"
 	@if [ ! -d ~/.local/share/chezmoi ]; then \
 		chezmoi init --source=$$(pwd); \
-		echo "$(GREEN)✓ Chezmoi initialized$(NC)"; \
+		/bin/echo -e "$(GREEN)✓ Chezmoi initialized$(NC)"; \
 	else \
-		echo "$(YELLOW)⚠ Chezmoi already initialized$(NC)"; \
+		/bin/echo -e "$(YELLOW)⚠ Chezmoi already initialized$(NC)"; \
 	fi
 
 status: check ## Show chezmoi status
-	@echo "$(CYAN)Chezmoi status:$(NC)"
+	@/bin/echo -e "$(CYAN)Chezmoi status:$(NC)\n"
 	@chezmoi status || true
 
 diff: check ## Show differences between dotfiles and system
-	@echo "$(CYAN)Showing differences:$(NC)"
+	@/bin/echo -e "$(CYAN)Showing differences:$(NC)\n"
 	@chezmoi diff || true
 
 update: check ## Pull latest changes from git and apply
-	@echo "$(CYAN)Updating dotfiles from git...$(NC)"
+	@/bin/echo -e "$(CYAN)Updating dotfiles from git...$(NC)\n"
 	@git pull
-	@echo "$(CYAN)Applying changes...$(NC)"
+	@/bin/echo -e "$(CYAN)Applying changes...$(NC)\n"
 	@chezmoi apply -v
-	@echo "$(GREEN)✓ Updated and applied$(NC)"
+	@/bin/echo -e "$(GREEN)✓ Updated and applied$(NC)\n"
 
 verify: check ## Verify dotfiles without applying
-	@echo "$(CYAN)Verifying dotfiles...$(NC)"
+	@/bin/echo -e "$(CYAN)Verifying dotfiles...$(NC)\n"
 	@chezmoi verify
-	@echo "$(GREEN)✓ Verification complete$(NC)"
+	@/bin/echo -e "$(GREEN)✓ Verification complete$(NC)\n"
 
 doctor: check ## Run chezmoi doctor for diagnostics
-	@echo "$(CYAN)Running chezmoi doctor...$(NC)"
+	@/bin/echo -e "$(CYAN)Running chezmoi doctor...$(NC)\n"
 	@chezmoi doctor
 
 edit: check ## Open chezmoi source directory in editor
 	@chezmoi cd
 
 clean: ## Clean chezmoi cache
-	@echo "$(CYAN)Cleaning chezmoi cache...$(NC)"
+	@/bin/echo -e "$(CYAN)Cleaning chezmoi cache...$(NC)\n"
 	@rm -rf ~/.cache/chezmoi
-	@echo "$(GREEN)✓ Cache cleaned$(NC)"
+	@/bin/echo -e "$(GREEN)✓ Cache cleaned$(NC)\n"
 
 check: ## Check if chezmoi is installed
 	@if ! command -v chezmoi >/dev/null 2>&1; then \
-		echo "$(RED)✗ chezmoi is not installed$(NC)"; \
-		echo "Run: make install-chezmoi"; \
+		/bin/echo -e "$(RED)✗ chezmoi is not installed$(NC)"; \
+		/bin/echo -e "Run: make install-chezmoi"; \
 		exit 1; \
 	fi
 
 info: ## Show system and chezmoi information
-	@echo "$(CYAN)System Information:$(NC)"
-	@echo "  OS: $(OS)"
+	@/bin/echo -e "$(CYAN)System Information:$(NC)\n"
+	@/bin/echo -e "  OS: $(OS)\n"
 ifeq ($(OS),linux)
-	@echo "  Distribution: $(DISTRO)"
+	@/bin/echo -e "  Distribution: $(DISTRO)\n"
 endif
-	@echo "  Package Manager: $(PKG_MANAGER)"
-	@echo "  Shell: $$SHELL"
-	@echo "  User: $$USER"
-	@echo ""
+	@/bin/echo -e "  Package Manager: $(PKG_MANAGER)\n"
+	@/bin/echo -e "  Shell: $$SHELL\n"
+	@/bin/echo -e "  User: $$USER\n"
+	@/bin/echo -e "\n"
 	@if command -v chezmoi >/dev/null 2>&1; then \
-		echo "$(CYAN)Chezmoi Information:$(NC)"; \
+		/bin/echo -e "$(CYAN)Chezmoi Information:$(NC)"; \
 		chezmoi --version; \
-		echo "  Source: $$(chezmoi source-path 2>/dev/null || echo 'Not initialized')"; \
-		echo "  Config: ~/.config/chezmoi/chezmoi.toml"; \
+		/bin/echo -e "  Source: $$(chezmoi source-path 2>/dev/null || echo 'Not initialized')"; \
+		/bin/echo -e "  Config: ~/.config/chezmoi/chezmoi.toml"; \
 	else \
-		echo "$(YELLOW)⚠ chezmoi not installed$(NC)"; \
+		/bin/echo -e "$(YELLOW)⚠ chezmoi not installed$(NC)"; \
 	fi
