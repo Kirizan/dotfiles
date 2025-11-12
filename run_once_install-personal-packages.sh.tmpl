@@ -1,0 +1,51 @@
+#!/bin/bash
+# Personal profile only - packages not needed on work systems
+
+{{- if eq .profile "personal" }}
+
+# Set askpass for sudo if available
+{{- if eq .chezmoi.os "linux" }}
+if [ -f "/usr/bin/lxqt-openssh-askpass" ]; then
+  export SUDO_ASKPASS="/usr/bin/lxqt-openssh-askpass"
+fi
+{{- end }}
+
+echo "Installing personal profile packages..."
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS personal packages
+if command -v brew &> /dev/null; then
+    echo "Installing Steam and other personal apps..."
+    brew install --cask steam
+    # Add more personal apps here
+fi
+
+{{- else if eq .chezmoi.osRelease.id "arch" }}
+# Arch Linux personal packages
+echo "Installing Steam and personal packages on Arch Linux..."
+
+PERSONAL_PACKAGES=(
+    steam
+    discord
+    spotify-launcher
+    # Add more personal packages here
+)
+
+for pkg in "${PERSONAL_PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        sudo -A pacman -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+    else
+        echo "$pkg is already installed"
+    fi
+done
+
+echo "Personal package installation complete!"
+
+{{- else }}
+echo "Unsupported operating system for personal packages"
+{{- end }}
+
+{{- else }}
+echo "Skipping personal packages (not on personal profile)"
+{{- end }}

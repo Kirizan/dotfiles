@@ -1,0 +1,145 @@
+#!/bin/bash
+# This script installs essential packages on the system
+
+# Set askpass for sudo if available
+{{- if eq .chezmoi.os "linux" }}
+if [ -f "/usr/bin/lxqt-openssh-askpass" ]; then
+  export SUDO_ASKPASS="/usr/bin/lxqt-openssh-askpass"
+fi
+{{- end }}
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS: Use Homebrew bundle to install from Brewfile
+if ! command -v brew &> /dev/null; then
+    echo "Homebrew not found. Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+echo "Installing packages from Brewfile..."
+brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
+
+# Install eza (modern ls with git support)
+echo "Installing eza..."
+brew install eza
+
+{{- else if eq .chezmoi.osRelease.id "arch" }}
+# Arch Linux: Install equivalent packages using pacman
+echo "Installing essential packages on Arch Linux..."
+
+# Core development tools and utilities
+PACKAGES=(
+    aria2
+    aws-cli
+    bash-completion
+    cmake
+    curl
+    direnv
+    expect
+    eza
+    fd
+    fzf
+    gh
+    gnu-tar
+    go
+    grep
+    jq
+    neovim
+    nodejs
+    npm
+    p7zip
+    pandoc
+    pipenv
+    python-pipx
+    python-pyenv
+    python-tabulate
+    ripgrep
+    shellcheck
+    starship
+    stow
+    subversion
+    tmux
+    tree
+    wget
+    zlib
+    zsh
+    zsh-completions
+    terraform
+    # Nerd Fonts
+    ttf-0xproto-nerd
+    ttf-3270-nerd
+    ttf-agave-nerd
+    ttf-anonymouspro-nerd
+    ttf-arimo-nerd
+    ttf-aurulentsansmono-nerd
+    ttf-bigblueterminal-nerd
+    ttf-bitstreamverasansmono-nerd
+    ttf-cascadiacode-nerd
+    ttf-cascadiamono-nerd
+    ttf-codenewroman-nerd
+    ttf-cousine-nerd
+    ttf-d2coding-nerd
+    ttf-daddytimemono-nerd
+    ttf-dejavu-nerd
+    ttf-departuremono-nerd
+    ttf-droid-nerd
+    ttf-envycodear-nerd
+    ttf-fantasquesansmono-nerd
+    ttf-firacode-nerd
+    ttf-firamono-nerd
+    ttf-geist-mono-nerd
+    ttf-go-nerd
+    ttf-hack-nerd
+    ttf-hasklig-nerd
+    ttf-heavydata-nerd
+    ttf-iawriter-nerd
+    ttf-ibmplex-mono-nerd
+    ttf-inconsolata-go-nerd
+    ttf-inconsolata-lgc-nerd
+    ttf-inconsolata-nerd
+    ttf-intone-nerd
+    ttf-iosevka-nerd
+    ttf-iosevkaterm-nerd
+    ttf-iosevkatermslab-nerd
+    ttf-jetbrains-mono-nerd
+    ttf-lekton-nerd
+    ttf-liberation-mono-nerd
+    ttf-lilex-nerd
+    ttf-martianmono-nerd
+    ttf-meslo-nerd
+    ttf-monaspace-nerd
+    ttf-monocraft-nerd
+    ttf-monofur-nerd
+    ttf-monoid-nerd
+    ttf-mononoki-nerd
+    ttf-noto-nerd
+    ttf-opendyslexic-nerd
+    ttf-overpass-nerd
+    ttf-profont-nerd
+    ttf-proggyclean-nerd
+    ttf-recursive-nerd
+    ttf-roboto-mono-nerd
+    ttf-sourcecodepro-nerd
+    ttf-spacemono-nerd
+    ttf-terminus-nerd
+    ttf-tinos-nerd
+    ttf-ubuntu-mono-nerd
+    ttf-ubuntu-nerd
+    ttf-ubuntu-sans-nerd
+    ttf-victormono-nerd
+    # Powerlevel10k theme
+    zsh-theme-powerlevel10k
+)
+
+for pkg in "${PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        sudo -A pacman -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+    fi
+done
+
+echo "Package installation complete!"
+
+{{- else }}
+echo "Unsupported operating system. Please install packages manually."
+exit 1
+{{- end }}
