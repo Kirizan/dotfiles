@@ -28,6 +28,10 @@ Emacs.app/
 {{- if ne .chezmoi.os "linux" }}
 .bashrc
 .bash_profile
+.config/hypr/
+.config/waybar/
+.config/mako/
+.config/omarchy/
 {{- end }}
 
 # Scripts and bin directories are handled separately
