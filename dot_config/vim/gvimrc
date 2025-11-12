@@ -1,0 +1,6 @@
+set guifont=Monaco:h26
+set lines=23
+set columns=85
+
+source $HOME/.vimrc
+
