@@ -1,7 +1,7 @@
 # Repository management files
 README.md
 LICENSE
-makefile
+Makefile
 PROFILES.md
 .gitignore
 .git/
