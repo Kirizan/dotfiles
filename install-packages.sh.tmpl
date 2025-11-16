@@ -64,6 +64,7 @@ PACKAGES=(
     zsh
     zsh-completions
     terraform
+    firefox
     # Nerd Fonts
     ttf-0xproto-nerd
     ttf-3270-nerd
@@ -133,7 +134,30 @@ PACKAGES=(
 for pkg in "${PACKAGES[@]}"; do
     if ! pacman -Qi "$pkg" &> /dev/null; then
         echo "Installing $pkg..."
-        sudo -A pacman -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+        sudo pacman -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+    fi
+done
+
+# Install AUR packages using yay
+AUR_PACKAGES=(
+    brave-bin
+)
+
+# Check if yay is installed, install it if not
+if ! command -v yay &> /dev/null; then
+    echo "Installing yay AUR helper..."
+    sudo pacman -S --needed --noconfirm base-devel git
+    git clone https://aur.archlinux.org/yay.git /tmp/yay
+    cd /tmp/yay
+    makepkg -si --noconfirm
+    cd -
+    rm -rf /tmp/yay
+fi
+
+for pkg in "${AUR_PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo "Installing AUR package $pkg..."
+        yay -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
     fi
 done
 

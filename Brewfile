@@ -60,6 +60,8 @@ brew "zsh-completions"
 brew "hashicorp/tap/terraform"
 brew "railwaycat/emacsmacport/emacs-mac", args: ["without-modules"]
 brew "xcodesorg/made/xcodes"
+cask "brave-browser"
+cask "firefox"
 cask "font-0xproto-nerd-font"
 cask "font-3270-nerd-font"
 cask "font-agave-nerd-font"
