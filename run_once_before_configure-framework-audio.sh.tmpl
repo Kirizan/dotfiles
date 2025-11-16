@@ -1,0 +1,82 @@
+#!/bin/bash
+{{- if eq .chezmoi.os "linux" }}
+
+# Configure Framework laptop audio kernel parameters
+# This fixes audio issues on Framework laptops with Realtek ALC295 codec
+
+# Check if this is a Framework laptop
+if [[ ! -f /sys/devices/virtual/dmi/id/product_name ]]; then
+    exit 0
+fi
+
+PRODUCT_NAME=$(cat /sys/devices/virtual/dmi/id/product_name)
+if [[ ! "$PRODUCT_NAME" =~ "Framework" ]]; then
+    echo "Not a Framework laptop, skipping audio kernel parameter configuration"
+    exit 0
+fi
+
+echo "Framework laptop detected: $PRODUCT_NAME"
+echo "Configuring audio kernel parameters..."
+
+KERNEL_PARAM="snd_hda_intel.dmic_detect=0"
+
+# Check if parameter is already in current cmdline
+if grep -q "$KERNEL_PARAM" /proc/cmdline; then
+    echo "Kernel parameter already configured"
+    exit 0
+fi
+
+echo "Adding kernel parameter: $KERNEL_PARAM"
+
+# Detect and configure bootloader
+if [[ -f /boot/limine.conf ]]; then
+    echo "Detected Limine bootloader"
+
+    # Backup configuration
+    sudo cp /boot/limine.conf /boot/limine.conf.backup
+
+    # Add parameter to all kernel_cmdline entries
+    sudo sed -i "s/rootfstype=btrfs\$/& $KERNEL_PARAM/" /boot/limine.conf
+    sudo sed -i "s/rootfstype=ext4\$/& $KERNEL_PARAM/" /boot/limine.conf
+
+    echo "Kernel parameter added to Limine configuration"
+    echo "NOTE: Reboot required for changes to take effect"
+
+elif [[ -f /etc/default/grub ]]; then
+    echo "Detected GRUB bootloader"
+
+    # Backup configuration
+    sudo cp /etc/default/grub /etc/default/grub.backup
+
+    # Add parameter to GRUB_CMDLINE_LINUX_DEFAULT
+    if grep -q "^GRUB_CMDLINE_LINUX_DEFAULT=" /etc/default/grub; then
+        sudo sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/ s/\"$/ $KERNEL_PARAM\"/" /etc/default/grub
+        sudo grub-mkconfig -o /boot/grub/grub.cfg
+        echo "Kernel parameter added to GRUB configuration"
+        echo "NOTE: Reboot required for changes to take effect"
+    fi
+
+elif [[ -d /boot/loader/entries ]]; then
+    echo "Detected systemd-boot bootloader"
+
+    # Add parameter to all boot entries
+    for entry in /boot/loader/entries/*.conf; do
+        if [[ -f "$entry" ]] && ! grep -q "$KERNEL_PARAM" "$entry"; then
+            sudo cp "$entry" "$entry.backup"
+            sudo sed -i "/^options/ s/$/ $KERNEL_PARAM/" "$entry"
+            echo "Updated: $entry"
+        fi
+    done
+
+    echo "Kernel parameter added to systemd-boot entries"
+    echo "NOTE: Reboot required for changes to take effect"
+
+else
+    echo "WARNING: Could not detect bootloader type"
+    echo "Please manually add '$KERNEL_PARAM' to your kernel parameters"
+    exit 1
+fi
+
+{{- else }}
+echo "Skipping Framework audio configuration on non-Linux system"
+{{- end }}
