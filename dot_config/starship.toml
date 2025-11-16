@@ -9,6 +9,7 @@ $directory\
 $git_branch\
 $git_status\
 $fill\
+$time\
 $status\
 $cmd_duration\
 $jobs\
@@ -74,6 +75,13 @@ deleted = "✘${count} "
 # Fill space between left and right prompt
 [fill]
 symbol = " "
+
+# Time display (ISO 8601 format)
+[time]
+disabled = false
+format = "[$time]($style) "
+time_format = "%Y-%m-%d %H:%M:%S"
+style = "bold white"
 
 # Exit status (similar to p10k status)
 [status]
