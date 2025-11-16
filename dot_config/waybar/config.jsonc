@@ -59,8 +59,8 @@
     "on-click": "xdg-terminal-exec btop"
   },
   "clock": {
-    "format": "{:L%A %H:%M}",
-    "format-alt": "{:L%d %B W%V %Y}",
+    "format": "{:%Y-%m-%d %H:%M}",
+    "format-alt": "{:%Y-%m-%dT%H:%M:%S %Z}",
     "tooltip": false,
     "on-click-right": "omarchy-launch-floating-terminal-with-presentation omarchy-tz-select"
   },
