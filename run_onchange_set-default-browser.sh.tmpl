@@ -1,0 +1,29 @@
+#!/bin/bash
+{{- if eq .chezmoi.os "linux" }}
+
+# Set Firefox as default browser
+# Web apps will still use Brave via omarchy-launch-webapp
+
+CURRENT_BROWSER=$(xdg-settings get default-web-browser 2>/dev/null)
+DESIRED_BROWSER="firefox.desktop"
+
+if [[ "$CURRENT_BROWSER" != "$DESIRED_BROWSER" ]]; then
+    echo "Setting Firefox as default browser..."
+    xdg-settings set default-web-browser "$DESIRED_BROWSER"
+
+    # Verify the change
+    NEW_BROWSER=$(xdg-settings get default-web-browser)
+    if [[ "$NEW_BROWSER" == "$DESIRED_BROWSER" ]]; then
+        echo "✓ Firefox is now the default browser"
+    else
+        echo "⚠ Warning: Failed to set Firefox as default browser"
+        exit 1
+    fi
+else
+    echo "Firefox is already the default browser"
+fi
+
+{{- else }}
+# On macOS, default browser is typically set through system preferences
+echo "Skipping default browser configuration on non-Linux system"
+{{- end }}
