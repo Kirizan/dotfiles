@@ -10,3 +10,11 @@ auto-save-list/
 *.swp
 \#*\#
 .\#*
+
+# Claude Code local settings (contains session-specific command approvals)
+.claude/settings.local.json
+
+# System-specific temporary files
+*.swo
+*~
+.DS_Store
