@@ -5,6 +5,7 @@
 format = """
 [╭─](bold bright-black)\
 $os\
+$shell\
 $directory\
 $git_branch\
 $git_status\
@@ -172,3 +173,19 @@ style = "bold red"
 # Disable modules you don't need
 [package]
 disabled = true
+
+# Shell indicator - shows which shell you're using
+[shell]
+disabled = false
+format = "[$indicator](bold $style)"
+bash_indicator = ""        # Bash/Bourne shell icon from Nerd Fonts
+zsh_indicator = "󰰶"         # Official Zsh icon (this is the actual logo!)
+fish_indicator = ""        # Fish icon
+nu_indicator = ">"         # Nushell uses > as their prompt symbol
+powershell_indicator = "" # PowerShell icon (if you ever use it)
+unknown_indicator = ""    # Generic terminal
+bash_style = "green"       # Bash green (matching their branding)
+fish_style = "cyan"        # Fish uses cyan/blue branding
+zsh_style = "yellow"       # Zsh traditionally yellow
+nu_style = "purple"        # Nushell uses purple in their branding
+unknown_style = "white"
