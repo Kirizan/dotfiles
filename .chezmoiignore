@@ -36,6 +36,15 @@ Emacs.app/
 .config/omarchy/
 {{- end }}
 
+# WSL-specific ignores (GUI configs don't work on WSL without WSLg)
+{{- if .isWSL }}
+.config/hypr/
+.config/waybar/
+.config/mako/
+.config/omarchy/
+.config/alacritty/
+{{- end }}
+
 # Scripts and bin directories are handled separately
 # (they're managed but not as dotfiles in home directory)
 

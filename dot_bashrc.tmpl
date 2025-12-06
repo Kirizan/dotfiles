@@ -10,6 +10,18 @@ if [ -f ~/.local/share/omarchy/default/bash/rc ]; then
 fi
 {{- end }}
 
+{{- if .isWSL }}
+# WSL-specific configuration
+# Clipboard integration with Windows
+if command -v clip.exe &> /dev/null; then
+  alias pbcopy='clip.exe'
+fi
+
+# Windows PATH integration (optional, can slow down shell startup)
+# Uncomment if you need Windows commands in WSL
+# export PATH="$PATH:/mnt/c/Windows/System32"
+{{- end }}
+
 # Use ISO 8601 timestamps (YYYY-MM-DD format)
 export LC_TIME=en_DK.UTF-8
 
