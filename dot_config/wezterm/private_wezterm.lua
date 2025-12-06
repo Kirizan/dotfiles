@@ -37,7 +37,7 @@ config.hide_tab_bar_if_only_one_tab = false
 config.tab_bar_at_bottom = false
 
 -- Performance
-config.front_end = "WebGpu"
+config.front_end = "OpenGL"
 config.max_fps = 120
 config.animation_fps = 60
 
