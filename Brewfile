@@ -58,6 +58,7 @@ brew "zsh"
 brew "zsh-completions"
 brew "nushell"
 brew "hashicorp/tap/terraform"
+cask "wezterm"
 brew "railwaycat/emacsmacport/emacs-mac", args: ["without-modules"]
 brew "xcodesorg/made/xcodes"
 cask "brave-browser"
