@@ -56,6 +56,7 @@ brew "wget"
 brew "zlib"
 brew "zsh"
 brew "zsh-completions"
+brew "nushell"
 brew "hashicorp/tap/terraform"
 brew "railwaycat/emacsmacport/emacs-mac", args: ["without-modules"]
 brew "xcodesorg/made/xcodes"
