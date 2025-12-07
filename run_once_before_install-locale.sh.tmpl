@@ -1,0 +1,70 @@
+#!/bin/bash
+# Install en_DK.UTF-8 locale for ISO 8601 timestamp formatting
+# This runs once before other configurations are applied
+
+set -e
+
+# Check if locale already exists
+if locale -a 2>/dev/null | grep -qi "en_DK.utf8\|en_DK.UTF-8"; then
+    echo "✓ en_DK.UTF-8 locale already available"
+    exit 0
+fi
+
+echo "Installing en_DK.UTF-8 locale..."
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS has locales built-in, no installation needed
+echo "✓ macOS - locale support built-in"
+
+{{- else if eq .chezmoi.os "linux" }}
+{{-   if eq .chezmoi.osRelease.id "arch" }}
+# Arch Linux
+if ! grep -q "^en_DK.UTF-8 UTF-8" /etc/locale.gen 2>/dev/null; then
+    echo "Enabling en_DK.UTF-8 in /etc/locale.gen..."
+    echo "en_DK.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen > /dev/null
+fi
+echo "Generating locale..."
+sudo locale-gen
+
+{{-   else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
+# CentOS/RHEL
+if ! rpm -q glibc-langpack-en &>/dev/null; then
+    echo "Installing glibc language pack..."
+    sudo dnf install -y glibc-langpack-en glibc-locale-source
+fi
+echo "Generating en_DK.UTF-8 locale..."
+sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || true
+
+{{-   else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+# Ubuntu/Debian
+if ! dpkg -l locales &>/dev/null; then
+    echo "Installing locales package..."
+    sudo apt-get update
+    sudo apt-get install -y locales
+fi
+echo "Generating locale..."
+sudo locale-gen en_DK.UTF-8
+
+{{-   else }}
+# Generic Linux - try localedef
+echo "Attempting to generate locale with localedef..."
+sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || {
+    echo "Warning: Could not generate en_DK.UTF-8 locale automatically"
+    echo "You may need to install it manually for ISO 8601 timestamps"
+    exit 0
+}
+{{-   end }}
+
+# Update locale cache
+sudo locale-gen 2>/dev/null || true
+
+{{- else }}
+echo "Warning: Unsupported OS for automatic locale installation"
+{{- end }}
+
+# Verify installation
+if locale -a 2>/dev/null | grep -qi "en_DK.utf8\|en_DK.UTF-8"; then
+    echo "✓ en_DK.UTF-8 locale installed successfully"
+else
+    echo "⚠ Locale installation may have failed - check manually with 'locale -a'"
+fi
