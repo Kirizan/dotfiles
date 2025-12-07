@@ -22,37 +22,15 @@
 {{- end -}}
 
 {{- /* Profile-specific settings */ -}}
-{{- /* Prompt for user info on first run, or use existing values */ -}}
-{{- $email := "" -}}
-{{- $name := "" -}}
+{{- /* GitHub identity - stays the same across all systems */ -}}
+{{- $email := "33106137+Kirizan@users.noreply.github.com" -}}
+{{- $name := "Kirizan" -}}
 
-{{- /* Check if we already have these values (from previous chezmoi data) */ -}}
-{{- if hasKey . "email" -}}
-{{-   $email = .email -}}
-{{- else -}}
-{{-   /* Prompt for email on first deployment */ -}}
-{{-   $email = promptStringOnce . "email" "Enter your email address" -}}
-{{- end -}}
-
-{{- if hasKey . "name" -}}
-{{-   $name = .name -}}
-{{- else -}}
-{{-   /* Prompt for name on first deployment */ -}}
-{{-   $name = promptStringOnce . "name" "Enter your full name" -}}
-{{- end -}}
-
-{{- /* Override with profile-specific settings if work profile */ -}}
+{{- /* Override for work profile if needed */ -}}
 {{- if eq $profile "work" -}}
-{{-   if not (hasKey . "work_email") -}}
-{{-     $email = promptStringOnce . "work_email" "Enter your work email address" -}}
-{{-   else -}}
-{{-     $email = .work_email -}}
-{{-   end -}}
-{{-   if not (hasKey . "work_name") -}}
-{{-     $name = promptStringOnce . "work_name" "Enter your work name" -}}
-{{-   else -}}
-{{-     $name = .work_name -}}
-{{-   end -}}
+{{-   /* Customize these for your work environment or leave as GitHub identity */ -}}
+{{-   $email = "33106137+Kirizan@users.noreply.github.com" -}}
+{{-   $name = "Kirizan" -}}
 {{- end -}}
 
 [data]
