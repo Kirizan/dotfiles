@@ -165,6 +165,73 @@ done
 
 echo "Package installation complete!"
 
+{{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
+# CentOS/RHEL: Install equivalent packages using dnf
+echo "Installing essential packages on CentOS/RHEL..."
+
+# Enable EPEL repository for additional packages
+if ! rpm -q epel-release &> /dev/null; then
+    echo "Installing EPEL repository..."
+    sudo dnf install -y epel-release
+fi
+
+# Core development tools and utilities
+PACKAGES=(
+    bash-completion
+    cmake
+    curl
+    direnv
+    expect
+    fd-find
+    fzf
+    git
+    golang
+    jq
+    neovim
+    nodejs
+    npm
+    p7zip
+    pandoc
+    python3-pip
+    python3-pipenv
+    ripgrep
+    ShellCheck
+    stow
+    subversion
+    tmux
+    tree
+    wget
+    zlib-devel
+    zsh
+    terraform
+    nushell
+)
+
+for pkg in "${PACKAGES[@]}"; do
+    if ! rpm -q "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        sudo dnf install -y "$pkg" || echo "Warning: Failed to install $pkg"
+    fi
+done
+
+# Install starship prompt (not in repos, use install script)
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+# Install eza (modern ls) via cargo if not available
+if ! command -v eza &> /dev/null; then
+    echo "Installing eza..."
+    if command -v cargo &> /dev/null; then
+        cargo install eza
+    else
+        echo "Warning: cargo not found, skipping eza installation"
+    fi
+fi
+
+echo "Package installation complete!"
+
 {{- else }}
 echo "Unsupported operating system. Please install packages manually."
 exit 1

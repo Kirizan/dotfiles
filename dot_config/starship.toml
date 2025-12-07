@@ -36,9 +36,12 @@ format = "[$symbol](bold white)"
 
 [os.symbols]
 Arch = " "
+CentOS = " "
 Debian = " "
 Fedora = " "
 Macos = " "
+Redhat = " "
+RedHatEnterprise = " "
 Ubuntu = " "
 Unknown = " "
 
