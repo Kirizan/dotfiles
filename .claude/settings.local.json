@@ -36,7 +36,8 @@
       "Bash(starship explain:*)",
       "Bash(pactl info)",
       "Bash(amixer scontrols)",
-      "Bash(readlink:*)"
+      "Bash(readlink:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
