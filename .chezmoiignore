@@ -38,11 +38,16 @@ Emacs.app/
 
 # WSL-specific ignores (GUI configs don't work on WSL without WSLg)
 {{- if .isWSL }}
+# GUI desktop environment configs
 .config/hypr/
 .config/waybar/
 .config/mako/
 .config/omarchy/
 .config/alacritty/
+
+# GUI-related scripts
+run_onchange_set-default-browser.sh.tmpl
+run_once_install-personal-packages.sh.tmpl
 {{- end }}
 
 # Scripts and bin directories are handled separately
