@@ -22,12 +22,37 @@
 {{- end -}}
 
 {{- /* Profile-specific settings */ -}}
-{{- $email := "33106137+Kirizan@users.noreply.github.com" -}}
-{{- $name := "Kirizan" -}}
+{{- /* Prompt for user info on first run, or use existing values */ -}}
+{{- $email := "" -}}
+{{- $name := "" -}}
 
+{{- /* Check if we already have these values (from previous chezmoi data) */ -}}
+{{- if hasKey . "email" -}}
+{{-   $email = .email -}}
+{{- else -}}
+{{-   /* Prompt for email on first deployment */ -}}
+{{-   $email = promptStringOnce . "email" "Enter your email address" -}}
+{{- end -}}
+
+{{- if hasKey . "name" -}}
+{{-   $name = .name -}}
+{{- else -}}
+{{-   /* Prompt for name on first deployment */ -}}
+{{-   $name = promptStringOnce . "name" "Enter your full name" -}}
+{{- end -}}
+
+{{- /* Override with profile-specific settings if work profile */ -}}
 {{- if eq $profile "work" -}}
-{{-   $email = "work.email@company.com" -}}
-{{-   $name = "Your Work Name" -}}
+{{-   if not (hasKey . "work_email") -}}
+{{-     $email = promptStringOnce . "work_email" "Enter your work email address" -}}
+{{-   else -}}
+{{-     $email = .work_email -}}
+{{-   end -}}
+{{-   if not (hasKey . "work_name") -}}
+{{-     $name = promptStringOnce . "work_name" "Enter your work name" -}}
+{{-   else -}}
+{{-     $name = .work_name -}}
+{{-   end -}}
 {{- end -}}
 
 [data]

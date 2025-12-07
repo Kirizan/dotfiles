@@ -35,10 +35,10 @@ Check your current profile:
 chezmoi data | grep profile
 ```
 
-On your current system (hostname: `kirdoit`):
-- **Profile**: personal (default)
-- **Email**: 33106137+Kirizan@users.noreply.github.com
-- **Name**: Kirizan
+On your current system (hostname: `{{ .chezmoi.hostname }}`):
+- **Profile**: {{ .profile }} ({{ if eq .profile "personal" }}default{{ else }}work{{ end }})
+- **Email**: {{ .email }}
+- **Name**: {{ .name }}
 
 ### Setting Up a Work Machine
 
