@@ -43,6 +43,7 @@ Macos = " "
 Redhat = " "
 RedHatEnterprise = " "
 Ubuntu = " "
+Windows = " "
 Unknown = " "
 
 # Directory (similar to p10k dir)

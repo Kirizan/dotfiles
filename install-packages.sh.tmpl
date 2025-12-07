@@ -232,6 +232,40 @@ fi
 
 echo "Package installation complete!"
 
+{{- else if eq .chezmoi.os "windows" }}
+# Windows: Use winget package manager
+echo "Installing essential packages on Windows..."
+
+# Core development tools and utilities
+winget install --id Git.Git -e --source winget
+winget install --id Neovim.Neovim -e --source winget
+winget install --id JanDeDobbeleer.OhMyPosh -e --source winget  # Alternative to starship
+winget install --id Microsoft.PowerShell -e --source winget
+winget install --id Nushell.Nushell -e --source winget
+winget install --id wez.wezterm -e --source winget
+winget install --id Microsoft.VisualStudioCode -e --source winget
+winget install --id OpenJS.NodeJS -e --source winget
+winget install --id Python.Python.3.12 -e --source winget
+winget install --id GoLang.Go -e --source winget
+winget install --id BurntSushi.ripgrep.MSVC -e --source winget
+winget install --id sharkdp.fd -e --source winget
+winget install --id junegunn.fzf -e --source winget
+winget install --id jqlang.jq -e --source winget
+winget install --id HashiCorp.Terraform -e --source winget
+
+# Install starship prompt
+echo "Installing starship..."
+winget install --id Starship.Starship -e --source winget
+
+# Install eza (modern ls) via cargo if available
+if (Get-Command cargo -ErrorAction SilentlyContinue) {
+    echo "Installing eza..."
+    cargo install eza
+}
+
+echo "Package installation complete!"
+echo "Note: You may need to restart your terminal for changes to take effect."
+
 {{- else }}
 echo "Unsupported operating system. Please install packages manually."
 exit 1
