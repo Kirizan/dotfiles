@@ -1,9 +1,16 @@
+# Common taps for all platforms
 tap "aws/tap"
 tap "hashicorp/tap"
 tap "homebrew/bundle"
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS-only taps
 tap "railwaycat/emacsmacport"
 tap "robotsandpencils/made"
 tap "xcodesorg/made"
+{{- end }}
+
+# Core packages (available on both macOS and Linux)
 brew "aria2"
 brew "aws-shell"
 brew "awscli"
@@ -16,7 +23,11 @@ brew "cmake"
 brew "coreutils"
 brew "curl"
 brew "direnv"
-brew "duti"
+
+{{- if eq .chezmoi.os "darwin" }}
+brew "duti"  # macOS default applications manager
+{{- end }}
+
 brew "expect"
 brew "fd"
 brew "fzf"
@@ -35,7 +46,11 @@ brew "libxext"
 brew "libxrender"
 brew "luajit-openresty"
 brew "lzo"
-brew "mas"
+
+{{- if eq .chezmoi.os "darwin" }}
+brew "mas"  # Mac App Store CLI
+{{- end }}
+
 brew "neovim"
 brew "nghttp2"
 brew "node"
@@ -59,11 +74,16 @@ brew "zsh-completions"
 brew "nushell"
 brew "typst"
 brew "hashicorp/tap/terraform"
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS-only GUI applications and tools
 cask "wezterm"
 brew "railwaycat/emacsmacport/emacs-mac", args: ["without-modules"]
 brew "xcodesorg/made/xcodes"
 cask "brave-browser"
 cask "firefox"
+
+# Nerd Fonts (macOS-only - Linux uses system package manager for fonts)
 cask "font-0xproto-nerd-font"
 cask "font-3270-nerd-font"
 cask "font-agave-nerd-font"
@@ -133,3 +153,4 @@ cask "font-ubuntu-nerd-font"
 cask "font-ubuntu-sans-nerd-font"
 cask "font-victor-mono-nerd-font"
 cask "font-zed-mono-nerd-font"
+{{- end }}

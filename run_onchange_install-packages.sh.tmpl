@@ -8,7 +8,66 @@ if [ -f "/usr/bin/lxqt-openssh-askpass" ]; then
 fi
 {{- end }}
 
-{{- if eq .chezmoi.os "darwin" }}
+{{- if eq .chezmoi.os "linux" }}
+# Linux: Install minimal system dependencies, then use Homebrew for packages
+echo "Setting up Homebrew on Linux..."
+
+# Install minimal system dependencies based on distro
+{{- if eq .chezmoi.osRelease.id "arch" }}
+echo "Installing base dependencies on Arch Linux..."
+sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
+
+{{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+echo "Installing base dependencies on Ubuntu/Debian..."
+sudo apt-get update
+sudo apt-get install -y build-essential git curl procps file
+
+{{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
+echo "Installing base dependencies on CentOS/RHEL..."
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y git curl procps-ng file
+
+{{- else }}
+echo "Installing base dependencies on generic Linux..."
+# Try to install basic tools - commands may vary by distro
+if command -v apt-get &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y build-essential git curl procps file
+elif command -v dnf &> /dev/null; then
+    sudo dnf groupinstall -y "Development Tools" && sudo dnf install -y git curl procps-ng file
+elif command -v pacman &> /dev/null; then
+    sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
+fi
+{{- end }}
+
+# Install Homebrew if not already installed
+if ! command -v brew &> /dev/null; then
+    echo "Installing Homebrew on Linux..."
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+    # Add Homebrew to PATH
+    echo "Adding Homebrew to PATH..."
+    if [ -d "/home/linuxbrew/.linuxbrew" ]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    fi
+else
+    echo "Homebrew already installed"
+    # Ensure it's in PATH
+    if [ -d "/home/linuxbrew/.linuxbrew" ]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    fi
+fi
+
+# Install packages via Homebrew (same as macOS for consistency)
+echo "Installing packages via Homebrew..."
+brew bundle --file="$HOME/.Brewfile" || echo "Warning: Some Brewfile packages may have failed"
+
+# Install eza
+if ! command -v eza &> /dev/null; then
+    echo "Installing eza..."
+    brew install eza
+fi
+
+{{- else if eq .chezmoi.os "darwin" }}
 # macOS: Use Homebrew bundle to install from Brewfile
 if ! command -v brew &> /dev/null; then
     echo "Homebrew not found. Installing Homebrew..."
@@ -16,410 +75,11 @@ if ! command -v brew &> /dev/null; then
 fi
 
 echo "Installing packages from Brewfile..."
-brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
+brew bundle --file="$HOME/.Brewfile"
 
 # Install eza (modern ls with git support)
 echo "Installing eza..."
 brew install eza
-
-{{- else if eq .chezmoi.osRelease.id "arch" }}
-# Arch Linux: Install equivalent packages using pacman
-echo "Installing essential packages on Arch Linux..."
-
-# Install base-devel group (includes make, gcc, etc.)
-if ! pacman -Qg base-devel &> /dev/null; then
-    echo "Installing base-devel group..."
-    sudo pacman -S --needed --noconfirm base-devel
-fi
-
-# Core development tools and utilities
-PACKAGES=(
-    # Basic utilities often missing in minimal installations
-    which
-    findutils
-    grep
-    sed
-    gawk
-    diffutils
-    gnu-tar
-    gzip
-    unzip
-    procps-ng
-    util-linux
-    coreutils
-
-    # Development essentials
-    git
-    make
-    cmake
-    curl
-    wget
-
-    # Shell and completion
-    bash-completion
-    zsh
-    zsh-completions
-
-    # Modern CLI tools
-    aria2
-    aws-cli
-    direnv
-    expect
-    eza
-    fd
-    fzf
-    gh
-    jq
-    ripgrep
-    shellcheck
-    starship
-    stow
-    tree
-    tmux
-
-    # Programming languages and tools
-    go
-    nodejs
-    npm
-    pipenv
-    python-pipx
-    python-pyenv
-    python-tabulate
-
-    # Additional tools
-    neovim
-    p7zip
-    pandoc
-    subversion
-    zlib
-    terraform
-    nushell
-    typst
-{{- if not .isWSL }}
-    # GUI applications (skip on WSL)
-    firefox
-    # Nerd Fonts (GUI-only)
-    ttf-0xproto-nerd
-    ttf-3270-nerd
-    ttf-agave-nerd
-    ttf-anonymouspro-nerd
-    ttf-arimo-nerd
-    ttf-aurulentsansmono-nerd
-    ttf-bigblueterminal-nerd
-    ttf-bitstreamverasansmono-nerd
-    ttf-cascadiacode-nerd
-    ttf-cascadiamono-nerd
-    ttf-codenewroman-nerd
-    ttf-cousine-nerd
-    ttf-d2coding-nerd
-    ttf-daddytimemono-nerd
-    ttf-dejavu-nerd
-    ttf-departuremono-nerd
-    ttf-droid-nerd
-    ttf-envycodear-nerd
-    ttf-fantasquesansmono-nerd
-    ttf-firacode-nerd
-    ttf-firamono-nerd
-    ttf-geist-mono-nerd
-    ttf-go-nerd
-    ttf-hack-nerd
-    ttf-hasklig-nerd
-    ttf-heavydata-nerd
-    ttf-iawriter-nerd
-    ttf-ibmplex-mono-nerd
-    ttf-inconsolata-go-nerd
-    ttf-inconsolata-lgc-nerd
-    ttf-inconsolata-nerd
-    ttf-intone-nerd
-    ttf-iosevka-nerd
-    ttf-iosevkaterm-nerd
-    ttf-iosevkatermslab-nerd
-    ttf-jetbrains-mono-nerd
-    ttf-lekton-nerd
-    ttf-liberation-mono-nerd
-    ttf-lilex-nerd
-    ttf-martianmono-nerd
-    ttf-meslo-nerd
-    ttf-monaspace-nerd
-    ttf-monocraft-nerd
-    ttf-monofur-nerd
-    ttf-monoid-nerd
-    ttf-mononoki-nerd
-    ttf-noto-nerd
-    ttf-opendyslexic-nerd
-    ttf-overpass-nerd
-    ttf-profont-nerd
-    ttf-proggyclean-nerd
-    ttf-recursive-nerd
-    ttf-roboto-mono-nerd
-    ttf-sourcecodepro-nerd
-    ttf-spacemono-nerd
-    ttf-terminus-nerd
-    ttf-tinos-nerd
-    ttf-ubuntu-mono-nerd
-    ttf-ubuntu-nerd
-    ttf-ubuntu-sans-nerd
-    ttf-victormono-nerd
-{{- end }}
-    # Powerlevel10k theme
-    zsh-theme-powerlevel10k
-)
-
-for pkg in "${PACKAGES[@]}"; do
-    if ! pacman -Qi "$pkg" &> /dev/null; then
-        echo "Installing $pkg..."
-        sudo pacman -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
-    fi
-done
-
-# Install AUR packages using yay
-AUR_PACKAGES=(
-    brave-bin
-    wezterm-nightly-bin
-)
-
-# Check if yay is installed, install it if not
-if ! command -v yay &> /dev/null; then
-    echo "Installing yay AUR helper..."
-    sudo pacman -S --needed --noconfirm base-devel git
-    git clone https://aur.archlinux.org/yay.git /tmp/yay
-    cd /tmp/yay
-    makepkg -si --noconfirm
-    cd -
-    rm -rf /tmp/yay
-fi
-
-for pkg in "${AUR_PACKAGES[@]}"; do
-    if ! pacman -Qi "$pkg" &> /dev/null; then
-        echo "Installing AUR package $pkg..."
-        yay -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
-    fi
-done
-
-echo "Package installation complete!"
-
-{{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
-# Ubuntu/Debian: Install equivalent packages using apt
-echo "Installing essential packages on Ubuntu/Debian..."
-
-# Update package list
-sudo apt-get update
-
-# Install build-essential (includes make, gcc, etc.)
-if ! dpkg -l build-essential &> /dev/null; then
-    echo "Installing build-essential..."
-    sudo apt-get install -y build-essential
-fi
-
-# Core utilities and development tools
-PACKAGES=(
-    # Basic utilities often missing in minimal WSL installations
-    which
-    findutils
-    grep
-    sed
-    gawk
-    diffutils
-    tar
-    gzip
-    unzip
-    procps
-    util-linux
-    coreutils
-
-    # Development essentials
-    git
-    make
-    cmake
-    curl
-    wget
-    pkg-config
-
-    # Shell and completion
-    bash-completion
-    zsh
-
-    # Modern CLI tools
-    direnv
-    expect
-    fd-find
-    fzf
-    jq
-    ripgrep
-    tree
-    tmux
-    stow
-
-    # Programming languages and tools
-    golang
-    nodejs
-    npm
-    python3-pip
-    python3-venv
-    pipenv
-
-    # Additional tools
-    neovim
-    p7zip-full
-    pandoc
-    shellcheck
-    subversion
-    zlib1g-dev
-    software-properties-common
-)
-
-for pkg in "${PACKAGES[@]}"; do
-    if ! dpkg -l "$pkg" &> /dev/null; then
-        echo "Installing $pkg..."
-        sudo apt-get install -y "$pkg" || echo "Warning: Failed to install $pkg"
-    fi
-done
-
-# Install starship prompt (not in repos, use install script)
-if ! command -v starship &> /dev/null; then
-    echo "Installing starship..."
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
-fi
-
-# Install eza (modern ls) via cargo if available
-if ! command -v eza &> /dev/null; then
-    if command -v cargo &> /dev/null; then
-        echo "Installing eza..."
-        cargo install eza
-    else
-        echo "Warning: cargo not found, skipping eza installation"
-    fi
-fi
-
-# Install nushell (may need to use cargo or add repo)
-if ! command -v nu &> /dev/null; then
-    if command -v cargo &> /dev/null; then
-        echo "Installing nushell..."
-        cargo install nu
-    else
-        echo "Warning: nushell not available, install manually or use cargo"
-    fi
-fi
-
-# Install typst (modern typesetting system)
-if ! command -v typst &> /dev/null; then
-    if command -v cargo &> /dev/null; then
-        echo "Installing typst..."
-        cargo install typst-cli
-    else
-        echo "Warning: typst not available, install manually or use cargo"
-    fi
-fi
-
-echo "Package installation complete!"
-
-{{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
-# CentOS/RHEL: Install equivalent packages using dnf
-echo "Installing essential packages on CentOS/RHEL..."
-
-# Enable EPEL repository for additional packages
-if ! rpm -q epel-release &> /dev/null; then
-    echo "Installing EPEL repository..."
-    sudo dnf install -y epel-release
-fi
-
-# Install Development Tools group (includes make, gcc, etc.)
-if ! dnf group list installed | grep -q "Development Tools"; then
-    echo "Installing Development Tools group..."
-    sudo dnf groupinstall -y "Development Tools"
-fi
-
-# Core utilities and development tools
-PACKAGES=(
-    # Basic utilities often missing in minimal WSL installations
-    which
-    findutils
-    grep
-    sed
-    gawk
-    diffutils
-    tar
-    gzip
-    unzip
-    procps-ng
-    util-linux
-    coreutils
-
-    # Development essentials
-    git
-    make
-    cmake
-    curl
-    wget
-
-    # Shell and completion
-    bash-completion
-    zsh
-
-    # Modern CLI tools
-    direnv
-    expect
-    fd-find
-    fzf
-    jq
-    ripgrep
-    tree
-    tmux
-    stow
-
-    # Programming languages and tools
-    golang
-    nodejs
-    npm
-    python3-pip
-    python3-pipenv
-
-    # Additional tools
-    neovim
-    p7zip
-    pandoc
-    ShellCheck
-    subversion
-    zlib-devel
-    terraform
-    nushell
-    typst
-)
-
-for pkg in "${PACKAGES[@]}"; do
-    if ! rpm -q "$pkg" &> /dev/null; then
-        echo "Installing $pkg..."
-        sudo dnf install -y "$pkg" || echo "Warning: Failed to install $pkg"
-    fi
-done
-
-# Install starship prompt (not in repos, use install script)
-if ! command -v starship &> /dev/null; then
-    echo "Installing starship..."
-    curl -sS https://starship.rs/install.sh | sh -s -- -y
-fi
-
-# Install eza (modern ls) via cargo if not available
-if ! command -v eza &> /dev/null; then
-    echo "Installing eza..."
-    if command -v cargo &> /dev/null; then
-        cargo install eza
-    else
-        echo "Warning: cargo not found, skipping eza installation"
-    fi
-fi
-
-# Install typst via cargo if not available in repos
-if ! command -v typst &> /dev/null; then
-    echo "Installing typst..."
-    if command -v cargo &> /dev/null; then
-        cargo install typst-cli
-    else
-        echo "Warning: cargo not found, skipping typst installation"
-    fi
-fi
-
-echo "Package installation complete!"
 
 {{- else if eq .chezmoi.os "windows" }}
 # Windows: Use winget package manager
