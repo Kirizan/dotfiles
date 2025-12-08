@@ -21,7 +21,6 @@ pbcopy
 {{- if ne .chezmoi.os "darwin" }}
 Brewfile
 Library/
-Emacs.app/
 .zshrc
 .zprofile
 {{- end }}

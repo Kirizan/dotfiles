@@ -5,7 +5,6 @@ tap "homebrew/bundle"
 
 {{- if eq .chezmoi.os "darwin" }}
 # macOS-only taps
-tap "railwaycat/emacsmacport"
 tap "robotsandpencils/made"
 tap "xcodesorg/made"
 {{- end }}
@@ -78,7 +77,6 @@ brew "hashicorp/tap/terraform"
 {{- if eq .chezmoi.os "darwin" }}
 # macOS-only GUI applications and tools
 cask "wezterm"
-brew "railwaycat/emacsmacport/emacs-mac", args: ["without-modules"]
 brew "xcodesorg/made/xcodes"
 cask "brave-browser"
 cask "firefox"

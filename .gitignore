@@ -1,15 +1,8 @@
 # ignores local directory
 local/
 
-#ignore emacs directories
-elpa/
-packages/
-auto-save-list/
-
-# Ignore emacs files
+# Ignore editor swap files
 *.swp
-\#*\#
-.\#*
 
 # Claude Code local settings (contains session-specific command approvals)
 .claude/settings.local.json
