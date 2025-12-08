@@ -26,47 +26,78 @@ brew install eza
 # Arch Linux: Install equivalent packages using pacman
 echo "Installing essential packages on Arch Linux..."
 
+# Install base-devel group (includes make, gcc, etc.)
+if ! pacman -Qg base-devel &> /dev/null; then
+    echo "Installing base-devel group..."
+    sudo pacman -S --needed --noconfirm base-devel
+fi
+
 # Core development tools and utilities
 PACKAGES=(
-    aria2
-    aws-cli
-    bash-completion
+    # Basic utilities often missing in minimal installations
+    which
+    findutils
+    grep
+    sed
+    gawk
+    diffutils
+    gnu-tar
+    gzip
+    unzip
+    procps-ng
+    util-linux
+    coreutils
+
+    # Development essentials
+    git
+    make
     cmake
     curl
+    wget
+
+    # Shell and completion
+    bash-completion
+    zsh
+    zsh-completions
+
+    # Modern CLI tools
+    aria2
+    aws-cli
     direnv
     expect
     eza
     fd
     fzf
     gh
-    gnu-tar
-    go
-    grep
     jq
-    neovim
-    nodejs
-    npm
-    p7zip
-    pandoc
-    pipenv
-    python-pipx
-    python-pyenv
-    python-tabulate
     ripgrep
     shellcheck
     starship
     stow
-    subversion
-    tmux
     tree
-    wget
+    tmux
+
+    # Programming languages and tools
+    go
+    nodejs
+    npm
+    pipenv
+    python-pipx
+    python-pyenv
+    python-tabulate
+
+    # Additional tools
+    neovim
+    p7zip
+    pandoc
+    subversion
     zlib
-    zsh
-    zsh-completions
     terraform
-    firefox
     nushell
-    # Nerd Fonts
+{{- if not .isWSL }}
+    # GUI applications (skip on WSL)
+    firefox
+    # Nerd Fonts (GUI-only)
     ttf-0xproto-nerd
     ttf-3270-nerd
     ttf-agave-nerd
@@ -128,6 +159,7 @@ PACKAGES=(
     ttf-ubuntu-nerd
     ttf-ubuntu-sans-nerd
     ttf-victormono-nerd
+{{- end }}
     # Powerlevel10k theme
     zsh-theme-powerlevel10k
 )
@@ -162,6 +194,111 @@ for pkg in "${AUR_PACKAGES[@]}"; do
         yay -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
     fi
 done
+
+echo "Package installation complete!"
+
+{{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+# Ubuntu/Debian: Install equivalent packages using apt
+echo "Installing essential packages on Ubuntu/Debian..."
+
+# Update package list
+sudo apt-get update
+
+# Install build-essential (includes make, gcc, etc.)
+if ! dpkg -l build-essential &> /dev/null; then
+    echo "Installing build-essential..."
+    sudo apt-get install -y build-essential
+fi
+
+# Core utilities and development tools
+PACKAGES=(
+    # Basic utilities often missing in minimal WSL installations
+    which
+    findutils
+    grep
+    sed
+    gawk
+    diffutils
+    tar
+    gzip
+    unzip
+    procps
+    util-linux
+    coreutils
+
+    # Development essentials
+    git
+    make
+    cmake
+    curl
+    wget
+    pkg-config
+
+    # Shell and completion
+    bash-completion
+    zsh
+
+    # Modern CLI tools
+    direnv
+    expect
+    fd-find
+    fzf
+    jq
+    ripgrep
+    tree
+    tmux
+    stow
+
+    # Programming languages and tools
+    golang
+    nodejs
+    npm
+    python3-pip
+    python3-venv
+    pipenv
+
+    # Additional tools
+    neovim
+    p7zip-full
+    pandoc
+    shellcheck
+    subversion
+    zlib1g-dev
+    software-properties-common
+)
+
+for pkg in "${PACKAGES[@]}"; do
+    if ! dpkg -l "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        sudo apt-get install -y "$pkg" || echo "Warning: Failed to install $pkg"
+    fi
+done
+
+# Install starship prompt (not in repos, use install script)
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+# Install eza (modern ls) via cargo if available
+if ! command -v eza &> /dev/null; then
+    if command -v cargo &> /dev/null; then
+        echo "Installing eza..."
+        cargo install eza
+    else
+        echo "Warning: cargo not found, skipping eza installation"
+    fi
+fi
+
+# Install nushell (may need to use cargo or add repo)
+if ! command -v nu &> /dev/null; then
+    if command -v cargo &> /dev/null; then
+        echo "Installing nushell..."
+        cargo install nu
+    else
+        echo "Warning: nushell not available, install manually or use cargo"
+    fi
+fi
 
 echo "Package installation complete!"
 
