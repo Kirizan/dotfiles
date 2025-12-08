@@ -57,6 +57,7 @@ brew "zlib"
 brew "zsh"
 brew "zsh-completions"
 brew "nushell"
+brew "typst"
 brew "hashicorp/tap/terraform"
 cask "wezterm"
 brew "railwaycat/emacsmacport/emacs-mac", args: ["without-modules"]

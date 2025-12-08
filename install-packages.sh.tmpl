@@ -94,6 +94,7 @@ PACKAGES=(
     zlib
     terraform
     nushell
+    typst
 {{- if not .isWSL }}
     # GUI applications (skip on WSL)
     firefox
@@ -300,6 +301,16 @@ if ! command -v nu &> /dev/null; then
     fi
 fi
 
+# Install typst (modern typesetting system)
+if ! command -v typst &> /dev/null; then
+    if command -v cargo &> /dev/null; then
+        echo "Installing typst..."
+        cargo install typst-cli
+    else
+        echo "Warning: typst not available, install manually or use cargo"
+    fi
+fi
+
 echo "Package installation complete!"
 
 {{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
@@ -372,6 +383,7 @@ PACKAGES=(
     zlib-devel
     terraform
     nushell
+    typst
 )
 
 for pkg in "${PACKAGES[@]}"; do
@@ -397,6 +409,16 @@ if ! command -v eza &> /dev/null; then
     fi
 fi
 
+# Install typst via cargo if not available in repos
+if ! command -v typst &> /dev/null; then
+    echo "Installing typst..."
+    if command -v cargo &> /dev/null; then
+        cargo install typst-cli
+    else
+        echo "Warning: cargo not found, skipping typst installation"
+    fi
+fi
+
 echo "Package installation complete!"
 
 {{- else if eq .chezmoi.os "windows" }}
@@ -419,6 +441,10 @@ winget install --id sharkdp.fd -e --source winget
 winget install --id junegunn.fzf -e --source winget
 winget install --id jqlang.jq -e --source winget
 winget install --id HashiCorp.Terraform -e --source winget
+
+# Install typst (modern typesetting system)
+echo "Installing typst..."
+winget install --id typst.typst -e --source winget
 
 # Install starship prompt
 echo "Installing starship..."
