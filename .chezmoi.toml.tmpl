@@ -50,12 +50,24 @@
     install_cmd = "sudo pacman -S"
     update_cmd = "sudo pacman -Syu"
     search_cmd = "pacman -Ss"
+{{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
+[data.packages]
+    manager = "dnf"
+    install_cmd = "sudo dnf install"
+    update_cmd = "sudo dnf update"
+    search_cmd = "dnf search"
 {{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
 [data.packages]
     manager = "apt"
     install_cmd = "sudo apt install"
     update_cmd = "sudo apt update && sudo apt upgrade"
     search_cmd = "apt search"
+{{- else if eq .chezmoi.os "windows" }}
+[data.packages]
+    manager = "winget"
+    install_cmd = "winget install"
+    update_cmd = "winget upgrade --all"
+    search_cmd = "winget search"
 {{- else }}
 [data.packages]
     manager = "unknown"
