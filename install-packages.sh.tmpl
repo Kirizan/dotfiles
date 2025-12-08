@@ -175,34 +175,64 @@ if ! rpm -q epel-release &> /dev/null; then
     sudo dnf install -y epel-release
 fi
 
-# Core development tools and utilities
+# Install Development Tools group (includes make, gcc, etc.)
+if ! dnf group list installed | grep -q "Development Tools"; then
+    echo "Installing Development Tools group..."
+    sudo dnf groupinstall -y "Development Tools"
+fi
+
+# Core utilities and development tools
 PACKAGES=(
-    bash-completion
+    # Basic utilities often missing in minimal WSL installations
+    which
+    findutils
+    grep
+    sed
+    gawk
+    diffutils
+    tar
+    gzip
+    unzip
+    procps-ng
+    util-linux
+    coreutils
+
+    # Development essentials
+    git
+    make
     cmake
     curl
+    wget
+
+    # Shell and completion
+    bash-completion
+    zsh
+
+    # Modern CLI tools
     direnv
     expect
     fd-find
     fzf
-    git
-    golang
     jq
-    neovim
+    ripgrep
+    tree
+    tmux
+    stow
+
+    # Programming languages and tools
+    golang
     nodejs
     npm
-    p7zip
-    pandoc
     python3-pip
     python3-pipenv
-    ripgrep
+
+    # Additional tools
+    neovim
+    p7zip
+    pandoc
     ShellCheck
-    stow
     subversion
-    tmux
-    tree
-    wget
     zlib-devel
-    zsh
     terraform
     nushell
 )
