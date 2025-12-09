@@ -6,6 +6,13 @@ if command -v starship &> /dev/null; then
   eval "$(starship init zsh)"
 fi
 
+{{- if eq .chezmoi.os "linux" }}
+# Initialize Homebrew on Linux
+if [ -d "/home/linuxbrew/.linuxbrew" ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+{{- end }}
+
 {{- if eq .chezmoi.os "darwin" }}
 # macOS-specific PATH configurations
 # configures curl-openssl path options.

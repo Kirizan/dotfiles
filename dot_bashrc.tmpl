@@ -2,6 +2,11 @@
 # If not running interactively, don't do anything (leave this at the top of this file)
 [[ $- != *i* ]] && return
 
+# Initialize Homebrew on Linux
+if [ -d "/home/linuxbrew/.linuxbrew" ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
 {{- if eq .chezmoi.osRelease.id "arch" }}
 # All the default Omarchy aliases and functions
 # (don't mess with these directly, just overwrite them here!)
