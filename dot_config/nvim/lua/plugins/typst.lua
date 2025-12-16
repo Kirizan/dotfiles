@@ -8,14 +8,60 @@ return {
       require("typst-preview").update()
     end,
     ft = "typst",
-    opts = {
-      -- Configuration for typst-preview
-      dependencies_bin = {
-        -- Use system typst and tinymist from Homebrew
-        ["typst-preview"] = nil, -- Will use bundled version
-        ["websocat"] = nil, -- Will use bundled version
-      },
-    },
+    opts = function()
+      -- Detect WSL or Docker environment
+      local is_wsl = vim.fn.system("grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0"):match("1") ~= nil
+      local is_docker = vim.fn.filereadable("/.dockerenv") == 1
+
+      local config = {
+        dependencies_bin = {
+          ["typst-preview"] = nil, -- Will use bundled version
+          ["websocat"] = nil, -- Will use bundled version
+        },
+      }
+
+      -- Configure for WSL/Docker environments
+      if is_wsl or is_docker then
+        -- Get WSL host IP for accessing from Windows
+        local host_ip = "localhost"
+        if is_wsl then
+          local wsl_host = vim.fn.system("ip route show | grep -i default | awk '{ print $3}'"):gsub("%s+", "")
+          if wsl_host ~= "" then
+            host_ip = wsl_host
+          end
+        end
+
+        config.get_browser_cmd = function(url)
+          if is_wsl then
+            -- Open in Windows browser from WSL
+            -- Try wslview first (if wslu is installed), fallback to explorer.exe
+            if vim.fn.executable("wslview") == 1 then
+              return { "wslview", url }
+            else
+              -- explorer.exe can open URLs
+              return { "explorer.exe", url }
+            end
+          elseif is_docker then
+            -- For Docker, print URL for manual access
+            -- Replace localhost with host IP if available
+            local external_url = url:gsub("localhost", host_ip)
+            vim.notify(
+              "Docker detected - Open in host browser:\n" .. external_url,
+              vim.log.levels.INFO,
+              { timeout = 10000 }
+            )
+            return nil -- Don't try to auto-open
+          end
+        end
+
+        -- Bind to 0.0.0.0 to allow external access from WSL/Docker
+        config.server_opts = {
+          host = "0.0.0.0",
+        }
+      end
+
+      return config
+    end,
   },
 
   -- Typst LSP configuration via Mason
