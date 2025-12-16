@@ -67,6 +67,30 @@ if ! command -v eza &> /dev/null; then
     brew install eza
 fi
 
+{{- if .isWSL }}
+# WSL-specific packages
+echo "Installing WSL utilities..."
+
+# Install wslu (provides wslview for opening Windows browser from WSL)
+if ! command -v wslview &> /dev/null; then
+    {{- if eq .chezmoi.osRelease.id "arch" }}
+    sudo pacman -S --needed --noconfirm wslu
+    {{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+    sudo apt-get update && sudo apt-get install -y wslu
+    {{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
+    # wslu may need EPEL or manual installation on CentOS/RHEL
+    if ! sudo dnf install -y wslu 2>/dev/null; then
+        echo "Warning: wslu not available in repositories. Install manually from:"
+        echo "https://github.com/wslutilities/wslu/releases"
+    fi
+    {{- else }}
+    echo "Warning: Unknown distribution. Install wslu manually for wslview support."
+    {{- end }}
+else
+    echo "wslu already installed"
+fi
+{{- end }}
+
 {{- else if eq .chezmoi.os "darwin" }}
 # macOS: Use Homebrew bundle to install from Brewfile
 if ! command -v brew &> /dev/null; then

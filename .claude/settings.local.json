@@ -54,7 +54,8 @@
       "Bash(journalctl:*)",
       "Bash(sudo journalctl:*)",
       "Bash(sudo mkdir:*)",
-      "Bash(sudo systemctl restart:*)"
+      "Bash(sudo systemctl restart:*)",
+      "Bash(brew search:*)"
     ],
     "deny": [],
     "ask": []
