@@ -37,7 +37,17 @@
       "Bash(pactl info)",
       "Bash(amixer scontrols)",
       "Bash(readlink:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(hyprctl devices:*)",
+      "Bash(timeout 3 libinput:*)",
+      "Bash(dmesg:*)",
+      "Bash(sudo dmesg:*)",
+      "Bash(sudo modprobe:*)",
+      "Bash(cat:*)",
+      "Bash(sudo systemctl enable:*)",
+      "Bash(lsmod:*)",
+      "Bash(sudo dmidecode:*)",
+      "Bash(xinput list:*)"
     ],
     "deny": [],
     "ask": []
