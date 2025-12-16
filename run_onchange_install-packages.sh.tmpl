@@ -73,19 +73,49 @@ echo "Installing WSL utilities..."
 
 # Install wslu (provides wslview for opening Windows browser from WSL)
 if ! command -v wslview &> /dev/null; then
+    echo "Installing wslu..."
+    WSLU_INSTALLED=false
+
     {{- if eq .chezmoi.osRelease.id "arch" }}
-    sudo pacman -S --needed --noconfirm wslu
-    {{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
-    sudo apt-get update && sudo apt-get install -y wslu
-    {{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
-    # wslu may need EPEL or manual installation on CentOS/RHEL
-    if ! sudo dnf install -y wslu 2>/dev/null; then
-        echo "Warning: wslu not available in repositories. Install manually from:"
-        echo "https://github.com/wslutilities/wslu/releases"
+    if sudo pacman -S --needed --noconfirm wslu 2>/dev/null; then
+        WSLU_INSTALLED=true
     fi
-    {{- else }}
-    echo "Warning: Unknown distribution. Install wslu manually for wslview support."
+    {{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+    sudo apt-get update
+    if sudo apt-get install -y wslu 2>/dev/null; then
+        WSLU_INSTALLED=true
+    fi
+    {{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
+    if sudo dnf install -y wslu 2>/dev/null; then
+        WSLU_INSTALLED=true
+    fi
     {{- end }}
+
+    # Fallback: Build from source if package manager installation failed
+    if [ "$WSLU_INSTALLED" = "false" ]; then
+        echo "wslu not available in package manager, building from source..."
+
+        # Clone and build wslu
+        TEMP_DIR=$(mktemp -d)
+        cd "$TEMP_DIR"
+
+        if git clone https://github.com/wslutilities/wslu.git; then
+            cd wslu
+            if make; then
+                echo "Installing wslu..."
+                sudo make install
+                echo "wslu installed successfully from source"
+            else
+                echo "Error: Failed to build wslu"
+            fi
+        else
+            echo "Error: Failed to clone wslu repository"
+        fi
+
+        # Cleanup
+        cd ~
+        rm -rf "$TEMP_DIR"
+    fi
 else
     echo "wslu already installed"
 fi
