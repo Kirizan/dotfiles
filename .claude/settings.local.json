@@ -47,7 +47,14 @@
       "Bash(sudo systemctl enable:*)",
       "Bash(lsmod:*)",
       "Bash(sudo dmidecode:*)",
-      "Bash(xinput list:*)"
+      "Bash(xinput list:*)",
+      "Bash(loginctl show-user:*)",
+      "Bash(systemctl status:*)",
+      "Bash(systemd-inhibit:*)",
+      "Bash(journalctl:*)",
+      "Bash(sudo journalctl:*)",
+      "Bash(sudo mkdir:*)",
+      "Bash(sudo systemctl restart:*)"
     ],
     "deny": [],
     "ask": []

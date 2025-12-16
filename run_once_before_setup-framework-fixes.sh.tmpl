@@ -1,0 +1,66 @@
+#!/bin/bash
+{{- if eq .chezmoi.os "linux" }}
+
+# Check if this is a Framework laptop
+if ! grep -qi "framework" /sys/class/dmi/id/product_name 2>/dev/null; then
+  echo "Not a Framework laptop, skipping Framework-specific fixes..."
+  exit 0
+fi
+
+echo "Detected Framework laptop, applying system fixes..."
+
+# 1. Configure systemd-logind for reliable lid switch behavior
+echo "Configuring lid switch handling..."
+sudo mkdir -p /etc/systemd/logind.conf.d
+cat <<'EOF' | sudo tee /etc/systemd/logind.conf.d/lid-switch.conf > /dev/null
+[Login]
+# Suspend on lid close regardless of power state
+HandleLidSwitch=suspend
+HandleLidSwitchExternalPower=suspend
+HandleLidSwitchDocked=ignore
+EOF
+
+# 2. Create touchpad resume fix service
+# Framework touchpads using i2c_hid_acpi often fail to resume from suspend
+echo "Creating touchpad resume fix service..."
+cat <<'EOF' | sudo tee /etc/systemd/system/touchpad-resume-fix.service > /dev/null
+[Unit]
+Description=Fix touchpad after resume from suspend
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/modprobe -r i2c_hid_acpi
+ExecStart=/bin/sleep 0.5
+ExecStart=/usr/bin/modprobe i2c_hid_acpi
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+EOF
+
+# 3. Enable the touchpad fix service
+echo "Enabling touchpad resume fix service..."
+sudo systemctl enable touchpad-resume-fix.service 2>&1 | grep -v "Created symlink" || true
+
+# 4. Restart logind to apply lid switch configuration
+echo "Applying logind configuration..."
+echo "NOTE: This may briefly interrupt your session. Saving work is recommended."
+read -p "Restart systemd-logind now? (y/N) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  sudo systemctl restart systemd-logind.service
+  echo "Logind restarted successfully"
+else
+  echo "Skipped logind restart. Changes will apply on next reboot."
+fi
+
+echo "Framework laptop fixes applied successfully!"
+echo ""
+echo "Configuration applied:"
+echo "  ✓ Lid switch configured to always suspend"
+echo "  ✓ Touchpad resume fix service enabled"
+echo ""
+echo "Note: Your system uses s2idle (Modern Standby) for suspend."
+echo "For better battery life, check your BIOS for S3/Deep Sleep options."
+
+{{- end }}
