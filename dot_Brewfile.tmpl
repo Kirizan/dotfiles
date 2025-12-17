@@ -18,7 +18,11 @@ brew "libtool"
 brew "cfssl"
 brew "cheat"
 brew "cmake"
-brew "coreutils"
+
+{{- if eq .chezmoi.os "darwin" }}
+brew "coreutils"  # GNU coreutils (macOS has BSD versions)
+{{- end }}
+
 brew "curl"
 brew "direnv"
 
@@ -31,9 +35,17 @@ brew "fd"
 brew "fzf"
 brew "gd"
 brew "gh"
-brew "gnu-tar"
+
+{{- if eq .chezmoi.os "darwin" }}
+brew "gnu-tar"  # GNU tar (macOS has BSD tar)
+{{- end }}
+
 brew "go"
-brew "grep"
+
+{{- if eq .chezmoi.os "darwin" }}
+brew "grep"  # GNU grep (macOS has BSD grep)
+{{- end }}
+
 brew "gts"
 brew "ipcalc"
 brew "ispell"

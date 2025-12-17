@@ -55,7 +55,10 @@
       "Bash(sudo journalctl:*)",
       "Bash(sudo mkdir:*)",
       "Bash(sudo systemctl restart:*)",
-      "Bash(brew search:*)"
+      "Bash(brew search:*)",
+      "Bash(command -v:*)",
+      "Bash(source ~/.config/user-dirs.dirs)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []
