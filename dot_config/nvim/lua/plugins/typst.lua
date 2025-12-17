@@ -100,14 +100,10 @@ return {
           local buf = vim.api.nvim_get_current_buf()
 
           -- <leader>ktp - Toggle preview
-          vim.keymap.set("n", "<leader>ktp", function()
-            require("typst-preview").toggle()
-          end, { buffer = buf, desc = "Toggle Typst Preview" })
+          vim.keymap.set("n", "<leader>ktp", "<cmd>TypstPreviewToggle<cr>", { buffer = buf, desc = "Toggle Typst Preview" })
 
           -- <leader>kts - Sync preview (jump to current position)
-          vim.keymap.set("n", "<leader>kts", function()
-            require("typst-preview").sync_with_cursor()
-          end, { buffer = buf, desc = "Sync Typst Preview" })
+          vim.keymap.set("n", "<leader>kts", "<cmd>TypstPreviewSyncCursor<cr>", { buffer = buf, desc = "Sync Typst Preview" })
 
           -- <leader>ktc - Compile to PDF
           vim.keymap.set("n", "<leader>ktc", function()
