@@ -58,7 +58,8 @@
       "Bash(brew search:*)",
       "Bash(command -v:*)",
       "Bash(source ~/.config/user-dirs.dirs)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(brew deps:*)"
     ],
     "deny": [],
     "ask": []

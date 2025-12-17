@@ -57,9 +57,40 @@ else
     fi
 fi
 
+# Prevent Homebrew from replacing system utilities on Linux
+export HOMEBREW_NO_INSTALL_FROM_API=1
+
+# List of system packages that should never be installed via Homebrew on Linux
+SYSTEM_PACKAGES="util-linux coreutils grep findutils gnu-tar gnu-sed binutils"
+
 # Install packages via Homebrew (same as macOS for consistency)
 echo "Installing packages via Homebrew..."
-brew bundle --file="$HOME/.Brewfile" || echo "Warning: Some Brewfile packages may have failed"
+
+# Install packages individually to handle conflicts gracefully
+if brew bundle check --file="$HOME/.Brewfile" &>/dev/null; then
+    echo "All Brewfile packages already installed"
+else
+    echo "Installing Brewfile packages..."
+    # Try bundle install, skip packages that conflict with system utilities
+    for pkg in $SYSTEM_PACKAGES; do
+        if brew list "$pkg" &>/dev/null 2>&1; then
+            echo "Skipping system package: $pkg (conflicts with system utilities)"
+            brew uninstall --ignore-dependencies "$pkg" 2>/dev/null || true
+        fi
+    done
+
+    brew bundle --file="$HOME/.Brewfile" || echo "Warning: Some Brewfile packages may have failed"
+
+    # After bundle install, check if any system packages were installed as dependencies
+    # and remove them to prevent conflicts
+    echo "Checking for system package conflicts..."
+    for pkg in $SYSTEM_PACKAGES; do
+        if brew list "$pkg" &>/dev/null 2>&1; then
+            echo "Removing system package installed as dependency: $pkg"
+            brew uninstall --ignore-dependencies "$pkg" 2>/dev/null || true
+        fi
+    done
+fi
 
 # Install eza
 if ! command -v eza &> /dev/null; then
