@@ -59,7 +59,8 @@
       "Bash(command -v:*)",
       "Bash(source ~/.config/user-dirs.dirs)",
       "Bash(echo:*)",
-      "Bash(brew deps:*)"
+      "Bash(brew deps:*)",
+      "Bash(nvim:*)"
     ],
     "deny": [],
     "ask": []

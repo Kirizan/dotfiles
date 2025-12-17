@@ -167,7 +167,7 @@ return {
       -- Add which-key descriptions for discoverability
       local wk = require("which-key")
       wk.add({
-        { "<leader>k", group = "custom" },
+        { "<leader>k", group = "KirDoIt" },
         { "<leader>kt", group = "typst" },
         { "<leader>ktp", desc = "Toggle Preview" },
         { "<leader>kts", desc = "Sync Preview" },
