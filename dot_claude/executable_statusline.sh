@@ -17,8 +17,10 @@ if [ "$USAGE" != "null" ]; then
     CACHE_CREATE=$(echo "$USAGE" | jq '.cache_creation_input_tokens')
     CACHE_READ=$(echo "$USAGE" | jq '.cache_read_input_tokens')
 
-    # Total tokens used in context
-    CURRENT_TOKENS=$((INPUT_TOKENS + CACHE_CREATE + CACHE_READ))
+    # Total tokens used in context window
+    # Only count input_tokens for context window usage
+    # (cache tokens are for cost calculation, not context usage)
+    CURRENT_TOKENS=$INPUT_TOKENS
     PERCENT_USED=$((CURRENT_TOKENS * 100 / CONTEXT_SIZE))
 
     # Format: [Model] 📁 dir | 120182/200000 (60%)
