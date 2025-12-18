@@ -1,0 +1,32 @@
+{{- if .isWSL }}
+-- WSL: Open URLs in Windows browser
+return {
+  {
+    "LazyVim/LazyVim",
+    opts = function()
+      -- Detect WSL environment
+      local is_wsl = vim.fn.system("grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0"):match("1") ~= nil
+
+      if is_wsl then
+        -- Set up URL opening to use Windows browser
+        vim.g.netrw_browsex_viewer = vim.fn.executable("wslview") == 1 and "wslview" or "explorer.exe"
+
+        -- Override gx mapping to open URLs in Windows browser
+        vim.keymap.set("n", "gx", function()
+          local url = vim.fn.expand("<cfile>")
+          if url:match("^https?://") or url:match("^www%.") then
+            local cmd = vim.fn.executable("wslview") == 1 and "wslview" or "explorer.exe"
+            vim.fn.system(cmd .. " " .. vim.fn.shellescape(url))
+            vim.notify("Opening in Windows browser: " .. url, vim.log.levels.INFO)
+          else
+            vim.notify("Not a valid URL: " .. url, vim.log.levels.WARN)
+          end
+        end, { desc = "Open URL in Windows browser" })
+      end
+    end,
+  },
+}
+{{- else }}
+-- Not WSL, return empty config
+return {}
+{{- end }}
