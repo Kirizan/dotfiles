@@ -9,22 +9,14 @@ input=$(cat)
 MODEL=$(echo "$input" | jq -r '.model.display_name')
 DIR=$(echo "$input" | jq -r '.workspace.current_dir' | sed 's|.*/||')
 CONTEXT_SIZE=$(echo "$input" | jq -r '.context_window.context_window_size')
-USAGE=$(echo "$input" | jq '.context_window.current_usage')
 
-# Calculate token usage
-if [ "$USAGE" != "null" ]; then
-    INPUT_TOKENS=$(echo "$USAGE" | jq '.input_tokens')
-    CACHE_CREATE=$(echo "$USAGE" | jq '.cache_creation_input_tokens')
-    CACHE_READ=$(echo "$USAGE" | jq '.cache_read_input_tokens')
+# Get total input tokens from the session (not just current request)
+TOTAL_INPUT=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
 
-    # Total tokens used in context window
-    # Only count input_tokens for context window usage
-    # (cache tokens are for cost calculation, not context usage)
-    CURRENT_TOKENS=$INPUT_TOKENS
-    PERCENT_USED=$((CURRENT_TOKENS * 100 / CONTEXT_SIZE))
-
-    # Format: [Model] 📁 dir | 120182/200000 (60%)
-    echo "[$MODEL] 📁 $DIR | ${CURRENT_TOKENS}/${CONTEXT_SIZE} (${PERCENT_USED}%)"
+# Calculate percentage
+if [ "$TOTAL_INPUT" != "0" ] && [ "$TOTAL_INPUT" != "null" ]; then
+    PERCENT_USED=$((TOTAL_INPUT * 100 / CONTEXT_SIZE))
+    echo "[$MODEL] 📁 $DIR | ${TOTAL_INPUT}/${CONTEXT_SIZE} (${PERCENT_USED}%)"
 else
     # No usage yet (start of session)
     echo "[$MODEL] 📁 $DIR | 0/${CONTEXT_SIZE} (0%)"

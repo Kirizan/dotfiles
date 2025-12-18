@@ -61,7 +61,8 @@
       "Bash(echo:*)",
       "Bash(brew deps:*)",
       "Bash(nvim:*)",
-      "Bash(~/.claude/statusline.sh)"
+      "Bash(~/.claude/statusline.sh)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
