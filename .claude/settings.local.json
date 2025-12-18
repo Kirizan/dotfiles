@@ -60,7 +60,8 @@
       "Bash(source ~/.config/user-dirs.dirs)",
       "Bash(echo:*)",
       "Bash(brew deps:*)",
-      "Bash(nvim:*)"
+      "Bash(nvim:*)",
+      "Bash(~/.claude/statusline.sh)"
     ],
     "deny": [],
     "ask": []
