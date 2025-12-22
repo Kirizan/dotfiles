@@ -62,7 +62,11 @@
       "Bash(brew deps:*)",
       "Bash(nvim:*)",
       "Bash(~/.claude/statusline.sh)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(fc-list:*)",
+      "Bash(ps:*)",
+      "Bash(fc-cache:*)",
+      "Bash(xdg-terminal-exec:*)"
     ],
     "deny": [],
     "ask": []
