@@ -93,28 +93,28 @@ return {
   {
     "LazyVim/LazyVim",
     opts = function(_, opts)
-      -- Typst-specific keybindings under <leader>kt
+      -- Typst-specific keybindings under <leader>kT (uppercase T)
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "typst",
         callback = function()
           local buf = vim.api.nvim_get_current_buf()
 
-          -- <leader>ktp - Toggle preview
-          vim.keymap.set("n", "<leader>ktp", "<cmd>TypstPreviewToggle<cr>", { buffer = buf, desc = "Toggle Typst Preview" })
+          -- <leader>kTp - Toggle preview
+          vim.keymap.set("n", "<leader>kTp", "<cmd>TypstPreviewToggle<cr>", { buffer = buf, desc = "Toggle Typst Preview" })
 
-          -- <leader>kts - Sync preview (jump to current position)
-          vim.keymap.set("n", "<leader>kts", "<cmd>TypstPreviewSyncCursor<cr>", { buffer = buf, desc = "Sync Typst Preview" })
+          -- <leader>kTs - Sync preview (jump to current position)
+          vim.keymap.set("n", "<leader>kTs", "<cmd>TypstPreviewSyncCursor<cr>", { buffer = buf, desc = "Sync Typst Preview" })
 
-          -- <leader>ktc - Compile to PDF
-          vim.keymap.set("n", "<leader>ktc", function()
+          -- <leader>kTc - Compile to PDF
+          vim.keymap.set("n", "<leader>kTc", function()
             local file = vim.fn.expand("%:p")
             local output = vim.fn.expand("%:p:r") .. ".pdf"
             vim.cmd("!" .. "typst compile " .. vim.fn.shellescape(file) .. " " .. vim.fn.shellescape(output))
             vim.notify("Compiled to " .. output, vim.log.levels.INFO)
           end, { buffer = buf, desc = "Compile Typst to PDF" })
 
-          -- <leader>ktd - Compile to DOCX (via Pandoc)
-          vim.keymap.set("n", "<leader>ktd", function()
+          -- <leader>kTd - Compile to DOCX (via Pandoc)
+          vim.keymap.set("n", "<leader>kTd", function()
             local file = vim.fn.expand("%:p")
             local pdf_output = vim.fn.expand("%:p:r") .. ".pdf"
             local docx_output = vim.fn.expand("%:p:r") .. ".docx"
@@ -135,8 +135,8 @@ return {
             vim.notify("Compiled to " .. docx_output, vim.log.levels.INFO)
           end, { buffer = buf, desc = "Compile Typst to DOCX" })
 
-          -- <leader>kto - Open compiled PDF
-          vim.keymap.set("n", "<leader>kto", function()
+          -- <leader>kTo - Open compiled PDF
+          vim.keymap.set("n", "<leader>kTo", function()
             local pdf_file = vim.fn.expand("%:p:r") .. ".pdf"
             if vim.fn.filereadable(pdf_file) == 1 then
               if vim.fn.has("mac") == 1 then
@@ -146,12 +146,12 @@ return {
               end
               vim.notify("Opened " .. pdf_file, vim.log.levels.INFO)
             else
-              vim.notify("PDF file not found. Compile first with <leader>ktc", vim.log.levels.WARN)
+              vim.notify("PDF file not found. Compile first with <leader>kTc", vim.log.levels.WARN)
             end
           end, { buffer = buf, desc = "Open Compiled PDF" })
 
-          -- <leader>ktw - Watch mode (compile on save)
-          vim.keymap.set("n", "<leader>ktw", function()
+          -- <leader>kTw - Watch mode (compile on save)
+          vim.keymap.set("n", "<leader>kTw", function()
             local file = vim.fn.expand("%:p")
             local output = vim.fn.expand("%:p:r") .. ".pdf"
             vim.cmd("!" .. "typst watch " .. vim.fn.shellescape(file) .. " " .. vim.fn.shellescape(output) .. " &")
@@ -164,13 +164,13 @@ return {
       local wk = require("which-key")
       wk.add({
         { "<leader>k", group = "KirDoIt" },
-        { "<leader>kt", group = "typst" },
-        { "<leader>ktp", desc = "Toggle Preview" },
-        { "<leader>kts", desc = "Sync Preview" },
-        { "<leader>ktc", desc = "Compile to PDF" },
-        { "<leader>ktd", desc = "Compile to DOCX" },
-        { "<leader>kto", desc = "Open PDF" },
-        { "<leader>ktw", desc = "Watch Mode" },
+        { "<leader>kT", group = "typst" },
+        { "<leader>kTp", desc = "Toggle Preview" },
+        { "<leader>kTs", desc = "Sync Preview" },
+        { "<leader>kTc", desc = "Compile to PDF" },
+        { "<leader>kTd", desc = "Compile to DOCX" },
+        { "<leader>kTo", desc = "Open PDF" },
+        { "<leader>kTw", desc = "Watch Mode" },
       })
     end,
   },
