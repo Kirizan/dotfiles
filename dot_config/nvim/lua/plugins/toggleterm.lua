@@ -78,6 +78,7 @@ return {
       -- Which-key integration
       local wk = require("which-key")
       wk.add({
+        { "<leader>kt", group = "terminal" },
         { "<leader>kth", desc = "Horizontal Terminal" },
         { "<leader>ktv", desc = "Vertical Terminal" },
         { "<leader>ktf", desc = "Floating Terminal" },
