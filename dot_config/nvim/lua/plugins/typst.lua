@@ -164,7 +164,7 @@ return {
       local wk = require("which-key")
       wk.add({
         { "<leader>k", group = "KirDoIt" },
-        { "<leader>kT", group = " typst", icon = "" },
+        { "<leader>kT", group = "document" },
         { "<leader>kTp", desc = "Toggle Preview" },
         { "<leader>kTs", desc = "Sync Preview" },
         { "<leader>kTc", desc = "Compile to PDF" },
