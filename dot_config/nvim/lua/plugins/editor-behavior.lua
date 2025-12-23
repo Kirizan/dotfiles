@@ -22,7 +22,8 @@ return {
             -- Debounce: only save after 1 second of inactivity
             vim.defer_fn(function()
               if vim.bo.modified and vim.bo.buftype == "" and vim.fn.filereadable(vim.fn.expand("%")) == 1 then
-                vim.cmd("silent! write")
+                -- Use noautocmd to prevent format-on-save and whitespace trimming
+                vim.cmd("silent! noautocmd write")
                 -- Optional: show a subtle notification
                 -- vim.notify("File auto-saved", vim.log.levels.INFO, { timeout = 500 })
               end
