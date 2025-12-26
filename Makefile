@@ -1,4 +1,4 @@
-.PHONY: help setup install-chezmoi install-prereqs apply update status diff check clean
+.PHONY: help setup install-chezmoi install-prereqs apply update status diff check clean github-ssh
 
 # Detect operating system
 UNAME_S := $(shell uname -s)
@@ -160,3 +160,52 @@ endif
 	else \
 		/bin/echo -e "$(YELLOW)⚠ chezmoi not installed$(NC)"; \
 	fi
+
+github-ssh: ## Setup GitHub SSH authentication
+	@/bin/echo -e "$(CYAN)Setting up GitHub SSH authentication...$(NC)\n"
+	@# Check if SSH key already exists
+	@if [ -f ~/.ssh/id_ed25519 ]; then \
+		/bin/echo -e "$(GREEN)✓ SSH key already exists: ~/.ssh/id_ed25519$(NC)\n"; \
+	else \
+		/bin/echo -e "$(YELLOW)Generating new SSH key...$(NC)"; \
+		/bin/echo -e "$(YELLOW)Please enter your email address:$(NC)"; \
+		read -p "Email: " email; \
+		ssh-keygen -t ed25519 -C "$$email" -f ~/.ssh/id_ed25519 -N ""; \
+		/bin/echo -e "$(GREEN)✓ SSH key generated$(NC)\n"; \
+	fi
+	@# Ensure ssh-agent is running
+	@/bin/echo -e "$(CYAN)Starting ssh-agent...$(NC)"
+	@eval "$$(ssh-agent -s)" > /dev/null 2>&1 || true
+	@ssh-add ~/.ssh/id_ed25519 2>/dev/null || true
+	@/bin/echo -e "$(GREEN)✓ SSH key added to agent$(NC)\n"
+	@# Display public key
+	@/bin/echo -e "$(CYAN)Your SSH public key:$(NC)\n"
+	@/bin/echo -e "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)"
+	@cat ~/.ssh/id_ed25519.pub
+	@/bin/echo -e "$(YELLOW)━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$(NC)\n"
+	@# Copy to clipboard if available
+	@if command -v xclip >/dev/null 2>&1; then \
+		cat ~/.ssh/id_ed25519.pub | xclip -selection clipboard; \
+		/bin/echo -e "$(GREEN)✓ Public key copied to clipboard (xclip)$(NC)\n"; \
+	elif command -v wl-copy >/dev/null 2>&1; then \
+		cat ~/.ssh/id_ed25519.pub | wl-copy; \
+		/bin/echo -e "$(GREEN)✓ Public key copied to clipboard (wl-copy)$(NC)\n"; \
+	elif command -v pbcopy >/dev/null 2>&1; then \
+		cat ~/.ssh/id_ed25519.pub | pbcopy; \
+		/bin/echo -e "$(GREEN)✓ Public key copied to clipboard (pbcopy)$(NC)\n"; \
+	else \
+		/bin/echo -e "$(YELLOW)⚠ No clipboard utility found - please copy manually$(NC)\n"; \
+	fi
+	@# Instructions
+	@/bin/echo -e "$(CYAN)Next steps:$(NC)\n"
+	@/bin/echo -e "  1. Go to: $(YELLOW)https://github.com/settings/ssh/new$(NC)"
+	@/bin/echo -e "  2. Title: $$(hostname) - $$(date +%Y-%m-%d)"
+	@/bin/echo -e "  3. Paste the key above"
+	@/bin/echo -e "  4. Click 'Add SSH key'\n"
+	@/bin/echo -e "$(CYAN)Press Enter to test GitHub connection...$(NC)"
+	@read -p "" dummy
+	@/bin/echo -e "$(CYAN)Testing GitHub SSH connection...$(NC)\n"
+	@ssh -T git@github.com 2>&1 | grep -q "successfully authenticated" && \
+		/bin/echo -e "$(GREEN)✓ GitHub SSH authentication successful!$(NC)\n" || \
+		(/bin/echo -e "$(RED)✗ GitHub SSH authentication failed$(NC)" && \
+		 /bin/echo -e "$(YELLOW)Make sure you've added the key to GitHub and try again$(NC)\n")
