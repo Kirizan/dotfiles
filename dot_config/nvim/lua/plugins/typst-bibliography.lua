@@ -269,45 +269,62 @@ return {
           -- Step 2: Collect field data
           local data = {}
           local fields = M.fields_by_type[entry_type]
+          local bib_file = M.find_bib_file()
+          -- Always ask about directive unless current file already has one
+          local should_ask_directive = not M.has_bibliography_directive()
 
           local function collect_field(index)
             if index > #fields then
-              -- All fields collected, write to file
-              local bib_file = M.find_bib_file()
-              local file_existed = vim.fn.filereadable(bib_file) == 1
-              local entry = M.format_bib_entry(entry_type, data)
+              -- All fields collected
+              -- If we need to ask about directive, ask now as part of the form
+              if should_ask_directive then
+                local default_pref = M.get_auto_directive_pref()
+                local default_option = default_pref and "Yes" or "No"
 
-              if M.write_bib_entry(bib_file, entry) then
-                vim.notify(
-                  string.format("Added reference '%s' to %s", data.key, vim.fn.fnamemodify(bib_file, ":~")),
-                  vim.log.levels.INFO
-                )
+                vim.ui.select({ "Yes", "No" }, {
+                  prompt = "Add #bibliography() directive to this file?",
+                  format_item = function(item)
+                    if item == default_option then
+                      return item .. " (recommended)"
+                    end
+                    return item
+                  end,
+                }, function(choice)
+                  if choice == nil then
+                    -- User cancelled
+                    return
+                  end
 
-                -- If this is a new bibliography file and current file doesn't have directive, ask to add it
-                if not file_existed and not M.has_bibliography_directive() then
-                  local default_pref = M.get_auto_directive_pref()
-                  local default_option = default_pref and "Yes" or "No"
+                  -- Save preference
+                  M.save_auto_directive_pref(choice == "Yes")
 
-                  vim.ui.select({ "Yes", "No" }, {
-                    prompt = "Add #bibliography() directive to this file?",
-                    format_item = function(item)
-                      if item == default_option then
-                        return item .. " (default)"
-                      end
-                      return item
-                    end,
-                  }, function(choice)
+                  -- Write the entry
+                  local entry = M.format_bib_entry(entry_type, data)
+                  if M.write_bib_entry(bib_file, entry) then
+                    vim.notify(
+                      string.format("Added reference '%s' to %s", data.key, vim.fn.fnamemodify(bib_file, ":~")),
+                      vim.log.levels.INFO
+                    )
+
+                    -- Add directive if user chose yes
                     if choice == "Yes" then
                       M.add_bibliography_directive(bib_file)
-                      M.save_auto_directive_pref(true)
-                    elseif choice == "No" then
-                      M.save_auto_directive_pref(false)
-                      vim.notify("Skipped adding #bibliography() directive", vim.log.levels.INFO)
                     end
-                  end)
-                end
+                  else
+                    vim.notify("Failed to write reference", vim.log.levels.ERROR)
+                  end
+                end)
               else
-                vim.notify("Failed to write reference", vim.log.levels.ERROR)
+                -- No need to ask about directive, just write the entry
+                local entry = M.format_bib_entry(entry_type, data)
+                if M.write_bib_entry(bib_file, entry) then
+                  vim.notify(
+                    string.format("Added reference '%s' to %s", data.key, vim.fn.fnamemodify(bib_file, ":~")),
+                    vim.log.levels.INFO
+                  )
+                else
+                  vim.notify("Failed to write reference", vim.log.levels.ERROR)
+                end
               end
               return
             end
