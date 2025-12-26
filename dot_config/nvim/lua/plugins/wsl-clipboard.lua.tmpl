@@ -20,6 +20,10 @@ return {
         cache_enabled = 0,
       }
 
+      -- Use system clipboard as default register
+      -- This makes y/p operations use Windows clipboard automatically
+      vim.opt.clipboard = "unnamedplus"
+
       -- Optional: Add convenient keybindings for clipboard operations
       -- These make it easier to work with the Windows clipboard
 
