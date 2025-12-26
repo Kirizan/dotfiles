@@ -166,6 +166,9 @@ return {
 
           -- <leader>kTI - Import reference from DOI
           vim.keymap.set("n", "<leader>kTI", "<cmd>TypstBibImportDOI<cr>", { buffer = buf, desc = "Import from DOI" })
+
+          -- <leader>kTU - Import reference from URL
+          vim.keymap.set("n", "<leader>kTU", "<cmd>TypstBibImportURL<cr>", { buffer = buf, desc = "Import from URL" })
         end,
       })
 
@@ -183,6 +186,7 @@ return {
         { "<leader>kTR", desc = "Add Reference" },
         { "<leader>kTr", desc = "Insert Citation" },
         { "<leader>kTI", desc = "Import from DOI" },
+        { "<leader>kTU", desc = "Import from URL" },
       })
     end,
   },
