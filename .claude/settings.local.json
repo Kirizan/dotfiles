@@ -72,7 +72,12 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(chezmoi data:*)",
-      "Bash(chezmoi diff:*)"
+      "Bash(chezmoi diff:*)",
+      "Bash(make setup:*)",
+      "Bash(make test:*)",
+      "Bash(curl:*)",
+      "Bash(lua test_doi_import.lua:*)",
+      "Bash(/opt/1Password/op-ssh-sign:*)"
     ],
     "deny": [],
     "ask": []
