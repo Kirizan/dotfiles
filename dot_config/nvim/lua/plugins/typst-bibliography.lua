@@ -158,7 +158,52 @@ return {
         return false
       end
 
-      -- Add #bibliography() directive to current file
+      -- Get project root directory
+      function M.get_project_root()
+        local current_file = vim.fn.expand("%:p")
+        local project_root = vim.fn.fnamemodify(current_file, ":h")
+
+        while project_root ~= "/" do
+          if vim.fn.isdirectory(project_root .. "/.git") == 1 then
+            break
+          end
+          local parent = vim.fn.fnamemodify(project_root, ":h")
+          if parent == project_root then
+            break
+          end
+          project_root = parent
+        end
+
+        return project_root
+      end
+
+      -- Get preference for auto-adding bibliography directive
+      function M.get_auto_directive_pref()
+        local prefs_file = M.get_project_root() .. "/.typst-bib-prefs"
+
+        if vim.fn.filereadable(prefs_file) == 1 then
+          local content = vim.fn.readfile(prefs_file)
+          if #content > 0 then
+            local ok, data = pcall(vim.json.decode, table.concat(content, "\n"))
+            if ok and data.auto_add_directive ~= nil then
+              return data.auto_add_directive
+            end
+          end
+        end
+
+        -- Default to true for new projects
+        return true
+      end
+
+      -- Save preference for auto-adding bibliography directive
+      function M.save_auto_directive_pref(value)
+        local prefs_file = M.get_project_root() .. "/.typst-bib-prefs"
+        local data = { auto_add_directive = value }
+        local json = vim.json.encode(data)
+        vim.fn.writefile({ json }, prefs_file)
+      end
+
+      -- Add #bibliography() directive to current file (at the beginning)
       function M.add_bibliography_directive(bib_file)
         -- Calculate relative path from current file to bibliography file
         local current_file = vim.fn.expand("%:p")
@@ -191,21 +236,21 @@ return {
           end
         end
 
-        -- Add directive at the end of the file
+        -- Add directive at the beginning of the file
         local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-        local last_line = #lines
+        local insert_lines = {
+          "// Bibliography",
+          '#bibliography("' .. relative_path .. '")',
+          "",
+        }
 
-        -- Add blank line if file is not empty and doesn't end with blank line
-        if last_line > 0 and lines[last_line] ~= "" then
-          table.insert(lines, "")
+        -- Insert at the beginning
+        for i = #insert_lines, 1, -1 do
+          table.insert(lines, 1, insert_lines[i])
         end
 
-        -- Add comment and bibliography directive
-        table.insert(lines, "// Bibliography")
-        table.insert(lines, '#bibliography("' .. relative_path .. '")')
-
         vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
-        vim.notify("Added #bibliography() directive to current file", vim.log.levels.INFO)
+        vim.notify("Added #bibliography() directive at beginning of file", vim.log.levels.INFO)
       end
 
       -- Add new reference (floating form)
@@ -238,9 +283,28 @@ return {
                   vim.log.levels.INFO
                 )
 
-                -- If this is a new bibliography file and current file doesn't have directive, add it
+                -- If this is a new bibliography file and current file doesn't have directive, ask to add it
                 if not file_existed and not M.has_bibliography_directive() then
-                  M.add_bibliography_directive(bib_file)
+                  local default_pref = M.get_auto_directive_pref()
+                  local default_option = default_pref and "Yes" or "No"
+
+                  vim.ui.select({ "Yes", "No" }, {
+                    prompt = "Add #bibliography() directive to this file?",
+                    format_item = function(item)
+                      if item == default_option then
+                        return item .. " (default)"
+                      end
+                      return item
+                    end,
+                  }, function(choice)
+                    if choice == "Yes" then
+                      M.add_bibliography_directive(bib_file)
+                      M.save_auto_directive_pref(true)
+                    elseif choice == "No" then
+                      M.save_auto_directive_pref(false)
+                      vim.notify("Skipped adding #bibliography() directive", vim.log.levels.INFO)
+                    end
+                  end)
                 end
               else
                 vim.notify("Failed to write reference", vim.log.levels.ERROR)
