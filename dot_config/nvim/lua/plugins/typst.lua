@@ -157,6 +157,12 @@ return {
             vim.cmd("!" .. "typst watch " .. vim.fn.shellescape(file) .. " " .. vim.fn.shellescape(output) .. " &")
             vim.notify("Started watch mode for " .. file, vim.log.levels.INFO)
           end, { buffer = buf, desc = "Typst Watch Mode" })
+
+          -- <leader>kTR - Add reference to bibliography
+          vim.keymap.set("n", "<leader>kTR", "<cmd>TypstBibAdd<cr>", { buffer = buf, desc = "Add Reference" })
+
+          -- <leader>kTr - Insert citation
+          vim.keymap.set("n", "<leader>kTr", "<cmd>TypstBibInsert<cr>", { buffer = buf, desc = "Insert Citation" })
         end,
       })
 
@@ -171,6 +177,8 @@ return {
         { "<leader>kTd", desc = "Compile to DOCX" },
         { "<leader>kTo", desc = "Open PDF" },
         { "<leader>kTw", desc = "Watch Mode" },
+        { "<leader>kTR", desc = "Add Reference" },
+        { "<leader>kTr", desc = "Insert Citation" },
       })
     end,
   },

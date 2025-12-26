@@ -10,9 +10,8 @@ return {
     ft = "typst",
     config = function()
       require("typst-bib").setup({
-        -- Optional: customize configuration
-        -- entry_types = { "online", "article", "book", "inproceedings", "thesis", "misc" },
-        -- default_bib_dir = "references",
+        -- Configuration
+        -- Note: Keybindings are set in typst.lua to match <leader>kT pattern
       })
     end,
   },
