@@ -163,6 +163,9 @@ return {
 
           -- <leader>kTr - Insert citation
           vim.keymap.set("n", "<leader>kTr", "<cmd>TypstBibInsert<cr>", { buffer = buf, desc = "Insert Citation" })
+
+          -- <leader>kTI - Import reference from DOI
+          vim.keymap.set("n", "<leader>kTI", "<cmd>TypstBibImportDOI<cr>", { buffer = buf, desc = "Import from DOI" })
         end,
       })
 
@@ -179,6 +182,7 @@ return {
         { "<leader>kTw", desc = "Watch Mode" },
         { "<leader>kTR", desc = "Add Reference" },
         { "<leader>kTr", desc = "Insert Citation" },
+        { "<leader>kTI", desc = "Import from DOI" },
       })
     end,
   },
