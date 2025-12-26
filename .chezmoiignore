@@ -14,6 +14,9 @@ system.org
 # Temporary files
 pbcopy
 
+# Neovim plugin lockfile (machine-specific, changes frequently)
+.config/nvim/lazy-lock.json
+
 # Deprecated files (no longer used)
 .p10k.zsh
 
