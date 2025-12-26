@@ -147,6 +147,67 @@ return {
         return false
       end
 
+      -- Check if current file has #bibliography() directive
+      function M.has_bibliography_directive()
+        local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+        for _, line in ipairs(lines) do
+          if line:match("#bibliography%s*%(") then
+            return true
+          end
+        end
+        return false
+      end
+
+      -- Add #bibliography() directive to current file
+      function M.add_bibliography_directive(bib_file)
+        -- Calculate relative path from current file to bibliography file
+        local current_file = vim.fn.expand("%:p")
+        local current_dir = vim.fn.fnamemodify(current_file, ":h")
+        local relative_path = vim.fn.fnamemodify(bib_file, ":~:.")
+
+        -- Make path relative to current file if possible
+        if vim.startswith(bib_file, current_dir) then
+          relative_path = vim.fn.fnamemodify(bib_file, ":t")
+        else
+          -- Get relative path from current file's directory
+          local bib_dir = vim.fn.fnamemodify(bib_file, ":h")
+          local common_ancestor = current_dir
+
+          -- Find common ancestor
+          while not vim.startswith(bib_dir, common_ancestor) and common_ancestor ~= "/" do
+            common_ancestor = vim.fn.fnamemodify(common_ancestor, ":h")
+          end
+
+          -- Build relative path
+          if common_ancestor ~= "/" then
+            local rel_from_common = vim.fn.fnamemodify(bib_file, ":s?" .. common_ancestor .. "/??")
+            local current_depth = #vim.split(vim.fn.fnamemodify(current_dir, ":s?" .. common_ancestor .. "/??"), "/")
+
+            if current_depth > 0 then
+              relative_path = string.rep("../", current_depth) .. rel_from_common
+            else
+              relative_path = rel_from_common
+            end
+          end
+        end
+
+        -- Add directive at the end of the file
+        local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+        local last_line = #lines
+
+        -- Add blank line if file is not empty and doesn't end with blank line
+        if last_line > 0 and lines[last_line] ~= "" then
+          table.insert(lines, "")
+        end
+
+        -- Add comment and bibliography directive
+        table.insert(lines, "// Bibliography")
+        table.insert(lines, '#bibliography("' .. relative_path .. '")')
+
+        vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+        vim.notify("Added #bibliography() directive to current file", vim.log.levels.INFO)
+      end
+
       -- Add new reference (floating form)
       function M.add_reference()
         -- Step 1: Select entry type
@@ -168,6 +229,7 @@ return {
             if index > #fields then
               -- All fields collected, write to file
               local bib_file = M.find_bib_file()
+              local file_existed = vim.fn.filereadable(bib_file) == 1
               local entry = M.format_bib_entry(entry_type, data)
 
               if M.write_bib_entry(bib_file, entry) then
@@ -175,6 +237,11 @@ return {
                   string.format("Added reference '%s' to %s", data.key, vim.fn.fnamemodify(bib_file, ":~")),
                   vim.log.levels.INFO
                 )
+
+                -- If this is a new bibliography file and current file doesn't have directive, add it
+                if not file_existed and not M.has_bibliography_directive() then
+                  M.add_bibliography_directive(bib_file)
+                end
               else
                 vim.notify("Failed to write reference", vim.log.levels.ERROR)
               end
