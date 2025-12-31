@@ -12,7 +12,7 @@ return {
     config = function()
       require("typst-acr").setup({
         -- Configuration
-        -- Note: Keybindings are set in typst.lua to match <leader>kt pattern
+        -- Note: Keybindings are set in typst.lua under <leader>kT (uppercase T)
 
         -- Use default settings with global library enabled
         global_library = {

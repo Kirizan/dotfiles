@@ -170,25 +170,25 @@ return {
           -- <leader>kTU - Import reference from URL
           vim.keymap.set("n", "<leader>kTU", "<cmd>TypstBibImportURL<cr>", { buffer = buf, desc = "Import from URL" })
 
-          -- <leader>kt - Acronym management (lowercase t)
-          -- <leader>kta - Add acronym
-          vim.keymap.set("n", "<leader>kta", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym" })
-          vim.keymap.set("v", "<leader>kta", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym from Selection" })
+          -- <leader>kT - Acronym management
+          -- <leader>kTa - Add acronym
+          vim.keymap.set("n", "<leader>kTa", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym" })
+          vim.keymap.set("v", "<leader>kTa", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym from Selection" })
 
-          -- <leader>kti - Insert acronym reference
-          vim.keymap.set("n", "<leader>kti", "<cmd>TypstAcrInsert<cr>", { buffer = buf, desc = "Insert Acronym Reference" })
+          -- <leader>kTi - Insert acronym reference
+          vim.keymap.set("n", "<leader>kTi", "<cmd>TypstAcrInsert<cr>", { buffer = buf, desc = "Insert Acronym Reference" })
 
-          -- <leader>ktc - Cycle reference format
-          vim.keymap.set("n", "<leader>ktc", "<cmd>TypstAcrCycle<cr>", { buffer = buf, desc = "Cycle Acronym Format" })
+          -- <leader>kTC - Cycle reference format
+          vim.keymap.set("n", "<leader>kTC", "<cmd>TypstAcrCycle<cr>", { buffer = buf, desc = "Cycle Acronym Format" })
 
-          -- <leader>ktl - List all acronyms
-          vim.keymap.set("n", "<leader>ktl", "<cmd>TypstAcrList<cr>", { buffer = buf, desc = "List Acronyms" })
+          -- <leader>kTl - List all acronyms
+          vim.keymap.set("n", "<leader>kTl", "<cmd>TypstAcrList<cr>", { buffer = buf, desc = "List Acronyms" })
 
-          -- <leader>ktv - Validate acronym file
-          vim.keymap.set("n", "<leader>ktv", "<cmd>TypstAcrValidate<cr>", { buffer = buf, desc = "Validate Acronyms" })
+          -- <leader>kTv - Validate acronym file
+          vim.keymap.set("n", "<leader>kTv", "<cmd>TypstAcrValidate<cr>", { buffer = buf, desc = "Validate Acronyms" })
 
-          -- <leader>ktC - Configure (edit .typst-acr.toml)
-          vim.keymap.set("n", "<leader>ktC", "<cmd>TypstAcrConfigure<cr>", { buffer = buf, desc = "Configure Acronyms" })
+          -- <leader>kTe - Edit config (edit .typst-acr.toml)
+          vim.keymap.set("n", "<leader>kTe", "<cmd>TypstAcrConfigure<cr>", { buffer = buf, desc = "Edit Acronym Config" })
         end,
       })
 
@@ -197,25 +197,25 @@ return {
       wk.add({
         { "<leader>k", group = "KirDoIt" },
         { "<leader>kT", group = "typst", icon = "📄" },
+        -- Document operations
         { "<leader>kTp", desc = "Toggle Preview" },
         { "<leader>kTs", desc = "Sync Preview" },
         { "<leader>kTc", desc = "Compile to PDF" },
         { "<leader>kTd", desc = "Compile to DOCX" },
         { "<leader>kTo", desc = "Open PDF" },
         { "<leader>kTw", desc = "Watch Mode" },
+        -- Bibliography
         { "<leader>kTR", desc = "Add Reference" },
         { "<leader>kTr", desc = "Insert Citation" },
         { "<leader>kTI", desc = "Import from DOI" },
         { "<leader>kTU", desc = "Import from URL" },
-
-        -- Acronym management (lowercase t)
-        { "<leader>kt", group = "acronyms", icon = "🔤" },
-        { "<leader>kta", desc = "Add Acronym" },
-        { "<leader>kti", desc = "Insert Reference" },
-        { "<leader>ktc", desc = "Cycle Format" },
-        { "<leader>ktl", desc = "List Acronyms" },
-        { "<leader>ktv", desc = "Validate File" },
-        { "<leader>ktC", desc = "Configure" },
+        -- Acronyms
+        { "<leader>kTa", desc = "Add Acronym" },
+        { "<leader>kTi", desc = "Insert Acronym" },
+        { "<leader>kTC", desc = "Cycle Acronym" },
+        { "<leader>kTl", desc = "List Acronyms" },
+        { "<leader>kTv", desc = "Validate Acronyms" },
+        { "<leader>kTe", desc = "Edit Acronym Config" },
       })
     end,
   },
