@@ -169,6 +169,26 @@ return {
 
           -- <leader>kTU - Import reference from URL
           vim.keymap.set("n", "<leader>kTU", "<cmd>TypstBibImportURL<cr>", { buffer = buf, desc = "Import from URL" })
+
+          -- <leader>kt - Acronym management (lowercase t)
+          -- <leader>kta - Add acronym
+          vim.keymap.set("n", "<leader>kta", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym" })
+          vim.keymap.set("v", "<leader>kta", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym from Selection" })
+
+          -- <leader>kti - Insert acronym reference
+          vim.keymap.set("n", "<leader>kti", "<cmd>TypstAcrInsert<cr>", { buffer = buf, desc = "Insert Acronym Reference" })
+
+          -- <leader>ktc - Cycle reference format
+          vim.keymap.set("n", "<leader>ktc", "<cmd>TypstAcrCycle<cr>", { buffer = buf, desc = "Cycle Acronym Format" })
+
+          -- <leader>ktl - List all acronyms
+          vim.keymap.set("n", "<leader>ktl", "<cmd>TypstAcrList<cr>", { buffer = buf, desc = "List Acronyms" })
+
+          -- <leader>ktv - Validate acronym file
+          vim.keymap.set("n", "<leader>ktv", "<cmd>TypstAcrValidate<cr>", { buffer = buf, desc = "Validate Acronyms" })
+
+          -- <leader>ktC - Configure (edit .typst-acr.toml)
+          vim.keymap.set("n", "<leader>ktC", "<cmd>TypstAcrConfigure<cr>", { buffer = buf, desc = "Configure Acronyms" })
         end,
       })
 
@@ -187,6 +207,15 @@ return {
         { "<leader>kTr", desc = "Insert Citation" },
         { "<leader>kTI", desc = "Import from DOI" },
         { "<leader>kTU", desc = "Import from URL" },
+
+        -- Acronym management (lowercase t)
+        { "<leader>kt", group = "acronyms", icon = "🔤" },
+        { "<leader>kta", desc = "Add Acronym" },
+        { "<leader>kti", desc = "Insert Reference" },
+        { "<leader>ktc", desc = "Cycle Format" },
+        { "<leader>ktl", desc = "List Acronyms" },
+        { "<leader>ktv", desc = "Validate File" },
+        { "<leader>ktC", desc = "Configure" },
       })
     end,
   },
