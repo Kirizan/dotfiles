@@ -103,7 +103,13 @@
       "Bash(make test-file:*)",
       "Bash(sudo dnf install:*)",
       "Bash(git pull:*)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(typst --version:*)",
+      "Bash(typst compile:*)",
+      "Bash(typst query:*)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(/home/kirizan/.local/share/nvim/typst-preview/typst-preview-linux-x64:*)"
     ],
     "deny": [],
     "ask": []

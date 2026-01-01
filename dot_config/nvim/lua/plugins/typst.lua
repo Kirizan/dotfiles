@@ -3,7 +3,7 @@ return {
   {
     "chomosuke/typst-preview.nvim",
     lazy = false, -- Load immediately for .typ files
-    version = "0.3.*",
+    version = "1.*",  -- Use latest 1.x version (supports newer typst)
     build = function()
       require("typst-preview").update()
     end,
