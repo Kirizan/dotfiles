@@ -101,7 +101,9 @@
       "Bash(gh repo create:*)",
       "Bash(git remote set-url:*)",
       "Bash(make test-file:*)",
-      "Bash(sudo dnf install:*)"
+      "Bash(sudo dnf install:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase:*)"
     ],
     "deny": [],
     "ask": []
