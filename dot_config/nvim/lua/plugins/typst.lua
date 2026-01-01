@@ -93,6 +93,13 @@ return {
   {
     "LazyVim/LazyVim",
     opts = function(_, opts)
+      -- Register which-key groups globally (before autocmd)
+      local wk = require("which-key")
+      wk.add({
+        { "<leader>k", group = "KirDoIt" },
+        { "<leader>kT", group = "typst", icon = "📄" },
+      })
+
       -- Typst-specific keybindings under <leader>kT (uppercase T)
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "typst",
@@ -189,33 +196,32 @@ return {
 
           -- <leader>kTe - Edit config (edit .typst-acr.toml)
           vim.keymap.set("n", "<leader>kTe", "<cmd>TypstAcrConfigure<cr>", { buffer = buf, desc = "Edit Acronym Config" })
-        end,
-      })
 
-      -- Add which-key descriptions for discoverability
-      local wk = require("which-key")
-      wk.add({
-        { "<leader>k", group = "KirDoIt" },
-        { "<leader>kT", group = "typst", icon = "📄" },
-        -- Document operations
-        { "<leader>kTp", desc = "Toggle Preview" },
-        { "<leader>kTs", desc = "Sync Preview" },
-        { "<leader>kTc", desc = "Compile to PDF" },
-        { "<leader>kTd", desc = "Compile to DOCX" },
-        { "<leader>kTo", desc = "Open PDF" },
-        { "<leader>kTw", desc = "Watch Mode" },
-        -- Bibliography
-        { "<leader>kTR", desc = "Add Reference" },
-        { "<leader>kTr", desc = "Insert Citation" },
-        { "<leader>kTI", desc = "Import from DOI" },
-        { "<leader>kTU", desc = "Import from URL" },
-        -- Acronyms
-        { "<leader>kTa", desc = "Add Acronym" },
-        { "<leader>kTi", desc = "Insert Acronym" },
-        { "<leader>kTC", desc = "Cycle Acronym" },
-        { "<leader>kTl", desc = "List Acronyms" },
-        { "<leader>kTv", desc = "Validate Acronyms" },
-        { "<leader>kTe", desc = "Edit Acronym Config" },
+          -- Register which-key descriptions for this buffer
+          wk.add({
+            -- Document operations
+            { "<leader>kTp", desc = "Toggle Preview", buffer = buf },
+            { "<leader>kTs", desc = "Sync Preview", buffer = buf },
+            { "<leader>kTc", desc = "Compile to PDF", buffer = buf },
+            { "<leader>kTd", desc = "Compile to DOCX", buffer = buf },
+            { "<leader>kTo", desc = "Open PDF", buffer = buf },
+            { "<leader>kTw", desc = "Watch Mode", buffer = buf },
+            -- Bibliography
+            { "<leader>kTR", desc = "Add Reference", buffer = buf },
+            { "<leader>kTr", desc = "Insert Citation", buffer = buf },
+            { "<leader>kTI", desc = "Import from DOI", buffer = buf },
+            { "<leader>kTU", desc = "Import from URL", buffer = buf },
+            -- Acronyms
+            { "<leader>kTa", desc = "Add Acronym", buffer = buf },
+            { "<leader>kTi", desc = "Insert Acronym", buffer = buf },
+            { "<leader>kTC", desc = "Cycle Acronym", buffer = buf },
+            { "<leader>kTl", desc = "List Acronyms", buffer = buf },
+            { "<leader>kTv", desc = "Validate Acronyms", buffer = buf },
+            { "<leader>kTe", desc = "Edit Acronym Config", buffer = buf },
+            -- Visual mode mappings
+            { "<leader>kTa", desc = "Add Acronym from Selection", mode = "v", buffer = buf },
+          })
+        end,
       })
     end,
   },
