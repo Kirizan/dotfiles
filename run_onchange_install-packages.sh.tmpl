@@ -17,25 +17,43 @@ echo "Setting up Homebrew on Linux..."
 echo "Installing base dependencies on Arch Linux..."
 sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
 
+# Install Liberation Fonts for Typst and other document rendering
+echo "Installing Liberation Fonts..."
+sudo pacman -S --needed --noconfirm ttf-liberation
+
 {{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
 echo "Installing base dependencies on Ubuntu/Debian..."
 sudo apt-get update
 sudo apt-get install -y build-essential git curl procps file
+
+# Install Liberation Fonts for Typst and other document rendering
+echo "Installing Liberation Fonts..."
+sudo apt-get install -y fonts-liberation
 
 {{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
 echo "Installing base dependencies on CentOS/RHEL..."
 sudo dnf groupinstall -y "Development Tools"
 sudo dnf install -y git curl procps-ng file
 
+# Install Liberation Fonts for Typst and other document rendering
+echo "Installing Liberation Fonts..."
+sudo dnf install -y liberation-fonts
+
 {{- else }}
 echo "Installing base dependencies on generic Linux..."
 # Try to install basic tools - commands may vary by distro
 if command -v apt-get &> /dev/null; then
     sudo apt-get update && sudo apt-get install -y build-essential git curl procps file
+    echo "Installing Liberation Fonts..."
+    sudo apt-get install -y fonts-liberation
 elif command -v dnf &> /dev/null; then
     sudo dnf groupinstall -y "Development Tools" && sudo dnf install -y git curl procps-ng file
+    echo "Installing Liberation Fonts..."
+    sudo dnf install -y liberation-fonts
 elif command -v pacman &> /dev/null; then
     sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
+    echo "Installing Liberation Fonts..."
+    sudo pacman -S --needed --noconfirm ttf-liberation
 fi
 {{- end }}
 

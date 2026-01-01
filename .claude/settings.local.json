@@ -100,7 +100,8 @@
       "Bash(repos/Kirizan/typst-bib.nvim/branches/main/protection )",
       "Bash(gh repo create:*)",
       "Bash(git remote set-url:*)",
-      "Bash(make test-file:*)"
+      "Bash(make test-file:*)",
+      "Bash(sudo dnf install:*)"
     ],
     "deny": [],
     "ask": []
