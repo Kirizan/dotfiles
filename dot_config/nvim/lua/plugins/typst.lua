@@ -180,7 +180,10 @@ return {
           -- <leader>kT - Acronym management
           -- <leader>kTa - Add acronym
           vim.keymap.set("n", "<leader>kTa", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym" })
-          vim.keymap.set("v", "<leader>kTa", "<cmd>TypstAcrAdd<cr>", { buffer = buf, desc = "Add Acronym from Selection" })
+          -- Visual mode: capture selection before calling command
+          vim.keymap.set("v", "<leader>kTa", function()
+            require("typst-acr").add_acronym_from_selection()
+          end, { buffer = buf, desc = "Add Acronym from Selection" })
 
           -- <leader>kTi - Insert acronym reference
           vim.keymap.set("n", "<leader>kTi", "<cmd>TypstAcrInsert<cr>", { buffer = buf, desc = "Insert Acronym Reference" })
