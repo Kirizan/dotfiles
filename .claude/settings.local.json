@@ -109,7 +109,9 @@
       "Bash(typst query:*)",
       "Bash(lsof:*)",
       "Bash(netstat:*)",
-      "Bash(/home/kirizan/.local/share/nvim/typst-preview/typst-preview-linux-x64:*)"
+      "Bash(/home/kirizan/.local/share/nvim/typst-preview/typst-preview-linux-x64:*)",
+      "WebFetch(domain:typst.app)",
+      "WebFetch(domain:forum.typst.app)"
     ],
     "deny": [],
     "ask": []
