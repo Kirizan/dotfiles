@@ -23,6 +23,7 @@ return {
   -- cmp-spell - Completion source for spell checking
   {
     "f3fora/cmp-spell",
+    dependencies = { "hrsh7th/nvim-cmp" },
     ft = { "typst", "markdown", "text", "gitcommit", "tex" },
   },
 
