@@ -9,7 +9,7 @@ return {
     },
     cmd = "Neogit",
     keys = {
-      { "<leader>kg", "", desc = "+git (neogit)", icon = "" },
+      { "<leader>kg", "", desc = "+git (neogit)" },
       { "<leader>kgg", "<cmd>Neogit<cr>", desc = "Open Neogit" },
       { "<leader>kgc", "<cmd>Neogit commit<cr>", desc = "Commit" },
       { "<leader>kgp", "<cmd>Neogit pull<cr>", desc = "Pull" },
