@@ -64,6 +64,40 @@ return {
   {
     "LazyVim/LazyVim",
     opts = function()
+      -- Spelling/Grammar keybindings (works with both LTeX-LS and Grammarly)
+      -- These work on all profiles since LTeX-LS is always available
+
+      -- <leader>ksa - Show available fixes (code actions)
+      vim.keymap.set("n", "<leader>ksa", vim.lsp.buf.code_action, { desc = "Show Spelling/Grammar Fixes" })
+
+      -- <leader>ksl - List all spelling/grammar issues
+      vim.keymap.set("n", "<leader>ksl", vim.diagnostic.setloclist, { desc = "List All Issues" })
+
+      -- <leader>ksn - Next issue
+      vim.keymap.set("n", "<leader>ksn", vim.diagnostic.goto_next, { desc = "Next Issue" })
+
+      -- <leader>ksp - Previous issue
+      vim.keymap.set("n", "<leader>ksp", vim.diagnostic.goto_prev, { desc = "Previous Issue" })
+
+      -- <leader>ksh - Show issue details (hover)
+      vim.keymap.set("n", "<leader>ksh", vim.diagnostic.open_float, { desc = "Show Issue Details" })
+
+      -- <leader>ksi - Show info about current diagnostic
+      vim.keymap.set("n", "<leader>ksi", function()
+        local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line(".") - 1 })
+        if #diagnostics > 0 then
+          local diag = diagnostics[1]
+          local source = diag.source or "Unknown"
+          local severity = vim.diagnostic.severity[diag.severity] or "Unknown"
+          vim.notify(
+            string.format("Source: %s\nSeverity: %s\nMessage: %s", source, severity, diag.message),
+            vim.log.levels.INFO
+          )
+        else
+          vim.notify("No diagnostic at cursor", vim.log.levels.INFO)
+        end
+      end, { desc = "Diagnostic Info" })
+
 {{- if eq .profile "personal" }}
       -- Grammarly control commands (personal machines only)
       vim.api.nvim_create_user_command("GrammarlyStart", function()
@@ -145,6 +179,7 @@ return {
     optional = true,
     opts = {
       spec = {
+        { "<leader>ks", group = "spelling/grammar" },
 {{- if eq .profile "personal" }}
         { "<leader>kG", group = "grammarly" },
 {{- else }}
