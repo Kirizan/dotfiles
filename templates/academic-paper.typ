@@ -83,9 +83,9 @@
 ///   - heading-font: Heading font (default: same as body font)
 ///
 ///   Spacing options:
-///   - line-spacing: Line spacing within paragraphs in em (default: 1em for single spacing)
+///   - line-spacing: Line spacing within paragraphs in em (default: 0.75em)
 ///   - first-line-indent: Paragraph first line indent (default: 0in, no indent)
-///   - paragraph-spacing: Space between paragraphs (default: 1em for double spacing between paragraphs)
+///   - paragraph-spacing: Space between paragraphs (default: 2em)
 ///
 ///   Page options:
 ///   - paper: Paper size (default: "us-letter")
@@ -135,9 +135,9 @@
   heading-font: auto,
 
   // Spacing options
-  line-spacing: 1em,
+  line-spacing: 0.75em,
   first-line-indent: 0in,
-  paragraph-spacing: 1em,
+  paragraph-spacing: 2em,
 
   // Page options
   paper: "us-letter",
@@ -225,6 +225,14 @@
     first-line-indent: first-line-indent,
     spacing: paragraph-spacing,
   )
+
+  // ============================================
+  // LIST FORMATTING
+  // ============================================
+
+  // Set list indentation with increasing indent per level
+  set list(indent: 1em, body-indent: 0.5em)
+  set enum(indent: 1em, body-indent: 0.5em)
 
   // ============================================
   // HEADING FORMATTING
@@ -369,18 +377,12 @@
   }
 
   // ============================================
-  // GLOSSARY (if file provided)
+  // GLOSSARY FORMATTING
   // ============================================
 
-  if glossary-file != none {
-    pagebreak()
+  // Note: Glossary display handled in main document using print-glossary()
+  // This section provides styling rules for glossary content
 
-    heading(level: 1)[#glossary-title]
-
-    // Import and display glossary
-    // Note: This requires the glossarium package to be imported
-    // in the main document before using this template
-  }
 }
 
 // ============================================
@@ -445,4 +447,68 @@
     ]
     #content
   ]
+}
+
+/// Format glossary/acronyms as a professional table
+///
+/// Parameters:
+///   - entries: Array of glossary entries (from glossarium format)
+///   - show-group: Show the group column (default: false)
+///   - show-plural: Show the plural column (default: false)
+///
+/// Usage:
+///   #glossary-table(acronyms)
+#let glossary-table(entries, show-group: false, show-plural: false) = {
+  // Build column specification based on what to show
+  let cols = if show-group and show-plural {
+    (auto, 1fr, 2fr, auto, auto)
+  } else if show-group {
+    (auto, 1fr, 2fr, auto)
+  } else if show-plural {
+    (auto, 1fr, 2fr, auto)
+  } else {
+    (auto, 1fr, 2fr)
+  }
+
+  // Build header row
+  let header = if show-group and show-plural {
+    ([*Abbreviation*], [*Long Form*], [*Description*], [*Plural*], [*Group*])
+  } else if show-group {
+    ([*Abbreviation*], [*Long Form*], [*Description*], [*Group*])
+  } else if show-plural {
+    ([*Abbreviation*], [*Long Form*], [*Description*], [*Plural*])
+  } else {
+    ([*Abbreviation*], [*Long Form*], [*Description*])
+  }
+
+  // Create table
+  table(
+    columns: cols,
+    stroke: 0.5pt,
+    fill: (x, y) => if y == 0 { rgb("#e8e8e8") },
+    align: (x, y) => if y == 0 { center } else { left },
+    inset: 8pt,
+
+    // Header row
+    ..header,
+
+    // Data rows
+    ..entries.map(entry => {
+      let row = (
+        entry.short,
+        entry.long,
+        entry.at("description", default: ""),
+      )
+
+      if show-plural {
+        row.push(entry.at("plural", default: ""))
+      }
+
+      if show-group {
+        row.push(entry.at("group", default: ""))
+      }
+
+      row
+    }).flatten()
+  )
 }
