@@ -98,6 +98,9 @@ return {
       wk.add({
         { "<leader>k", group = "KirDoIt" },
         { "<leader>kT", group = "typst", icon = "📄" },
+        -- Visual mode groups
+        { "<leader>k", group = "KirDoIt", mode = "v" },
+        { "<leader>kT", group = "typst", icon = "📄", mode = "v" },
       })
 
       -- Typst-specific keybindings under <leader>kT (uppercase T)
