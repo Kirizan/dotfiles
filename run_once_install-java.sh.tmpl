@@ -39,16 +39,46 @@ fi
 sudo pacman -S --needed --noconfirm jre-openjdk
 echo "✓ OpenJDK installed via pacman"
 
+# Set Java as default using archlinux-java (if available)
+if command -v archlinux-java >/dev/null 2>&1; then
+    JAVA_ENV=$(archlinux-java status | grep default | awk '{print $3}')
+    if [[ ! "$JAVA_ENV" =~ java-.*-openjdk ]]; then
+        LATEST_JAVA=$(archlinux-java status | grep -v default | grep 'java-' | tail -n1 | awk '{print $2}')
+        if [ -n "$LATEST_JAVA" ]; then
+            sudo archlinux-java set "$LATEST_JAVA"
+            echo "✓ Set $LATEST_JAVA as default"
+        fi
+    fi
+fi
+
 {{-   else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
 # Debian/Ubuntu (including WSL)
 sudo apt update
 sudo apt install -y openjdk-21-jre
 echo "✓ OpenJDK 21 installed via apt"
 
+# Set Java 21 as default using update-alternatives
+JAVA21_PATH=$(update-alternatives --list java 2>/dev/null | grep 'java-21' | head -n1)
+if [ -n "$JAVA21_PATH" ]; then
+    sudo update-alternatives --set java "$JAVA21_PATH"
+    echo "✓ Set Java 21 as default"
+else
+    echo "⚠ Could not auto-set Java 21 as default. Run: sudo update-alternatives --config java"
+fi
+
 {{-   else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "fedora") }}
 # RHEL/CentOS/Fedora
 sudo dnf install -y java-21-openjdk
 echo "✓ OpenJDK 21 installed via dnf"
+
+# Set Java 21 as default using alternatives
+JAVA21_PATH=$(alternatives --display java 2>/dev/null | grep 'java-21' | grep '/bin/java' | head -n1 | awk '{print $1}')
+if [ -n "$JAVA21_PATH" ]; then
+    sudo alternatives --set java "$JAVA21_PATH"
+    echo "✓ Set Java 21 as default"
+else
+    echo "⚠ Could not auto-set Java 21 as default. Run: sudo alternatives --config java"
+fi
 
 {{-   else }}
 # Generic Linux fallback
