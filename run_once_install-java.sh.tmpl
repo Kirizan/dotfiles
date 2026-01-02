@@ -1,0 +1,75 @@
+#!/bin/bash
+# Install Java 21 (OpenJDK) for LTeX-LS grammar checking
+# This runs once per machine and works across all profiles
+
+set -e
+
+echo "Checking Java installation..."
+
+# Check if Java 21 is already installed
+if command -v java >/dev/null 2>&1; then
+    JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+    if [ "$JAVA_VERSION" -ge 21 ]; then
+        echo "✓ Java $JAVA_VERSION is already installed (>= 21)"
+        exit 0
+    else
+        echo "Found Java $JAVA_VERSION, but need Java 21+"
+    fi
+fi
+
+echo "Installing OpenJDK 21..."
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS - Use Homebrew
+if command -v brew >/dev/null 2>&1; then
+    brew install openjdk@21
+
+    # Link Java for system-wide use
+    sudo ln -sfn $(brew --prefix)/opt/openjdk@21/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-21.jdk || true
+
+    echo "✓ OpenJDK 21 installed via Homebrew"
+else
+    echo "Error: Homebrew not found. Please install Homebrew first."
+    exit 1
+fi
+
+{{- else if eq .chezmoi.os "linux" }}
+{{-   if eq .chezmoi.osRelease.id "arch" }}
+# Arch Linux
+sudo pacman -S --needed --noconfirm jre-openjdk
+echo "✓ OpenJDK installed via pacman"
+
+{{-   else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+# Debian/Ubuntu (including WSL)
+sudo apt update
+sudo apt install -y openjdk-21-jre
+echo "✓ OpenJDK 21 installed via apt"
+
+{{-   else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "fedora") }}
+# RHEL/CentOS/Fedora
+sudo dnf install -y java-21-openjdk
+echo "✓ OpenJDK 21 installed via dnf"
+
+{{-   else }}
+# Generic Linux fallback
+echo "Warning: Unsupported Linux distribution. Please install OpenJDK 21 manually."
+echo "Run: sudo apt install openjdk-21-jre  (or equivalent for your distro)"
+exit 1
+{{-   end }}
+
+{{- else }}
+echo "Error: Unsupported operating system: {{ .chezmoi.os }}"
+exit 1
+{{- end }}
+
+# Verify installation
+if command -v java >/dev/null 2>&1; then
+    echo ""
+    echo "Java version:"
+    java -version
+    echo ""
+    echo "✓ Java installation complete!"
+else
+    echo "Error: Java installation failed"
+    exit 1
+fi
