@@ -83,9 +83,9 @@
 ///   - heading-font: Heading font (default: same as body font)
 ///
 ///   Spacing options:
-///   - line-spacing: Line spacing in em (default: 2em for double spacing)
-///   - first-line-indent: Paragraph first line indent (default: 0.5in)
-///   - paragraph-spacing: Space between paragraphs (default: 0em)
+///   - line-spacing: Line spacing within paragraphs in em (default: 1em for single spacing)
+///   - first-line-indent: Paragraph first line indent (default: 0in, no indent)
+///   - paragraph-spacing: Space between paragraphs (default: 1em for double spacing between paragraphs)
 ///
 ///   Page options:
 ///   - paper: Paper size (default: "us-letter")
@@ -135,9 +135,9 @@
   heading-font: auto,
 
   // Spacing options
-  line-spacing: 2em,
-  first-line-indent: 0.5in,
-  paragraph-spacing: 0em,
+  line-spacing: 1em,
+  first-line-indent: 0in,
+  paragraph-spacing: 1em,
 
   // Page options
   paper: "us-letter",
