@@ -1,4 +1,4 @@
-.PHONY: help setup install-chezmoi install-prereqs apply update status diff check clean github-ssh
+.PHONY: help setup install-chezmoi install-prereqs apply update status diff check clean github-ssh work_machine personal_machine show_profile
 
 # Detect operating system
 UNAME_S := $(shell uname -s)
@@ -209,3 +209,36 @@ github-ssh: ## Setup GitHub SSH authentication
 		/bin/echo -e "$(GREEN)✓ GitHub SSH authentication successful!$(NC)\n" || \
 		(/bin/echo -e "$(RED)✗ GitHub SSH authentication failed$(NC)" && \
 		 /bin/echo -e "$(YELLOW)Make sure you've added the key to GitHub and try again$(NC)\n")
+
+work_machine: check ## Configure as work machine and apply dotfiles
+	@/bin/echo -e "$(CYAN)Configuring as WORK machine...$(NC)\n"
+	@export CHEZMOI_PROFILE=work && chezmoi init --force && chezmoi apply -v
+	@/bin/echo -e "$(GREEN)✓ Configured as work machine$(NC)"
+	@/bin/echo -e "$(YELLOW)Profile will persist across updates$(NC)\n"
+	@$(MAKE) show_profile
+
+personal_machine: check ## Configure as personal machine and apply dotfiles
+	@/bin/echo -e "$(CYAN)Configuring as PERSONAL machine...$(NC)\n"
+	@export CHEZMOI_PROFILE=personal && chezmoi init --force && chezmoi apply -v
+	@/bin/echo -e "$(GREEN)✓ Configured as personal machine$(NC)"
+	@/bin/echo -e "$(YELLOW)Profile will persist across updates$(NC)\n"
+	@$(MAKE) show_profile
+
+show_profile: check ## Show current machine profile
+	@/bin/echo -e "$(CYAN)Current Profile Configuration:$(NC)\n"
+	@if [ -f ~/.config/chezmoi/chezmoi.toml ]; then \
+		profile=$$(grep 'profile =' ~/.config/chezmoi/chezmoi.toml | sed 's/.*= "\(.*\)".*/\1/'); \
+		if [ "$$profile" = "work" ]; then \
+			/bin/echo -e "  Profile: $(YELLOW)$$profile$(NC)"; \
+			/bin/echo -e "  Type: Work machine"; \
+			/bin/echo -e "  Features: No Grammarly, work-specific configs"; \
+		else \
+			/bin/echo -e "  Profile: $(GREEN)$$profile$(NC)"; \
+			/bin/echo -e "  Type: Personal machine"; \
+			/bin/echo -e "  Features: All features enabled (including Grammarly)"; \
+		fi; \
+	else \
+		/bin/echo -e "  $(YELLOW)⚠ Profile not configured yet$(NC)"; \
+		/bin/echo -e "  Run: make work_machine or make personal_machine"; \
+	fi
+	@/bin/echo -e ""
