@@ -1,8 +1,21 @@
 return {
+  -- ltex-utils.nvim - Client-side handlers for ltex-ls commands
+  -- Implements addToDictionary, disableRules, hideFalsePositives
+  {
+    "jhofscheier/ltex-utils.nvim",
+    ft = { "typst", "markdown", "text", "tex", "gitcommit", "rst" },
+    dependencies = { "neovim/nvim-lspconfig" },
+    opts = {
+      -- Configuration for ltex-utils
+      -- These handle the _ltex.* commands that ltex-ls provides
+    },
+  },
+
   -- LTeX-LS - LanguageTool grammar and spell checking via LSP
   -- Always enabled (works on both personal and work machines)
   {
     "neovim/nvim-lspconfig",
+    dependencies = { "jhofscheier/ltex-utils.nvim" },
     opts = function(_, opts)
       opts.servers = opts.servers or {}
       opts.servers.ltex = {
