@@ -106,6 +106,22 @@ if command -v go &> /dev/null; then
   go env -w GOPROXY=direct
 fi
 
+# fzf integration for bash
+if command -v fzf &> /dev/null; then
+  # Auto-completion
+  [[ $- == *i* ]] && source /usr/share/fzf/completion.bash 2> /dev/null || \
+    source ~/.fzf/shell/completion.bash 2> /dev/null
+  # Key bindings
+  source /usr/share/fzf/key-bindings.bash 2> /dev/null || \
+    source ~/.fzf/shell/key-bindings.bash 2> /dev/null
+
+  # Catppuccin Mocha theme for fzf
+  export FZF_DEFAULT_OPTS=" \
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
+fi
+
 # Initialize Starship prompt (similar to Powerlevel10k on macOS)
 if command -v starship &> /dev/null; then
   eval "$(starship init bash)"

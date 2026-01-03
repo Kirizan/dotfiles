@@ -115,10 +115,32 @@ complete -o nospace -C /opt/homebrew/bin/terraform terraform
 # fzf auto-completion and key bindings
 [[ $- == *i* ]] && source "/opt/homebrew/opt/fzf/shell/completion.bash" 2> /dev/null
 source "/opt/homebrew/opt/fzf/shell/key-bindings.zsh"
+
+# Catppuccin Mocha theme for fzf
+export FZF_DEFAULT_OPTS=" \
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
 {{- else }}
 # On Linux, terraform is typically in /usr/bin
 if command -v terraform &> /dev/null; then
   complete -o nospace -C $(which terraform) terraform
+fi
+
+# fzf integration for Linux
+if command -v fzf &> /dev/null; then
+  # Auto-completion
+  [[ $- == *i* ]] && source /usr/share/fzf/completion.zsh 2> /dev/null || \
+    source ~/.fzf/shell/completion.zsh 2> /dev/null
+  # Key bindings
+  source /usr/share/fzf/key-bindings.zsh 2> /dev/null || \
+    source ~/.fzf/shell/key-bindings.zsh 2> /dev/null
+
+  # Catppuccin Mocha theme for fzf
+  export FZF_DEFAULT_OPTS=" \
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
 fi
 {{- end }}
 

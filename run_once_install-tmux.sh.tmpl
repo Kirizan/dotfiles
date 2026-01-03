@@ -1,0 +1,87 @@
+#!/bin/bash
+# Install tmux and dependencies
+# This runs once per machine and works across all profiles
+
+set -e
+
+echo "Checking tmux installation..."
+
+# Check if tmux is already installed
+if command -v tmux >/dev/null 2>&1; then
+    TMUX_VERSION=$(tmux -V | cut -d' ' -f2)
+    echo "✓ tmux $TMUX_VERSION is already installed"
+    exit 0
+fi
+
+echo "Installing tmux..."
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS - Use Homebrew
+if command -v brew >/dev/null 2>&1; then
+    brew install tmux
+    echo "✓ tmux installed via Homebrew"
+else
+    echo "Error: Homebrew not found. Please install Homebrew first."
+    exit 1
+fi
+
+{{- else if eq .chezmoi.os "linux" }}
+{{-   if eq .chezmoi.osRelease.id "arch" }}
+# Arch Linux
+sudo pacman -S --needed --noconfirm tmux
+echo "✓ tmux installed via pacman"
+
+{{-   else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+# Debian/Ubuntu (including WSL)
+sudo apt update
+sudo apt install -y tmux
+echo "✓ tmux installed via apt"
+
+{{-   else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "fedora") }}
+# RHEL/CentOS/Fedora
+sudo dnf install -y tmux
+echo "✓ tmux installed via dnf"
+
+{{-   else }}
+# Generic Linux fallback
+echo "Warning: Unsupported Linux distribution. Please install tmux manually."
+echo "Run: sudo apt install tmux  (or equivalent for your distro)"
+exit 1
+{{-   end }}
+
+{{- else }}
+echo "Error: Unsupported operating system: {{ .chezmoi.os }}"
+exit 1
+{{- end }}
+
+# Also install fzf if not present (needed for tmux-sessionx and project switching)
+if ! command -v fzf >/dev/null 2>&1; then
+    echo "Installing fzf (required for session management)..."
+{{- if eq .chezmoi.os "darwin" }}
+    brew install fzf
+{{- else if eq .chezmoi.osRelease.id "arch" }}
+    sudo pacman -S --needed --noconfirm fzf
+{{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+    sudo apt install -y fzf
+{{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "fedora") }}
+    sudo dnf install -y fzf
+{{- end }}
+    echo "✓ fzf installed"
+fi
+
+# Verify installation
+if command -v tmux >/dev/null 2>&1; then
+    echo ""
+    echo "tmux version:"
+    tmux -V
+    echo ""
+    echo "✓ tmux installation complete!"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Start tmux: tmux"
+    echo "  2. TPM will auto-install plugins on first run"
+    echo "  3. Use <leader>kpx in Neovim for session management"
+else
+    echo "Error: tmux installation failed"
+    exit 1
+fi

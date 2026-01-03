@@ -70,27 +70,37 @@ bind -T copy-mode-vi v send -X begin-selection
 bind -T copy-mode-vi y send -X copy-selection-and-cancel
 
 # ==============================================================================
-# STATUS BAR
+# CATPPUCCIN THEME (Mocha)
 # ==============================================================================
+
+# Catppuccin flavor - matches Neovim theme
+set -g @catppuccin_flavour 'mocha'
 
 # Status bar position
 set -g status-position bottom
 
-# Status bar colors
-set -g status-bg colour234
-set -g status-fg colour137
+# Catppuccin window configuration
+set -g @catppuccin_window_left_separator ""
+set -g @catppuccin_window_right_separator " "
+set -g @catppuccin_window_middle_separator " █"
+set -g @catppuccin_window_number_position "right"
 
-# Left status bar: [session] window:pane
-set -g status-left-length 30
-set -g status-left '#[fg=colour233,bg=colour245,bold] #S #[fg=colour245,bg=colour234] '
+set -g @catppuccin_window_default_fill "number"
+set -g @catppuccin_window_default_text "#W"
 
-# Right status bar: date time
-set -g status-right-length 50
-set -g status-right '#[fg=colour233,bg=colour241,bold] %d/%m #[fg=colour233,bg=colour245,bold] %H:%M:%S '
+set -g @catppuccin_window_current_fill "number"
+set -g @catppuccin_window_current_text "#W"
 
-# Window status format
-setw -g window-status-current-format ' #I#[fg=colour250]:#[fg=colour255]#W#[fg=colour50]#F '
-setw -g window-status-format ' #I#[fg=colour237]:#[fg=colour250]#W#[fg=colour244]#F '
+# Catppuccin status modules
+set -g @catppuccin_status_modules_right "directory session date_time"
+set -g @catppuccin_status_modules_left ""
+set -g @catppuccin_status_left_separator  " "
+set -g @catppuccin_status_right_separator ""
+set -g @catppuccin_status_fill "icon"
+set -g @catppuccin_status_connect_separator "no"
+
+# Catppuccin directory module
+set -g @catppuccin_directory_text "#{pane_current_path}"
 
 # ==============================================================================
 # TMUX PLUGIN MANAGER (TPM)
@@ -102,6 +112,7 @@ set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
 set -g @plugin 'tmux-plugins/tmux-continuum'
 set -g @plugin 'omerxx/tmux-sessionx'
+set -g @plugin 'catppuccin/tmux'
 
 # ==============================================================================
 # PLUGIN CONFIGURATIONS
