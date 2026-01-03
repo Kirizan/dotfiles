@@ -98,6 +98,29 @@ return {
         end
       end, { desc = "Diagnostic Info" })
 
+      -- <leader>ksr - Refresh grammar/spelling checks
+      vim.keymap.set("n", "<leader>ksr", function()
+        -- Force buffer update to trigger ltex-ls re-check
+        vim.cmd("write")
+        vim.notify("Grammar check refreshed", vim.log.levels.INFO)
+      end, { desc = "Refresh Grammar Check" })
+
+      -- <leader>ksR - Refresh without saving (restart LSP)
+      vim.keymap.set("n", "<leader>ksR", function()
+        local clients = vim.lsp.get_clients({ bufnr = 0, name = "ltex" })
+        if #clients > 0 then
+          for _, client in ipairs(clients) do
+            vim.lsp.stop_client(client.id, true)
+          end
+          vim.defer_fn(function()
+            vim.cmd("edit") -- Reload buffer to restart LSP
+            vim.notify("LTeX-LS restarted", vim.log.levels.INFO)
+          end, 100)
+        else
+          vim.notify("LTeX-LS not running", vim.log.levels.WARN)
+        end
+      end, { desc = "Restart LTeX-LS" })
+
 {{- if eq .profile "personal" }}
       -- Grammarly control commands (personal machines only)
       vim.api.nvim_create_user_command("GrammarlyStart", function()
