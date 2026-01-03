@@ -1,0 +1,43 @@
+#!/bin/bash
+# Fix outdated Hyprland syntax in Catppuccin theme
+# This script checks if the fix is still needed and notifies when upstream fixes it
+
+set -e
+
+THEME_FILE="$HOME/.config/omarchy/themes/catppuccin-dark/hyprland.conf"
+
+# Check if the theme file exists
+if [ ! -f "$THEME_FILE" ]; then
+    echo "⚠️  Catppuccin theme file not found at $THEME_FILE"
+    exit 0
+fi
+
+# Check if the old syntax is present
+if grep -q "no_anim on\|blur on\|rounding_power" "$THEME_FILE"; then
+    echo "🔧 Fixing outdated Hyprland syntax in Catppuccin theme..."
+
+    # Create a backup
+    cp "$THEME_FILE" "$THEME_FILE.bak"
+
+    # Fix the syntax
+    sed -i 's/layerrule = no_anim on, match:namespace \(.*\)/layerrule = noanim, \1/g' "$THEME_FILE"
+    sed -i 's/layerrule = blur on, match:namespace \(.*\)/layerrule = blur, \1/g' "$THEME_FILE"
+    sed -i 's/layerrule = ignore_alpha \([0-9.]*\), match:namespace \(.*\)/layerrule = ignorealpha \1, \2/g' "$THEME_FILE"
+    sed -i '/rounding_power/d' "$THEME_FILE"
+
+    echo "✓ Fixed Hyprland syntax in Catppuccin theme"
+    echo "  Backup saved to: $THEME_FILE.bak"
+
+    # Reload Hyprland if running
+    if command -v hyprctl >/dev/null 2>&1 && [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+        hyprctl reload >/dev/null 2>&1 && echo "✓ Hyprland configuration reloaded"
+    fi
+else
+    echo "✅ GOOD NEWS: Catppuccin theme no longer has outdated syntax!"
+    echo "   The upstream repository has been fixed."
+    echo ""
+    echo "   You can now safely remove this override script:"
+    echo "   rm ~/.local/share/chezmoi/run_after_fix-catppuccin-hyprland.sh.tmpl"
+    echo ""
+    echo "   Then run: chezmoi apply"
+fi
