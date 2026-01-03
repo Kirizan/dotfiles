@@ -1,21 +1,17 @@
 return {
-  -- ltex-utils.nvim - Client-side handlers for ltex-ls commands
+  -- ltex_extra.nvim - Proper client-side handlers for ltex-ls
   -- Implements addToDictionary, disableRules, hideFalsePositives
   {
-    "jhofscheier/ltex-utils.nvim",
+    "barreiroleo/ltex_extra.nvim",
     ft = { "typst", "markdown", "text", "tex", "gitcommit", "rst" },
     dependencies = { "neovim/nvim-lspconfig" },
-    opts = {
-      -- Configuration for ltex-utils
-      -- These handle the _ltex.* commands that ltex-ls provides
-    },
   },
 
   -- LTeX-LS - LanguageTool grammar and spell checking via LSP
   -- Always enabled (works on both personal and work machines)
   {
     "neovim/nvim-lspconfig",
-    dependencies = { "jhofscheier/ltex-utils.nvim" },
+    dependencies = { "barreiroleo/ltex_extra.nvim" },
     opts = function(_, opts)
       opts.servers = opts.servers or {}
       opts.servers.ltex = {
@@ -35,6 +31,25 @@ return {
           },
         },
       }
+
+      -- Setup ltex_extra when ltex attaches (LazyVim method)
+      opts.setup = opts.setup or {}
+      opts.setup.ltex = function(_, _)
+        vim.api.nvim_create_autocmd("LspAttach", {
+          callback = function(args)
+            local client = vim.lsp.get_client_by_id(args.data.client_id)
+            if client and client.name == "ltex" then
+              require("ltex_extra").setup({
+                load_langs = { "en-US" }, -- Languages to load
+                init_check = true, -- Check when ltex starts
+                path = vim.fn.stdpath("config") .. "/ltex", -- Dictionary storage
+                log_level = "none", -- Set to "debug" if troubleshooting
+              })
+            end
+          end,
+        })
+      end
+
       return opts
     end,
   },
