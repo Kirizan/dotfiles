@@ -31,10 +31,18 @@ return {
       disable_context_highlighting = false,
       disable_signs = false,
 
-      -- Git configuration
+      -- Git configuration (updated format for Neogit 2026)
       git_services = {
-        ["github.com"] = "https://github.com/${owner}/${repository}/compare/${branch_name}?expand=1",
-        ["gitlab.com"] = "https://gitlab.com/${owner}/${repository}/merge_requests/new?merge_request[source_branch]=${branch_name}",
+        ["github.com"] = {
+          pull_request = "https://github.com/${owner}/${repository}/compare/${branch_name}?expand=1",
+          commit = "https://github.com/${owner}/${repository}/commit/${oid}",
+          tree = "https://github.com/${owner}/${repository}/tree/${branch_name}",
+        },
+        ["gitlab.com"] = {
+          pull_request = "https://gitlab.com/${owner}/${repository}/merge_requests/new?merge_request[source_branch]=${branch_name}",
+          commit = "https://gitlab.com/${owner}/${repository}/-/commit/${oid}",
+          tree = "https://gitlab.com/${owner}/${repository}/-/tree/${branch_name}?ref_type=heads",
+        },
       },
 
       -- Telescope integration
