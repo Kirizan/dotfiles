@@ -92,26 +92,26 @@ return {
   {
     "LazyVim/LazyVim",
     opts = function()
-      -- Spelling/Grammar keybindings (works with both LTeX-LS and Grammarly)
-      -- These work on all profiles since LTeX-LS is always available
+      -- Code quality keybindings: LSP, spelling, grammar, diagnostics
+      -- <leader>kc namespace - works with LTeX-LS and other LSPs
 
-      -- <leader>ksa - Show available fixes (code actions)
-      vim.keymap.set("n", "<leader>ksa", vim.lsp.buf.code_action, { desc = "Show Spelling/Grammar Fixes" })
+      -- <leader>kca - Show available fixes (code actions)
+      vim.keymap.set("n", "<leader>kca", vim.lsp.buf.code_action, { desc = "Code Actions / Fixes" })
 
-      -- <leader>ksl - List all spelling/grammar issues
-      vim.keymap.set("n", "<leader>ksl", vim.diagnostic.setloclist, { desc = "List All Issues" })
+      -- <leader>kcl - List all issues
+      vim.keymap.set("n", "<leader>kcl", vim.diagnostic.setloclist, { desc = "List All Issues" })
 
-      -- <leader>ksn - Next issue
-      vim.keymap.set("n", "<leader>ksn", vim.diagnostic.goto_next, { desc = "Next Issue" })
+      -- <leader>kcn - Next issue
+      vim.keymap.set("n", "<leader>kcn", vim.diagnostic.goto_next, { desc = "Next Issue" })
 
-      -- <leader>ksp - Previous issue
-      vim.keymap.set("n", "<leader>ksp", vim.diagnostic.goto_prev, { desc = "Previous Issue" })
+      -- <leader>kcp - Previous issue
+      vim.keymap.set("n", "<leader>kcp", vim.diagnostic.goto_prev, { desc = "Previous Issue" })
 
-      -- <leader>ksh - Show issue details (hover)
-      vim.keymap.set("n", "<leader>ksh", vim.diagnostic.open_float, { desc = "Show Issue Details" })
+      -- <leader>kch - Show issue details (hover)
+      vim.keymap.set("n", "<leader>kch", vim.diagnostic.open_float, { desc = "Show Issue Details" })
 
-      -- <leader>ksi - Show info about current diagnostic
-      vim.keymap.set("n", "<leader>ksi", function()
+      -- <leader>kci - Show info about current diagnostic
+      vim.keymap.set("n", "<leader>kci", function()
         local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line(".") - 1 })
         if #diagnostics > 0 then
           local diag = diagnostics[1]
@@ -126,15 +126,15 @@ return {
         end
       end, { desc = "Diagnostic Info" })
 
-      -- <leader>ksr - Refresh grammar/spelling checks
-      vim.keymap.set("n", "<leader>ksr", function()
-        -- Force buffer update to trigger ltex-ls re-check
+      -- <leader>kcr - Refresh checks
+      vim.keymap.set("n", "<leader>kcr", function()
+        -- Force buffer update to trigger LSP re-check
         vim.cmd("write")
-        vim.notify("Grammar check refreshed", vim.log.levels.INFO)
-      end, { desc = "Refresh Grammar Check" })
+        vim.notify("Checks refreshed", vim.log.levels.INFO)
+      end, { desc = "Refresh Checks" })
 
-      -- <leader>ksR - Refresh without saving (restart LSP)
-      vim.keymap.set("n", "<leader>ksR", function()
+      -- <leader>kcR - Restart LSP
+      vim.keymap.set("n", "<leader>kcR", function()
         local clients = vim.lsp.get_clients({ bufnr = 0, name = "ltex" })
         if #clients > 0 then
           for _, client in ipairs(clients) do
@@ -147,7 +147,7 @@ return {
         else
           vim.notify("LTeX-LS not running", vim.log.levels.WARN)
         end
-      end, { desc = "Restart LTeX-LS" })
+      end, { desc = "Restart LSP" })
 
 {{- if eq .profile "personal" }}
       -- Grammarly control commands (personal machines only)
@@ -224,17 +224,17 @@ return {
     end,
   },
 
-  -- Configure which-key for grammar checking groups
+  -- Configure which-key for code quality groups
   {
     "folke/which-key.nvim",
     optional = true,
     opts = {
       spec = {
-        { "<leader>ks", group = "spelling/grammar" },
+        { "<leader>kc", group = "code (LSP/diagnostics)", icon = "" },
 {{- if eq .profile "personal" }}
-        { "<leader>kG", group = "grammarly" },
+        { "<leader>kG", group = "grammarly", icon = "" },
 {{- else }}
-        { "<leader>kG", group = "grammarly (unavailable)" },
+        { "<leader>kG", group = "grammarly (unavailable)", icon = "" },
 {{- end }}
       },
     },

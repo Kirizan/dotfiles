@@ -1068,35 +1068,99 @@ glossarium_var_name = "acronyms"
                   end
                 end
 
+                -- Store project type for tmux layout detection
+                local project_type_file = io.open(project_dir .. "/.project-type", "w")
+                if project_type_file then
+                  project_type_file:write(selected_key)
+                  project_type_file:close()
+                end
+
                 -- Initialize git repository
                 vim.fn.system("git init " .. project_dir)
                 vim.fn.system("cd " .. project_dir .. " && git add . && git commit -m 'Initial commit'")
 
-                -- Change to project directory
-                vim.cmd("cd " .. project_dir)
+                -- Create tmux session if tmux is available
+                if vim.fn.executable("tmux") == 1 then
+                  local tmux_cmd = string.format("tmux-session-new %s %s", project_name, project_dir)
+                  vim.fn.system(tmux_cmd)
+                  vim.notify(
+                    "✓ Created project: " .. project_name .. "\n  Location: " .. project_dir .. "\n  Tmux session: " .. project_name,
+                    vim.log.levels.INFO
+                  )
+                else
+                  -- Change to project directory
+                  vim.cmd("cd " .. project_dir)
 
-                -- Apply project layout if defined
-                if selected_template.layout then
-                  vim.schedule(function()
-                    selected_template.layout()
-                  end)
+                  -- Apply project layout if defined
+                  if selected_template.layout then
+                    vim.schedule(function()
+                      selected_template.layout()
+                    end)
+                  end
+
+                  vim.notify(
+                    "✓ Created project: " .. project_name .. "\n  Location: " .. project_dir,
+                    vim.log.levels.INFO
+                  )
                 end
-
-                vim.notify(
-                  "✓ Created project: " .. project_name .. "\n  Location: " .. project_dir,
-                  vim.log.levels.INFO
-                )
               end)
             end)
           end)
         end)
       end
 
-      -- Keybindings
-      vim.keymap.set("n", "<leader>pn", create_project, { desc = "New Project from Template" })
-      vim.keymap.set("n", "<leader>pp", "<cmd>Telescope projects<cr>", { desc = "Switch Project" })
-      vim.keymap.set("n", "<leader>pf", "<cmd>Telescope find_files<cr>", { desc = "Find Files in Project" })
-      vim.keymap.set("n", "<leader>pg", "<cmd>Telescope live_grep<cr>", { desc = "Grep in Project" })
+      -- Project Management Keybindings (<leader>kp)
+      vim.keymap.set("n", "<leader>kpn", create_project, { desc = "New Project from Template" })
+      vim.keymap.set("n", "<leader>kpp", "<cmd>Telescope projects<cr>", { desc = "Switch Project" })
+      vim.keymap.set("n", "<leader>kpf", "<cmd>Telescope find_files<cr>", { desc = "Find Files in Project" })
+      vim.keymap.set("n", "<leader>kpg", "<cmd>Telescope live_grep<cr>", { desc = "Grep in Project" })
+
+      -- Tmux Session Management Keybindings
+      if vim.fn.executable("tmux") == 1 then
+        -- <leader>kpx - Open tmux-sessionx (fuzzy finder)
+        vim.keymap.set("n", "<leader>kpx", function()
+          vim.fn.system("tmux run-shell ~/.tmux/plugins/tmux-sessionx/scripts/sessionx.sh")
+        end, { desc = "Tmux SessionX (Fuzzy Finder)" })
+
+        -- <leader>kps - Switch tmux sessions
+        vim.keymap.set("n", "<leader>kps", function()
+          vim.cmd("terminal tmux-project-switch")
+        end, { desc = "Switch Tmux Session" })
+
+        -- <leader>kpd - Detach from tmux session
+        vim.keymap.set("n", "<leader>kpd", function()
+          vim.fn.system("tmux detach-client")
+          vim.notify("Detached from tmux session", vim.log.levels.INFO)
+        end, { desc = "Detach Tmux Session" })
+
+        -- <leader>kpk - Kill current tmux session
+        vim.keymap.set("n", "<leader>kpk", function()
+          local session_name = vim.fn.system("tmux display-message -p '#S'"):gsub("\n", "")
+          vim.ui.input({ prompt = "Kill session '" .. session_name .. "'? (y/N): " }, function(input)
+            if input and input:lower() == "y" then
+              vim.fn.system("tmux kill-session -t " .. session_name)
+              vim.notify("Killed session: " .. session_name, vim.log.levels.INFO)
+            end
+          end)
+        end, { desc = "Kill Tmux Session" })
+
+        -- <leader>kpl - List all tmux sessions
+        vim.keymap.set("n", "<leader>kpl", function()
+          local sessions = vim.fn.system("tmux list-sessions")
+          vim.notify(sessions, vim.log.levels.INFO, { title = "Tmux Sessions" })
+        end, { desc = "List Tmux Sessions" })
+
+        -- <leader>kpr - Rename current tmux session
+        vim.keymap.set("n", "<leader>kpr", function()
+          local current_session = vim.fn.system("tmux display-message -p '#S'"):gsub("\n", "")
+          vim.ui.input({ prompt = "Rename session '" .. current_session .. "' to: " }, function(new_name)
+            if new_name and new_name ~= "" then
+              vim.fn.system("tmux rename-session -t " .. current_session .. " " .. new_name)
+              vim.notify("Renamed session to: " .. new_name, vim.log.levels.INFO)
+            end
+          end)
+        end, { desc = "Rename Tmux Session" })
+      end
     end,
   },
 
@@ -1104,7 +1168,7 @@ glossarium_var_name = "acronyms"
   {
     "nvim-telescope/telescope.nvim",
     keys = {
-      { "<leader>pp", "<cmd>Telescope projects<cr>", desc = "Projects" },
+      { "<leader>kpp", "<cmd>Telescope projects<cr>", desc = "Projects" },
     },
   },
 
@@ -1114,7 +1178,7 @@ glossarium_var_name = "acronyms"
     optional = true,
     opts = {
       spec = {
-        { "<leader>p", group = "projects", icon = " " },
+        { "<leader>kp", group = "projects/tmux", icon = " " },
       },
     },
   },

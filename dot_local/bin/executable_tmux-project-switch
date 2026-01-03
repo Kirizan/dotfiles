@@ -1,0 +1,60 @@
+#!/bin/bash
+# Tmux Project Switcher
+# Quick switch between tmux sessions for projects
+
+set -e
+
+# Get list of existing sessions
+sessions=$(tmux list-sessions -F "#{session_name}" 2>/dev/null || echo "")
+
+# Get list of project directories
+{{- if eq .chezmoi.os "darwin" }}
+project_dirs=$(find ~/projects -maxdepth 1 -type d -not -name projects 2>/dev/null || echo "")
+{{- else }}
+project_dirs=$(find ~/projects -maxdepth 1 -type d -not -name projects 2>/dev/null || echo "")
+{{- end }}
+
+# Combine and deduplicate
+all_options=$(echo -e "$sessions\n$project_dirs" | sed 's|.*/||' | sort -u | grep -v '^$')
+
+# If in tmux, exclude current session
+if [ -n "$TMUX" ]; then
+    current_session=$(tmux display-message -p '#S')
+    all_options=$(echo "$all_options" | grep -v "^$current_session$")
+fi
+
+# Use fzf to select
+selected=$(echo "$all_options" | fzf --prompt="Switch to project: " --height=40% --reverse)
+
+if [ -z "$selected" ]; then
+    exit 0
+fi
+
+# Check if session exists
+if tmux has-session -t "$selected" 2>/dev/null; then
+    # Session exists, switch to it
+    if [ -n "$TMUX" ]; then
+        tmux switch-client -t "$selected"
+    else
+        tmux attach-session -t "$selected"
+    fi
+else
+    # Session doesn't exist, create it
+    project_path="$HOME/projects/$selected"
+
+    if [ ! -d "$project_path" ]; then
+        echo "Project directory not found: $project_path"
+        exit 1
+    fi
+
+    # Create new session
+    if [ -n "$TMUX" ]; then
+        tmux new-session -d -s "$selected" -c "$project_path"
+        tmux switch-client -t "$selected"
+    else
+        tmux new-session -s "$selected" -c "$project_path"
+    fi
+
+    # Open nvim in the new session
+    tmux send-keys -t "$selected" "nvim ." Enter
+fi

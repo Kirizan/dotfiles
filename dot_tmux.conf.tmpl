@@ -1,0 +1,170 @@
+# Tmux Configuration
+# Integrated with project management and tmux-sessionx
+
+# ==============================================================================
+# GENERAL SETTINGS
+# ==============================================================================
+
+# Use 256 color terminal
+set -g default-terminal "tmux-256color"
+set -ga terminal-overrides ",xterm-256color:Tc"
+
+# Enable mouse support
+set -g mouse on
+
+# Start window and pane numbering at 1
+set -g base-index 1
+setw -g pane-base-index 1
+
+# Renumber windows when one is closed
+set -g renumber-windows on
+
+# Increase scrollback buffer size
+set -g history-limit 50000
+
+# Display tmux messages for 4 seconds
+set -g display-time 4000
+
+# Refresh status bar every 5 seconds
+set -g status-interval 5
+
+# Focus events enabled for terminals that support them
+set -g focus-events on
+
+# Super useful when using "grouped sessions" and multi-monitor setup
+setw -g aggressive-resize on
+
+# ==============================================================================
+# KEY BINDINGS
+# ==============================================================================
+
+# Change prefix from Ctrl+b to Ctrl+a (easier to reach)
+unbind C-b
+set -g prefix C-a
+bind C-a send-prefix
+
+# Reload config
+bind r source-file ~/.tmux.conf \; display "Config reloaded!"
+
+# Split panes with | and -
+bind | split-window -h -c "#{pane_current_path}"
+bind - split-window -v -c "#{pane_current_path}"
+unbind '"'
+unbind %
+
+# Switch panes using Alt+arrow without prefix
+bind -n M-Left select-pane -L
+bind -n M-Right select-pane -R
+bind -n M-Up select-pane -U
+bind -n M-Down select-pane -D
+
+# Resize panes using Prefix + hjkl
+bind -r h resize-pane -L 5
+bind -r j resize-pane -D 5
+bind -r k resize-pane -U 5
+bind -r l resize-pane -R 5
+
+# Vi mode for copy mode
+setw -g mode-keys vi
+bind -T copy-mode-vi v send -X begin-selection
+bind -T copy-mode-vi y send -X copy-selection-and-cancel
+
+# ==============================================================================
+# STATUS BAR
+# ==============================================================================
+
+# Status bar position
+set -g status-position bottom
+
+# Status bar colors
+set -g status-bg colour234
+set -g status-fg colour137
+
+# Left status bar: [session] window:pane
+set -g status-left-length 30
+set -g status-left '#[fg=colour233,bg=colour245,bold] #S #[fg=colour245,bg=colour234] '
+
+# Right status bar: date time
+set -g status-right-length 50
+set -g status-right '#[fg=colour233,bg=colour241,bold] %d/%m #[fg=colour233,bg=colour245,bold] %H:%M:%S '
+
+# Window status format
+setw -g window-status-current-format ' #I#[fg=colour250]:#[fg=colour255]#W#[fg=colour50]#F '
+setw -g window-status-format ' #I#[fg=colour237]:#[fg=colour250]#W#[fg=colour244]#F '
+
+# ==============================================================================
+# TMUX PLUGIN MANAGER (TPM)
+# ==============================================================================
+
+# Plugin list
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'tmux-plugins/tmux-sensible'
+set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-continuum'
+set -g @plugin 'omerxx/tmux-sessionx'
+
+# ==============================================================================
+# PLUGIN CONFIGURATIONS
+# ==============================================================================
+
+# tmux-resurrect: Save and restore tmux sessions
+set -g @resurrect-strategy-nvim 'session'  # Restore nvim sessions
+set -g @resurrect-capture-pane-contents 'on'  # Restore pane contents
+
+# tmux-continuum: Automatic save/restore
+set -g @continuum-restore 'on'  # Auto-restore last saved session on tmux start
+set -g @continuum-save-interval '15'  # Save every 15 minutes
+
+# tmux-sessionx: Fuzzy session finder
+set -g @sessionx-bind 'o'  # Prefix + o to open sessionx
+set -g @sessionx-x-path '~/projects'  # Default project path
+set -g @sessionx-window-height '85%'
+set -g @sessionx-window-width '75%'
+set -g @sessionx-zoxide-mode 'on'  # Enable zoxide integration
+set -g @sessionx-filter-current 'false'  # Show current session in list
+set -g @sessionx-preview-enabled 'true'  # Show session preview
+set -g @sessionx-preview-location 'right'
+set -g @sessionx-preview-ratio '55%'
+
+# Custom keybindings for project management
+# These work with the Neovim integration
+bind-key -n M-p run-shell "~/.local/bin/tmux-project-switch"  # Alt+p: Quick project switch
+bind-key P run-shell "~/.local/bin/tmux-project-create"  # Prefix+Shift+P: Create new project
+
+# ==============================================================================
+# PLATFORM-SPECIFIC SETTINGS
+# ==============================================================================
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS-specific settings
+set -g default-command "reattach-to-user-namespace -l $SHELL"
+
+# Copy to macOS clipboard
+bind -T copy-mode-vi y send -X copy-pipe-and-cancel "reattach-to-user-namespace pbcopy"
+
+{{- else if eq .chezmoi.os "linux" }}
+# Linux-specific settings
+{{-   if lookPath "xclip" }}
+# Copy to X11 clipboard using xclip
+bind -T copy-mode-vi y send -X copy-pipe-and-cancel "xclip -in -selection clipboard"
+{{-   else if lookPath "wl-copy" }}
+# Copy to Wayland clipboard using wl-clipboard
+bind -T copy-mode-vi y send -X copy-pipe-and-cancel "wl-copy"
+{{-   end }}
+
+{{-   if or (not (not (env "WSL_DISTRO_NAME"))) (not (not (env "WSLENV"))) }}
+# WSL-specific settings
+bind -T copy-mode-vi y send -X copy-pipe-and-cancel "clip.exe"
+{{-   end }}
+{{- end }}
+
+# ==============================================================================
+# TPM INITIALIZATION (Keep this at the bottom)
+# ==============================================================================
+
+# Install TPM if not already installed
+if "test ! -d ~/.tmux/plugins/tpm" \
+   "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
+
+# Initialize TPM (keep this line at the very bottom)
+run '~/.tmux/plugins/tpm/tpm'
