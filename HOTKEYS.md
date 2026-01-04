@@ -19,6 +19,7 @@ Quick reference for all keyboard shortcuts across Neovim, Tmux, and terminal too
 | `<leader>kci` | Show diagnostic info |
 | `<leader>kcr` | Refresh checks (save file) |
 | `<leader>kcR` | Restart LSP server |
+| `<leader>kct` | Toggle live checking / check-on-save |
 
 ### Grammar (`<leader>kG`)
 | Hotkey | Action |
