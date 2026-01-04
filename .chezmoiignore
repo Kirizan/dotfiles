@@ -8,6 +8,8 @@ PROFILES.md
 .claude
 
 # Documentation files
+CLAUDE.md
+HOTKEYS.md
 *.org
 system.org
 
