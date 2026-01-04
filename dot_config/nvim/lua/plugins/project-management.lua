@@ -120,11 +120,10 @@ return {
     lazy = false,
     dependencies = { "MunifTanjim/nui.nvim" }, -- For trust UI
     opts = {
-      files = {
-        ".nvim.lua",
-        ".nvimrc",
-        ".exrc",
-      },
+      exrc_name = ".nvim.lua", -- Name of exrc file to use (default)
+      on_vim_enter = true, -- Load exrc from current directory on start
+      trust_on_write = true, -- Automatically trust when saving exrc file
+      use_telescope = true, -- Use telescope for picking files if available
     },
   },
 
