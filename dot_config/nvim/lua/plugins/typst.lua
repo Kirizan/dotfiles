@@ -156,6 +156,38 @@ return {
             end
           end, { buffer = buf, desc = "Compile Typst to DOCX" })
 
+          -- <leader>kTm - Export to Markdown (via Pandoc)
+          vim.keymap.set("n", "<leader>kTm", function()
+            local file = vim.fn.expand("%:p")
+            local md_output = vim.fn.expand("%:p:r") .. ".md"
+
+            -- Convert Typst to Markdown using Pandoc
+            vim.notify("Converting Typst to Markdown...", vim.log.levels.INFO)
+            local pandoc_cmd = string.format(
+              "pandoc %s -o %s 2>&1",
+              vim.fn.shellescape(file),
+              vim.fn.shellescape(md_output)
+            )
+            local pandoc_output = vim.fn.system(pandoc_cmd)
+            local pandoc_exit = vim.v.shell_error
+
+            if pandoc_exit ~= 0 then
+              vim.notify("Pandoc conversion failed:\n" .. pandoc_output, vim.log.levels.ERROR)
+              return
+            end
+
+            -- Check if Markdown was created
+            if vim.fn.filereadable(md_output) == 1 then
+              local size = vim.fn.getfsize(md_output)
+              vim.notify(
+                string.format("Successfully exported to %s (%d bytes)", md_output, size),
+                vim.log.levels.INFO
+              )
+            else
+              vim.notify("Markdown file was not created: " .. md_output, vim.log.levels.ERROR)
+            end
+          end, { buffer = buf, desc = "Export to Markdown" })
+
           -- <leader>kTo - Open compiled PDF
           vim.keymap.set("n", "<leader>kTo", function()
             local pdf_file = vim.fn.expand("%:p:r") .. ".pdf"
@@ -221,6 +253,7 @@ return {
             { "<leader>kTs", desc = "Sync Preview", buffer = buf },
             { "<leader>kTc", desc = "Compile to PDF", buffer = buf },
             { "<leader>kTd", desc = "Compile to DOCX", buffer = buf },
+            { "<leader>kTm", desc = "Export to Markdown", buffer = buf },
             { "<leader>kTo", desc = "Open PDF", buffer = buf },
             { "<leader>kTw", desc = "Watch Mode", buffer = buf },
             -- Bibliography
@@ -237,6 +270,89 @@ return {
             { "<leader>kTe", desc = "Edit Acronym Config", buffer = buf },
             -- Visual mode mappings
             { "<leader>kTa", desc = "Add Acronym from Selection", mode = "v", buffer = buf },
+          })
+        end,
+      })
+
+      -- Markdown conversion keybindings under <leader>km
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "markdown",
+        callback = function()
+          local buf = vim.api.nvim_get_current_buf()
+
+          -- Register which-key group for markdown conversions
+          wk.add({
+            { "<leader>km", group = "markdown", icon = "", buffer = buf },
+          })
+
+          -- <leader>kmc - Convert Markdown to PDF
+          vim.keymap.set("n", "<leader>kmc", function()
+            local file = vim.fn.expand("%:p")
+            local pdf_output = vim.fn.expand("%:p:r") .. ".pdf"
+
+            -- Convert Markdown to PDF using Pandoc
+            vim.notify("Converting Markdown to PDF...", vim.log.levels.INFO)
+            local pandoc_cmd = string.format(
+              "pandoc %s -o %s 2>&1",
+              vim.fn.shellescape(file),
+              vim.fn.shellescape(pdf_output)
+            )
+            local pandoc_output = vim.fn.system(pandoc_cmd)
+            local pandoc_exit = vim.v.shell_error
+
+            if pandoc_exit ~= 0 then
+              vim.notify("Pandoc conversion failed:\n" .. pandoc_output, vim.log.levels.ERROR)
+              return
+            end
+
+            -- Check if PDF was created
+            if vim.fn.filereadable(pdf_output) == 1 then
+              local size = vim.fn.getfsize(pdf_output)
+              vim.notify(
+                string.format("Successfully compiled to %s (%d bytes)", pdf_output, size),
+                vim.log.levels.INFO
+              )
+            else
+              vim.notify("PDF file was not created: " .. pdf_output, vim.log.levels.ERROR)
+            end
+          end, { buffer = buf, desc = "Convert to PDF" })
+
+          -- <leader>kmd - Convert Markdown to DOCX
+          vim.keymap.set("n", "<leader>kmd", function()
+            local file = vim.fn.expand("%:p")
+            local docx_output = vim.fn.expand("%:p:r") .. ".docx"
+
+            -- Convert Markdown to DOCX using Pandoc
+            vim.notify("Converting Markdown to DOCX...", vim.log.levels.INFO)
+            local pandoc_cmd = string.format(
+              "pandoc %s -o %s 2>&1",
+              vim.fn.shellescape(file),
+              vim.fn.shellescape(docx_output)
+            )
+            local pandoc_output = vim.fn.system(pandoc_cmd)
+            local pandoc_exit = vim.v.shell_error
+
+            if pandoc_exit ~= 0 then
+              vim.notify("Pandoc conversion failed:\n" .. pandoc_output, vim.log.levels.ERROR)
+              return
+            end
+
+            -- Check if DOCX was created
+            if vim.fn.filereadable(docx_output) == 1 then
+              local size = vim.fn.getfsize(docx_output)
+              vim.notify(
+                string.format("Successfully compiled to %s (%d bytes)", docx_output, size),
+                vim.log.levels.INFO
+              )
+            else
+              vim.notify("DOCX file was not created: " .. docx_output, vim.log.levels.ERROR)
+            end
+          end, { buffer = buf, desc = "Convert to DOCX" })
+
+          -- Register which-key descriptions for markdown buffer
+          wk.add({
+            { "<leader>kmc", desc = "Convert to PDF", buffer = buf },
+            { "<leader>kmd", desc = "Convert to DOCX", buffer = buf },
           })
         end,
       })
