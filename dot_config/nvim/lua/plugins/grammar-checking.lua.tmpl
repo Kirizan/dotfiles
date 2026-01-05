@@ -93,17 +93,33 @@ return {
           -- Capture authentication URL from Grammarly messages
           ["window/showMessage"] = function(err, result, ctx, config)
             if result and result.message then
-              local url = result.message:match("(https://[^%s]+)")
-              if url and url:match("grammarly") then
+              local url = result.message:match("(https://[^%s\"']+grammarly[^%s\"']*)")
+              if url then
                 _G.grammarly_auth_url = url
                 vim.notify(
-                  "Grammarly authentication URL captured.\nRun :GrammarlyAuthenticate to open it",
+                  "Grammarly auth URL captured from window/showMessage.\nRun :GrammarlyAuthenticate",
                   vim.log.levels.INFO
                 )
               end
             end
             -- Call default handler
             return vim.lsp.handlers["window/showMessage"](err, result, ctx, config)
+          end,
+          ["window/logMessage"] = function(err, result, ctx, config)
+            if result and result.message then
+              local url = result.message:match("(https://[^%s\"']+grammarly[^%s\"']*)")
+              if url then
+                _G.grammarly_auth_url = url
+                vim.notify(
+                  "Grammarly auth URL captured from window/logMessage.\nRun :GrammarlyAuthenticate",
+                  vim.log.levels.INFO
+                )
+              end
+            end
+            -- Call default handler if it exists
+            if vim.lsp.handlers["window/logMessage"] then
+              return vim.lsp.handlers["window/logMessage"](err, result, ctx, config)
+            end
           end,
         },
         on_attach = function(client, bufnr)
@@ -321,6 +337,23 @@ return {
           end
         end
 
+        -- Helper function to parse LSP log for auth URL
+        local function parse_lsp_log()
+          local lsp_log_path = vim.lsp.get_log_path()
+          local log_content = vim.fn.readfile(lsp_log_path)
+
+          -- Search backwards through log (most recent first)
+          for i = #log_content, 1, -1 do
+            local line = log_content[i]
+            -- Look for Grammarly auth URLs
+            local url = line:match("(https://[^%s\"']+grammarly[^%s\"']*)")
+            if url then
+              return url
+            end
+          end
+          return nil
+        end
+
         -- Check if URL is already captured
         if _G.grammarly_auth_url then
           vim.notify("Opening Grammarly authentication URL...", vim.log.levels.INFO)
@@ -343,25 +376,57 @@ return {
 
           local function check_auth_url()
             attempts = attempts + 1
+
+            -- First check if handler captured it
             if _G.grammarly_auth_url then
               vim.notify("Authentication URL captured! Opening browser...", vim.log.levels.INFO)
               open_url(_G.grammarly_auth_url)
-            elseif attempts < max_attempts then
+              return
+            end
+
+            -- Fallback: Parse LSP log every few attempts
+            if attempts % 4 == 0 then -- Check log every 2 seconds
+              local url = parse_lsp_log()
+              if url then
+                _G.grammarly_auth_url = url
+                vim.notify("Found auth URL in LSP log! Opening browser...", vim.log.levels.INFO)
+                open_url(url)
+                return
+              end
+            end
+
+            if attempts < max_attempts then
               vim.defer_fn(check_auth_url, 500)
             else
-              vim.notify(
-                "Timeout waiting for auth URL.\nGrammarly might already be authenticated or not sending auth URL.\nCheck :LspInfo for status",
-                vim.log.levels.WARN
-              )
+              -- Final attempt: parse log one more time
+              local url = parse_lsp_log()
+              if url then
+                _G.grammarly_auth_url = url
+                vim.notify("Found auth URL in LSP log! Opening browser...", vim.log.levels.INFO)
+                open_url(url)
+              else
+                vim.notify(
+                  "No auth URL found.\nGrammarly might already be authenticated.\nManually check :LspLog if needed",
+                  vim.log.levels.WARN
+                )
+              end
             end
           end
 
           vim.defer_fn(check_auth_url, 1000) -- Start checking after 1 second
         else
-          vim.notify(
-            "Grammarly already running.\nIf already authenticated, no URL will appear.\nCheck :LspInfo for status",
-            vim.log.levels.INFO
-          )
+          -- Grammarly already running - try to parse log immediately
+          local url = parse_lsp_log()
+          if url then
+            _G.grammarly_auth_url = url
+            vim.notify("Found auth URL in LSP log! Opening browser...", vim.log.levels.INFO)
+            open_url(url)
+          else
+            vim.notify(
+              "Grammarly already running.\nNo auth URL found in log - might already be authenticated.\nCheck :LspInfo for status",
+              vim.log.levels.INFO
+            )
+          end
         end
       end, { desc = "Authenticate Grammarly (open OAuth URL)" })
 
