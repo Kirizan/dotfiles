@@ -74,18 +74,26 @@ return {
 
 {{- if eq .profile "personal" }}
   -- Grammarly LSP - Only on personal machines
-  -- Disabled by default, manual start only
+  -- Never autostarts - manual start only via :GrammarlyStart
   {
     "neovim/nvim-lspconfig",
     opts = function(_, opts)
       opts.servers = opts.servers or {}
       opts.servers.grammarly = {
-        enabled = true,
-        autostart = false, -- Manual start only
-        filetypes = { "typst", "markdown", "text", "tex", "gitcommit" },
+        autostart = false, -- NEVER autostart - manual only
+        filetypes = {}, -- Empty filetypes list prevents autostart on any filetype
         init_options = {
           clientId = "client_BaDkMgx4X19X9UxxYRCXZo",
         },
+        on_attach = function(client, bufnr)
+          -- Grammarly requires OAuth authentication
+          -- Authentication URL will appear in :LspLog on first start
+          vim.notify(
+            "Grammarly attached. First time? Check :LspLog for authentication URL",
+            vim.log.levels.INFO,
+            { timeout = 5000 }
+          )
+        end,
       }
       return opts
     end,
@@ -185,8 +193,39 @@ return {
         if #clients > 0 then
           vim.notify("Grammarly already running", vim.log.levels.INFO)
         else
+          -- Get current filetype
+          local ft = vim.bo[bufnr].filetype
+          local supported_fts = { "typst", "markdown", "text", "tex", "gitcommit" }
+
+          -- Check if current filetype is supported
+          local is_supported = false
+          for _, supported_ft in ipairs(supported_fts) do
+            if ft == supported_ft then
+              is_supported = true
+              break
+            end
+          end
+
+          if not is_supported then
+            vim.notify(
+              string.format("Grammarly not recommended for filetype '%s'.\nSupported: typst, markdown, text, tex, gitcommit", ft),
+              vim.log.levels.WARN
+            )
+            return
+          end
+
+          -- Start Grammarly
           vim.cmd("LspStart grammarly")
-          vim.notify("Grammarly started (current buffer)", vim.log.levels.INFO)
+          vim.notify(
+            "Grammarly starting...\nAuthentication required? Check :LspLog for auth URL\nThen run :LspRestart grammarly after authenticating",
+            vim.log.levels.INFO,
+            { timeout = 7000 }
+          )
+
+          -- Show LspInfo after a delay to see status
+          vim.defer_fn(function()
+            vim.cmd("LspInfo")
+          end, 1500)
         end
       end, { desc = "Start Grammarly (current buffer)" })
 
@@ -236,12 +275,30 @@ return {
         end
       end, { desc = "Check Grammarly status" })
 
+      vim.api.nvim_create_user_command("GrammarlyRestart", function()
+        local bufnr = vim.api.nvim_get_current_buf()
+        local clients = vim.lsp.get_clients({ bufnr = bufnr, name = "grammarly" })
+
+        if #clients > 0 then
+          for _, client in ipairs(clients) do
+            vim.lsp.stop_client(client.id, true)
+          end
+          vim.defer_fn(function()
+            vim.cmd("LspStart grammarly")
+            vim.notify("Grammarly restarted", vim.log.levels.INFO)
+          end, 500)
+        else
+          vim.notify("Grammarly not running. Use :GrammarlyStart first", vim.log.levels.WARN)
+        end
+      end, { desc = "Restart Grammarly (after auth)" })
+
       -- Grammarly keybindings
       vim.keymap.set("n", "<leader>kGe", "<cmd>GrammarlyStart<cr>", { desc = "Enable Grammarly" })
       vim.keymap.set("n", "<leader>kGd", "<cmd>GrammarlyStop<cr>", { desc = "Disable Grammarly" })
       vim.keymap.set("n", "<leader>kGt", "<cmd>GrammarlyToggle<cr>", { desc = "Toggle Grammarly" })
-      vim.keymap.set("n", "<leader>kGs", "<cmd>GrammarlyStatus<cr>", { desc = "Grammarly Status" })
-      vim.keymap.set("n", "<leader>kGp", "<cmd>GrammarlyStartProject<cr>", { desc = "Grammarly (Project)" })
+      vim.keymap.set("n", "<leader>kGs", "<cmd>GrammarlyStatus<cr>", { desc = "Status" })
+      vim.keymap.set("n", "<leader>kGp", "<cmd>GrammarlyStartProject<cr>", { desc = "Enable (Project)" })
+      vim.keymap.set("n", "<leader>kGr", "<cmd>GrammarlyRestart<cr>", { desc = "Restart (after auth)" })
 {{- else }}
       -- Work machine - no Grammarly available
       vim.keymap.set("n", "<leader>kGs", function()
