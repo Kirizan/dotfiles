@@ -126,31 +126,14 @@ return {
           -- <leader>kTd - Compile to DOCX (via Pandoc)
           vim.keymap.set("n", "<leader>kTd", function()
             local file = vim.fn.expand("%:p")
-            local pdf_output = vim.fn.expand("%:p:r") .. ".pdf"
             local docx_output = vim.fn.expand("%:p:r") .. ".docx"
 
-            -- First compile to PDF
-            vim.notify("Compiling to PDF...", vim.log.levels.INFO)
-            local typst_cmd = string.format("typst compile %s %s 2>&1", vim.fn.shellescape(file), vim.fn.shellescape(pdf_output))
-            local typst_output = vim.fn.system(typst_cmd)
-            local typst_exit = vim.v.shell_error
-
-            if typst_exit ~= 0 then
-              vim.notify("Typst compilation failed:\n" .. typst_output, vim.log.levels.ERROR)
-              return
-            end
-
-            -- Check if PDF was created
-            if vim.fn.filereadable(pdf_output) ~= 1 then
-              vim.notify("PDF file was not created: " .. pdf_output, vim.log.levels.ERROR)
-              return
-            end
-
-            -- Then convert PDF to DOCX using Pandoc
-            vim.notify("Converting PDF to DOCX...", vim.log.levels.INFO)
+            -- Convert Typst directly to DOCX using Pandoc
+            -- Note: Pandoc has limited support for Typst, so formatting may be basic
+            vim.notify("Converting Typst to DOCX...", vim.log.levels.INFO)
             local pandoc_cmd = string.format(
-              "pandoc %s -o %s --from=pdf --to=docx 2>&1",
-              vim.fn.shellescape(pdf_output),
+              "pandoc %s -o %s 2>&1",
+              vim.fn.shellescape(file),
               vim.fn.shellescape(docx_output)
             )
             local pandoc_output = vim.fn.system(pandoc_cmd)
