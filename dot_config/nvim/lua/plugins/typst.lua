@@ -130,19 +130,47 @@ return {
             local docx_output = vim.fn.expand("%:p:r") .. ".docx"
 
             -- First compile to PDF
-            vim.cmd("!" .. "typst compile " .. vim.fn.shellescape(file) .. " " .. vim.fn.shellescape(pdf_output))
+            vim.notify("Compiling to PDF...", vim.log.levels.INFO)
+            local typst_cmd = string.format("typst compile %s %s 2>&1", vim.fn.shellescape(file), vim.fn.shellescape(pdf_output))
+            local typst_output = vim.fn.system(typst_cmd)
+            local typst_exit = vim.v.shell_error
+
+            if typst_exit ~= 0 then
+              vim.notify("Typst compilation failed:\n" .. typst_output, vim.log.levels.ERROR)
+              return
+            end
+
+            -- Check if PDF was created
+            if vim.fn.filereadable(pdf_output) ~= 1 then
+              vim.notify("PDF file was not created: " .. pdf_output, vim.log.levels.ERROR)
+              return
+            end
 
             -- Then convert PDF to DOCX using Pandoc
-            vim.cmd(
-              "!"
-                .. "pandoc "
-                .. vim.fn.shellescape(pdf_output)
-                .. " -o "
-                .. vim.fn.shellescape(docx_output)
-                .. " --from=pdf --to=docx"
+            vim.notify("Converting PDF to DOCX...", vim.log.levels.INFO)
+            local pandoc_cmd = string.format(
+              "pandoc %s -o %s --from=pdf --to=docx 2>&1",
+              vim.fn.shellescape(pdf_output),
+              vim.fn.shellescape(docx_output)
             )
+            local pandoc_output = vim.fn.system(pandoc_cmd)
+            local pandoc_exit = vim.v.shell_error
 
-            vim.notify("Compiled to " .. docx_output, vim.log.levels.INFO)
+            if pandoc_exit ~= 0 then
+              vim.notify("Pandoc conversion failed:\n" .. pandoc_output, vim.log.levels.ERROR)
+              return
+            end
+
+            -- Check if DOCX was created
+            if vim.fn.filereadable(docx_output) == 1 then
+              local size = vim.fn.getfsize(docx_output)
+              vim.notify(
+                string.format("Successfully compiled to %s (%d bytes)", docx_output, size),
+                vim.log.levels.INFO
+              )
+            else
+              vim.notify("DOCX file was not created: " .. docx_output, vim.log.levels.ERROR)
+            end
           end, { buffer = buf, desc = "Compile Typst to DOCX" })
 
           -- <leader>kTo - Open compiled PDF
