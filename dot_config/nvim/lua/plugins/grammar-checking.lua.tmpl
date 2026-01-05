@@ -79,20 +79,35 @@ return {
     "neovim/nvim-lspconfig",
     opts = function(_, opts)
       opts.servers = opts.servers or {}
+
+      -- Store Grammarly auth URL globally
+      _G.grammarly_auth_url = nil
+
       opts.servers.grammarly = {
         autostart = false, -- NEVER autostart - manual only
         filetypes = {}, -- Empty filetypes list prevents autostart on any filetype
         init_options = {
           clientId = "client_BaDkMgx4X19X9UxxYRCXZo",
         },
+        handlers = {
+          -- Capture authentication URL from Grammarly messages
+          ["window/showMessage"] = function(err, result, ctx, config)
+            if result and result.message then
+              local url = result.message:match("(https://[^%s]+)")
+              if url and url:match("grammarly") then
+                _G.grammarly_auth_url = url
+                vim.notify(
+                  "Grammarly authentication URL captured.\nRun :GrammarlyAuthenticate to open it",
+                  vim.log.levels.INFO
+                )
+              end
+            end
+            -- Call default handler
+            return vim.lsp.handlers["window/showMessage"](err, result, ctx, config)
+          end,
+        },
         on_attach = function(client, bufnr)
-          -- Grammarly requires OAuth authentication
-          -- Authentication URL will appear in :LspLog on first start
-          vim.notify(
-            "Grammarly attached. First time? Check :LspLog for authentication URL",
-            vim.log.levels.INFO,
-            { timeout = 5000 }
-          )
+          vim.notify("Grammarly attached. Use :GrammarlyAuthenticate if auth needed", vim.log.levels.INFO)
         end,
       }
       return opts
@@ -217,15 +232,10 @@ return {
           -- Start Grammarly
           vim.cmd("LspStart grammarly")
           vim.notify(
-            "Grammarly starting...\nAuthentication required? Check :LspLog for auth URL\nThen run :LspRestart grammarly after authenticating",
+            "Grammarly starting...\nNeed to authenticate? Run :GrammarlyAuthenticate (<leader>kGa)",
             vim.log.levels.INFO,
-            { timeout = 7000 }
+            { timeout = 5000 }
           )
-
-          -- Show LspInfo after a delay to see status
-          vim.defer_fn(function()
-            vim.cmd("LspInfo")
-          end, 1500)
         end
       end, { desc = "Start Grammarly (current buffer)" })
 
@@ -292,13 +302,77 @@ return {
         end
       end, { desc = "Restart Grammarly (after auth)" })
 
+      vim.api.nvim_create_user_command("GrammarlyAuthenticate", function()
+        -- Helper function to open URL in browser (WSL-compatible)
+        local function open_url(url)
+          local is_wsl = vim.fn.system("grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0"):match("1") ~= nil
+
+          if is_wsl then
+            -- WSL: Try wslview first, fallback to explorer.exe
+            if vim.fn.executable("wslview") == 1 then
+              vim.fn.system({ "wslview", url })
+            else
+              vim.fn.system({ "explorer.exe", url })
+            end
+          elseif vim.fn.has("mac") == 1 then
+            vim.fn.system({ "open", url })
+          else
+            vim.fn.system({ "xdg-open", url })
+          end
+        end
+
+        -- Check if URL is already captured
+        if _G.grammarly_auth_url then
+          vim.notify("Opening Grammarly authentication URL...", vim.log.levels.INFO)
+          open_url(_G.grammarly_auth_url)
+          return
+        end
+
+        -- Check if Grammarly is running
+        local bufnr = vim.api.nvim_get_current_buf()
+        local clients = vim.lsp.get_clients({ bufnr = bufnr, name = "grammarly" })
+
+        if #clients == 0 then
+          -- Start Grammarly and wait for auth URL
+          vim.notify("Starting Grammarly to capture authentication URL...", vim.log.levels.INFO)
+          vim.cmd("LspStart grammarly")
+
+          -- Wait for auth URL to be captured (max 10 seconds)
+          local attempts = 0
+          local max_attempts = 20 -- 20 * 500ms = 10 seconds
+
+          local function check_auth_url()
+            attempts = attempts + 1
+            if _G.grammarly_auth_url then
+              vim.notify("Authentication URL captured! Opening browser...", vim.log.levels.INFO)
+              open_url(_G.grammarly_auth_url)
+            elseif attempts < max_attempts then
+              vim.defer_fn(check_auth_url, 500)
+            else
+              vim.notify(
+                "Timeout waiting for auth URL.\nGrammarly might already be authenticated or not sending auth URL.\nCheck :LspInfo for status",
+                vim.log.levels.WARN
+              )
+            end
+          end
+
+          vim.defer_fn(check_auth_url, 1000) -- Start checking after 1 second
+        else
+          vim.notify(
+            "Grammarly already running.\nIf already authenticated, no URL will appear.\nCheck :LspInfo for status",
+            vim.log.levels.INFO
+          )
+        end
+      end, { desc = "Authenticate Grammarly (open OAuth URL)" })
+
       -- Grammarly keybindings
       vim.keymap.set("n", "<leader>kGe", "<cmd>GrammarlyStart<cr>", { desc = "Enable Grammarly" })
       vim.keymap.set("n", "<leader>kGd", "<cmd>GrammarlyStop<cr>", { desc = "Disable Grammarly" })
       vim.keymap.set("n", "<leader>kGt", "<cmd>GrammarlyToggle<cr>", { desc = "Toggle Grammarly" })
       vim.keymap.set("n", "<leader>kGs", "<cmd>GrammarlyStatus<cr>", { desc = "Status" })
       vim.keymap.set("n", "<leader>kGp", "<cmd>GrammarlyStartProject<cr>", { desc = "Enable (Project)" })
-      vim.keymap.set("n", "<leader>kGr", "<cmd>GrammarlyRestart<cr>", { desc = "Restart (after auth)" })
+      vim.keymap.set("n", "<leader>kGa", "<cmd>GrammarlyAuthenticate<cr>", { desc = "Authenticate (open URL)" })
+      vim.keymap.set("n", "<leader>kGr", "<cmd>GrammarlyRestart<cr>", { desc = "Restart" })
 {{- else }}
       -- Work machine - no Grammarly available
       vim.keymap.set("n", "<leader>kGs", function()
