@@ -3,7 +3,7 @@ return {
   -- Implements addToDictionary, disableRules, hideFalsePositives
   {
     "barreiroleo/ltex_extra.nvim",
-    ft = { "typst", "markdown", "text", "tex", "gitcommit", "rst" },
+    ft = { "typst", "text", "tex", "gitcommit", "rst" },
     dependencies = { "neovim/nvim-lspconfig" },
   },
 
@@ -17,7 +17,7 @@ return {
       opts.servers.ltex = {
         enabled = true,
         autostart = true,
-        filetypes = { "typst", "markdown", "text", "tex", "gitcommit", "rst" },
+        filetypes = { "typst", "text", "tex", "gitcommit", "rst" },
         settings = {
           ltex = {
             language = "en-US",
