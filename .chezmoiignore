@@ -15,6 +15,7 @@ system.org
 
 # Temporary files
 pbcopy
+temp/
 
 # Neovim plugin lockfile (machine-specific, changes frequently)
 .config/nvim/lazy-lock.json

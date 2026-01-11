@@ -3,6 +3,7 @@ local/
 
 # Temporary files and planning documents
 tmp/
+temp/
 
 # Ignore editor swap files
 *.swp

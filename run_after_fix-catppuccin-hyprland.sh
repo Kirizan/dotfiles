@@ -1,7 +1,6 @@
 #!/bin/bash
 # Fix outdated Hyprland syntax in Catppuccin theme
-# This script only runs when the Catppuccin theme is updated via chezmoi
-# Hash: {{ include ".chezmoiexternal.toml" | sha256sum }}
+# This script runs on every chezmoi apply but only modifies files if needed
 
 set -e
 
@@ -43,7 +42,7 @@ else
         echo "   The upstream repository appears to have fixed the syntax issues."
         echo ""
         echo "   You can remove this override script:"
-        echo "   rm ~/.local/share/chezmoi/run_onchange_after_fix-catppuccin-hyprland.sh.tmpl"
+        echo "   rm ~/.local/share/chezmoi/run_after_fix-catppuccin-hyprland.sh"
         echo ""
         echo "   Then commit the change and run: chezmoi apply"
 
