@@ -1,5 +1,6 @@
 #!/bin/bash
 # This script installs essential packages on the system
+# Brewfile hash: {{ include "dot_Brewfile.tmpl" | sha256sum }}
 
 # Set askpass for sudo if available
 {{- if eq .chezmoi.os "linux" }}
