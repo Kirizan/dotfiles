@@ -97,12 +97,13 @@ apply: check ## Apply dotfiles to system
 init: ## Initialize chezmoi with this repository
 	@/bin/echo -e "$(CYAN)Initializing chezmoi...$(NC)\n"
 	@export PATH="$$HOME/.local/bin:$$PATH"; \
-	if [ ! -d ~/.local/share/chezmoi ]; then \
-		chezmoi init --source=$$(pwd); \
-		/bin/echo -e "$(GREEN)✓ Chezmoi initialized$(NC)"; \
-	else \
-		/bin/echo -e "$(YELLOW)⚠ Chezmoi already initialized$(NC)"; \
-	fi
+	if [ ! -d ~/.local/share/chezmoi ] && [ ! -L ~/.local/share/chezmoi ]; then \
+		mkdir -p ~/.local/share; \
+		ln -sf "$$(pwd)" ~/.local/share/chezmoi; \
+		/bin/echo -e "$(GREEN)✓ Symlinked ~/.local/share/chezmoi → $$(pwd)$(NC)"; \
+	fi; \
+	chezmoi init; \
+	/bin/echo -e "$(GREEN)✓ Chezmoi initialized$(NC)"
 
 status: check ## Show chezmoi status
 	@/bin/echo -e "$(CYAN)Chezmoi status:$(NC)\n"
