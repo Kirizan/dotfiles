@@ -102,7 +102,7 @@ init: ## Initialize chezmoi with this repository
 		ln -sf "$$(pwd)" ~/.local/share/chezmoi; \
 		/bin/echo -e "$(GREEN)✓ Symlinked ~/.local/share/chezmoi → $$(pwd)$(NC)"; \
 	fi; \
-	chezmoi init; \
+	chezmoi init --force; \
 	/bin/echo -e "$(GREEN)✓ Chezmoi initialized$(NC)"
 
 status: check ## Show chezmoi status

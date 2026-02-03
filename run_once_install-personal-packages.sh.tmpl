@@ -2,7 +2,7 @@
 # Personal profile only - packages not needed on work systems
 # Skipped on WSL (GUI apps not supported)
 
-{{- if and (eq .profile "personal") (not .isWSL) }}
+{{- if and (eq .profile "personal") (not .isWSL) (not .isHeadless) }}
 
 echo "Installing personal profile packages..."
 
@@ -39,8 +39,8 @@ echo "Unsupported operating system for personal packages"
 {{- end }}
 
 {{- else }}
-{{- if .isWSL }}
-echo "Skipping personal packages on WSL (GUI apps not supported)"
+{{- if or .isWSL .isHeadless }}
+echo "Skipping personal packages (no GUI on this system)"
 {{- else }}
 echo "Skipping personal packages (not on personal profile)"
 {{- end }}
