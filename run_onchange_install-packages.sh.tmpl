@@ -195,6 +195,12 @@ if ! command -v aws &> /dev/null; then
     }
 fi
 
+# Install Poetry via pipx
+if ! command -v poetry &> /dev/null; then
+    echo "Installing Poetry..."
+    pipx install poetry
+fi
+
 # Install terraform via HashiCorp apt repo
 if ! command -v terraform &> /dev/null; then
     echo "Installing Terraform..."
