@@ -40,12 +40,17 @@ Library/
 .bash_profile
 {{- end }}
 
-# Omarchy-only files (Arch Linux with Hyprland desktop)
-# Ignore on macOS, Ubuntu, WSL, and any non-Omarchy system
-{{- if not .isOmarchy }}
+# Desktop environment configs — only deploy if the tool is installed
+{{- if not (lookPath "Hyprland") }}
 .config/hypr/
+{{- end }}
+{{- if not (lookPath "waybar") }}
 .config/waybar/
+{{- end }}
+{{- if not (lookPath "makoctl") }}
 .config/mako/
+{{- end }}
+{{- if not (stat (joinPath .chezmoi.homeDir ".local/share/omarchy")) }}
 .config/omarchy/
 {{- end }}
 
