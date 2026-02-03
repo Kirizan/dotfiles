@@ -78,13 +78,13 @@ install-chezmoi: ## Install chezmoi if not present
 	else \
 		/bin/echo -e "$(CYAN)Installing chezmoi...$(NC)"; \
 		if [ "$(OS)" = "macos" ]; then \
-			brew install chezmoi; \
+			brew install chezmoi || sh -c "$$(curl -fsLS get.chezmoi.io)" -- -b "$$HOME/.local/bin"; \
 		elif [ "$(DISTRO)" = "arch" ]; then \
-			sudo pacman -S --needed --noconfirm chezmoi; \
+			sudo pacman -S --needed --noconfirm chezmoi || sh -c "$$(curl -fsLS get.chezmoi.io)" -- -b "$$HOME/.local/bin"; \
 		elif [ "$(DISTRO)" = "debian" ]; then \
-			sh -c "$$(curl -fsLS get.chezmoi.io)"; \
+			sh -c "$$(curl -fsLS get.chezmoi.io)" -- -b "$$HOME/.local/bin"; \
 		else \
-			sh -c "$$(curl -fsLS get.chezmoi.io)"; \
+			sh -c "$$(curl -fsLS get.chezmoi.io)" -- -b "$$HOME/.local/bin"; \
 		fi; \
 		/bin/echo -e "$(GREEN)✓ chezmoi installed$(NC)"; \
 	fi

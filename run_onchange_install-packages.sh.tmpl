@@ -10,8 +10,7 @@ fi
 {{- end }}
 
 {{- if eq .chezmoi.os "linux" }}
-# Linux: Install minimal system dependencies, then use Homebrew for packages
-echo "Setting up Homebrew on Linux..."
+# Linux: Install system dependencies, then packages via Homebrew or native package manager
 
 # Install minimal system dependencies based on distro
 {{- if eq .chezmoi.osRelease.id "arch" }}
@@ -57,6 +56,10 @@ elif command -v pacman &> /dev/null; then
     sudo pacman -S --needed --noconfirm ttf-liberation
 fi
 {{- end }}
+
+{{- if .useHomebrew }}
+# Use Homebrew for package management on this Linux system
+echo "Setting up Homebrew on Linux..."
 
 # Install Homebrew if not already installed
 if ! command -v brew &> /dev/null; then
@@ -116,6 +119,97 @@ if ! command -v eza &> /dev/null; then
     echo "Installing eza..."
     brew install eza
 fi
+
+{{- else }}
+# No Homebrew — install packages via native package manager (e.g., ARM64 Linux)
+echo "Installing packages via native package manager (Homebrew not used on this system)..."
+
+{{- if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+# Core dev tools and CLI utilities via apt
+echo "Installing core packages via apt..."
+sudo apt-get update
+sudo apt-get install -y \
+    neovim \
+    ripgrep \
+    fzf \
+    fd-find \
+    jq \
+    tree \
+    wget \
+    direnv \
+    shellcheck \
+    pandoc \
+    cmake \
+    golang \
+    nodejs \
+    npm \
+    python3-pip \
+    python3-venv \
+    pipx \
+    tmux \
+    zsh \
+    zsh-common \
+    p7zip-full \
+    subversion \
+    aria2
+
+# Install eza (modern ls replacement)
+if ! command -v eza &> /dev/null; then
+    echo "Installing eza..."
+    sudo apt-get install -y eza 2>/dev/null || {
+        # eza may not be in default repos on older Ubuntu — install via cargo
+        if command -v cargo &> /dev/null; then
+            cargo install eza
+        else
+            echo "Warning: eza not available via apt and cargo not found, skipping"
+        fi
+    }
+fi
+
+# Install starship prompt
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+# Install GitHub CLI (gh)
+if ! command -v gh &> /dev/null; then
+    echo "Installing GitHub CLI..."
+    (type -p wget >/dev/null || sudo apt-get install -y wget) \
+    && sudo mkdir -p -m 755 /etc/apt/keyrings \
+    && out=$(mktemp) && wget -nv -O "$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+    && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && sudo apt-get update \
+    && sudo apt-get install -y gh
+    rm -f "$out"
+fi
+
+# Install awscli via pipx
+if ! command -v aws &> /dev/null; then
+    echo "Installing AWS CLI via pipx..."
+    pipx install awscli 2>/dev/null || {
+        echo "Warning: awscli install via pipx failed, trying pip..."
+        pip3 install --user awscli 2>/dev/null || echo "Warning: awscli installation failed"
+    }
+fi
+
+# Install terraform via HashiCorp apt repo
+if ! command -v terraform &> /dev/null; then
+    echo "Installing Terraform..."
+    wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg 2>/dev/null || true
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
+    sudo apt-get update && sudo apt-get install -y terraform
+fi
+
+{{- else }}
+# Generic non-Homebrew Linux fallback
+echo "Warning: Non-Homebrew installation only has full support for Ubuntu/Debian."
+echo "Please install packages manually for your distribution."
+{{- end }}
+
+{{- end }}
 
 {{- if .isWSL }}
 # WSL-specific packages

@@ -6,6 +6,32 @@
 {{-   end -}}
 {{- end -}}
 
+{{- /* Architecture detection */ -}}
+{{- $arch := .chezmoi.arch -}}
+
+{{- /* Detect Omarchy (Arch Linux with Hyprland desktop) */ -}}
+{{- $isOmarchy := false -}}
+{{- if and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "arch") -}}
+{{-   $isOmarchy = true -}}
+{{- end -}}
+
+{{- /* Determine whether to use Homebrew for package management */ -}}
+{{- /* true on macOS (always), true on Linux x86_64, false on Linux ARM64 */ -}}
+{{- $useHomebrew := false -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{-   $useHomebrew = true -}}
+{{- else if eq .chezmoi.os "linux" -}}
+{{-   if eq $arch "amd64" -}}
+{{-     $useHomebrew = true -}}
+{{-   end -}}
+{{- end -}}
+{{- /* Allow override via environment variable */ -}}
+{{- if eq (env "CHEZMOI_USE_HOMEBREW") "true" -}}
+{{-   $useHomebrew = true -}}
+{{- else if eq (env "CHEZMOI_USE_HOMEBREW") "false" -}}
+{{-   $useHomebrew = false -}}
+{{- end -}}
+
 {{- /* Determine profile: "work" or "personal" */ -}}
 {{- $profile := "personal" -}}
 
@@ -37,6 +63,9 @@
     email = {{ $email | quote }}
     name = {{ $name | quote }}
     isWSL = {{ $isWSL }}
+    arch = {{ $arch | quote }}
+    isOmarchy = {{ $isOmarchy }}
+    useHomebrew = {{ $useHomebrew }}
 
 {{- if eq .chezmoi.os "darwin" }}
 [data.packages]

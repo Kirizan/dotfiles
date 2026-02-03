@@ -38,6 +38,11 @@ Library/
 {{- if ne .chezmoi.os "linux" }}
 .bashrc
 .bash_profile
+{{- end }}
+
+# Omarchy-only files (Arch Linux with Hyprland desktop)
+# Ignore on macOS, Ubuntu, WSL, and any non-Omarchy system
+{{- if not .isOmarchy }}
 .config/hypr/
 .config/waybar/
 .config/mako/
@@ -46,11 +51,6 @@ Library/
 
 # WSL-specific ignores (GUI configs don't work on WSL without WSLg)
 {{- if .isWSL }}
-# GUI desktop environment configs
-.config/hypr/
-.config/waybar/
-.config/mako/
-.config/omarchy/
 .config/alacritty/
 
 # GUI-related scripts
