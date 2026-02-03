@@ -49,11 +49,13 @@ Library/
 .config/omarchy/
 {{- end }}
 
-# WSL-specific ignores (GUI configs don't work on WSL without WSLg)
-{{- if .isWSL }}
+# Headless systems (SSH-only servers, WSL without WSLg, etc.)
+# Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages
+{{- if .isHeadless }}
 .config/alacritty/
-
-# GUI-related scripts
+.config/wezterm/
+.config/autostart/
+.config/vim/gvimrc
 run_onchange_set-default-browser.sh.tmpl
 run_once_install-personal-packages.sh.tmpl
 {{- end }}

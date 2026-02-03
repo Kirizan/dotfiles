@@ -15,6 +15,22 @@
 {{-   $isOmarchy = true -}}
 {{- end -}}
 
+{{- /* Detect headless systems (no GUI — SSH-only servers, WSL without WSLg, etc.) */ -}}
+{{- $isHeadless := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if $isWSL -}}
+{{-     $isHeadless = true -}}
+{{-   else if not (or (env "DISPLAY") (env "WAYLAND_DISPLAY") (env "MIR_SOCKET")) -}}
+{{-     $isHeadless = true -}}
+{{-   end -}}
+{{- end -}}
+{{- /* Allow override via environment variable */ -}}
+{{- if eq (env "CHEZMOI_HEADLESS") "true" -}}
+{{-   $isHeadless = true -}}
+{{- else if eq (env "CHEZMOI_HEADLESS") "false" -}}
+{{-   $isHeadless = false -}}
+{{- end -}}
+
 {{- /* Determine whether to use Homebrew for package management */ -}}
 {{- /* true on macOS (always), true on Linux x86_64, false on Linux ARM64 */ -}}
 {{- $useHomebrew := false -}}
@@ -66,6 +82,7 @@
     arch = {{ $arch | quote }}
     isOmarchy = {{ $isOmarchy }}
     useHomebrew = {{ $useHomebrew }}
+    isHeadless = {{ $isHeadless }}
 
 {{- if eq .chezmoi.os "darwin" }}
 [data.packages]
