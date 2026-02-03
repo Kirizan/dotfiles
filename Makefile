@@ -1,4 +1,4 @@
-.PHONY: help setup install-chezmoi install-prereqs apply update status diff check clean github-ssh work_machine personal_machine show_profile
+.PHONY: help setup install-chezmoi install-prereqs init apply update status diff check clean github-ssh work_machine personal_machine show_profile
 
 # Detect operating system
 UNAME_S := $(shell uname -s)
@@ -40,7 +40,7 @@ help: ## Show this help message
 	@/bin/echo -e "$(YELLOW)Available targets:$(NC)"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[0;36m%-20s\033[0m %s\n", $$1, $$2}'
 
-setup: install-prereqs install-chezmoi apply ## Complete setup: install prerequisites, chezmoi, and apply dotfiles
+setup: install-prereqs install-chezmoi init apply ## Complete setup: install prerequisites, chezmoi, and apply dotfiles
 	@/bin/echo -e "$(GREEN)✓ Setup complete!$(NC)\n"
 	@/bin/echo -e "\n"
 	@/bin/echo -e "Your dotfiles are now managed by chezmoi.\n"
@@ -91,12 +91,13 @@ install-chezmoi: ## Install chezmoi if not present
 
 apply: check ## Apply dotfiles to system
 	@/bin/echo -e "$(CYAN)Applying dotfiles...$(NC)\n"
-	@chezmoi apply -v
+	@export PATH="$$HOME/.local/bin:$$PATH"; chezmoi apply -v
 	@/bin/echo -e "$(GREEN)✓ Dotfiles applied$(NC)\n"
 
 init: ## Initialize chezmoi with this repository
 	@/bin/echo -e "$(CYAN)Initializing chezmoi...$(NC)\n"
-	@if [ ! -d ~/.local/share/chezmoi ]; then \
+	@export PATH="$$HOME/.local/bin:$$PATH"; \
+	if [ ! -d ~/.local/share/chezmoi ]; then \
 		chezmoi init --source=$$(pwd); \
 		/bin/echo -e "$(GREEN)✓ Chezmoi initialized$(NC)"; \
 	else \
@@ -136,7 +137,8 @@ clean: ## Clean chezmoi cache
 	@/bin/echo -e "$(GREEN)✓ Cache cleaned$(NC)\n"
 
 check: ## Check if chezmoi is installed
-	@if ! command -v chezmoi >/dev/null 2>&1; then \
+	@export PATH="$$HOME/.local/bin:$$PATH"; \
+	if ! command -v chezmoi >/dev/null 2>&1; then \
 		/bin/echo -e "$(RED)✗ chezmoi is not installed$(NC)"; \
 		/bin/echo -e "Run: make install-chezmoi"; \
 		exit 1; \
