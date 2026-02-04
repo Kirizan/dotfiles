@@ -6,6 +6,7 @@ PROFILES.md
 .gitignore
 .git/
 .claude
+templates/
 
 # Claude Code user config (contains machine-specific data: MCP servers, projects, caches)
 .claude.json
