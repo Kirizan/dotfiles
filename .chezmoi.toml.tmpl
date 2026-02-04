@@ -16,6 +16,8 @@
 {{-     $isArchBased = true -}}
 {{-   else if and (hasKey .chezmoi.osRelease "idLike") (contains "arch" .chezmoi.osRelease.idLike) -}}
 {{-     $isArchBased = true -}}
+{{-   else if stat "/usr/bin/pacman" -}}
+{{-     $isArchBased = true -}}
 {{-   end -}}
 {{- end -}}
 
