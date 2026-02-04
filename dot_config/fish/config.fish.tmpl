@@ -1,0 +1,147 @@
+# Fish Shell Configuration
+# Cross-platform config managed by chezmoi
+
+# Use ISO 8601 timestamps (YYYY-MM-DD format)
+set -gx LC_TIME en_DK.UTF-8
+
+{{- if eq .chezmoi.os "linux" }}
+
+# CUDA toolkit environment
+if test -d /usr/local/cuda
+    set -gx CUDA_HOME /usr/local/cuda
+    fish_add_path $CUDA_HOME/bin
+    set -gx LD_LIBRARY_PATH "$CUDA_HOME/lib64" $LD_LIBRARY_PATH
+end
+{{- end }}
+
+{{- if eq .chezmoi.os "darwin" }}
+
+# Homebrew
+if test -d /opt/homebrew
+    eval (/opt/homebrew/bin/brew shellenv)
+end
+
+# macOS-specific PATH configurations
+fish_add_path /usr/local/opt/curl-openssl/bin
+fish_add_path /usr/local/sbin
+
+# Add fzf to path
+fish_add_path /opt/homebrew/opt/fzf/bin
+
+# JetBrains Toolbox
+fish_add_path {{ .chezmoi.homeDir }}/Library/Application\ Support/JetBrains/Toolbox/scripts
+
+# Add GNU versions of tools to path
+if test -d /opt/homebrew/opt/grep/libexec/gnubin
+    fish_add_path /opt/homebrew/opt/grep/libexec/gnubin
+end
+
+# macOS locale sorting
+set -gx LC_COLLATE cs_CZ.ISO8859-2
+{{- end }}
+
+# Add custom bin directories
+fish_add_path {{ .chezmoi.homeDir }}/.dotfiles/bin
+fish_add_path {{ .chezmoi.homeDir }}/.local/bin
+fish_add_path {{ .chezmoi.homeDir }}/.dotfiles/local/bin
+
+{{- if eq .chezmoi.os "linux" }}
+{{- if .isWSL }}
+
+# WSL-specific configuration
+# Clipboard integration with Windows
+if type -q clip.exe
+    alias pbcopy clip.exe
+end
+{{- end }}
+
+# Configure sudo askpass helper for non-interactive sudo prompts
+if test -f /usr/bin/lxqt-openssh-askpass
+    set -gx SUDO_ASKPASS /usr/bin/lxqt-openssh-askpass
+end
+{{- end }}
+
+# Aliases
+# eza/ls with git status
+if type -q eza
+    alias lsa 'eza -lahF --group-directories-first --git --icons'
+else
+{{- if eq .chezmoi.os "darwin" }}
+    alias lsa 'gls -liahF --group-directories-first --color=auto --time-style=iso'
+{{- else }}
+    alias lsa 'ls -liahF --group-directories-first --color=auto --time-style=iso'
+{{- end }}
+end
+
+# Terraform
+alias tf terraform
+alias tfaa 'terraform apply -auto-approve'
+
+# Neovim
+alias vim nvim
+alias vi nvim
+
+# AWS CDK with profile
+alias cdkp 'cdk --profile $AWS_PROFILE'
+
+# pipx local run
+alias pipxr 'pipx run --spec .'
+
+# Poetry environment activation
+alias activate_poetry 'poetry env activate | source'
+
+# Go proxy — bypass Google managed proxies
+if type -q go
+    go env -w GOPROXY=direct
+end
+
+# pyenv
+if type -q pyenv
+    set -gx PYENV_ROOT $HOME/.pyenv
+    fish_add_path $PYENV_ROOT/bin
+    pyenv init --path | source
+    pyenv init - | source
+end
+
+# direnv
+if type -q direnv
+    direnv hook fish | source
+end
+
+# fzf integration
+if type -q fzf
+    # Catppuccin Mocha theme
+    set -gx FZF_DEFAULT_OPTS "\
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
+
+    # fzf key bindings and completion
+    fzf --fish 2>/dev/null | source
+end
+
+# Starship prompt
+if type -q starship
+    starship init fish | source
+end
+
+# Profile-specific configurations
+{{- if eq .profile "personal" }}
+if test -f {{ .chezmoi.homeDir }}/.profile_personal.fish
+    source {{ .chezmoi.homeDir }}/.profile_personal.fish
+end
+{{- end }}
+
+{{- if eq .profile "work" }}
+if test -f {{ .chezmoi.homeDir }}/.profile_work.fish
+    source {{ .chezmoi.homeDir }}/.profile_work.fish
+end
+if test -f {{ .chezmoi.homeDir }}/.profile_corp.fish
+    source {{ .chezmoi.homeDir }}/.profile_corp.fish
+end
+{{- end }}
+
+# Local overrides (not synced to git)
+if test -f {{ .chezmoi.homeDir }}/.config/fish/local.fish
+    source {{ .chezmoi.homeDir }}/.config/fish/local.fish
+end

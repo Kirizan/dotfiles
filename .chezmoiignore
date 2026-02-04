@@ -53,6 +53,9 @@ Library/
 {{- if not (stat (joinPath .chezmoi.homeDir ".local/share/omarchy")) }}
 .config/omarchy/
 {{- end }}
+{{- if not (lookPath "fish") }}
+.config/fish/
+{{- end }}
 
 # Headless systems (SSH-only servers, WSL without WSLg, etc.)
 # Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages
