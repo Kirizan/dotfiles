@@ -21,6 +21,30 @@
 {{-   end -}}
 {{- end -}}
 
+{{- /* Detect Debian-based distros (Debian, Ubuntu, Mint, Pop!_OS, etc.) */ -}}
+{{- $isDebianBased := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if or (eq .chezmoi.osRelease.id "debian") (eq .chezmoi.osRelease.id "ubuntu") -}}
+{{-     $isDebianBased = true -}}
+{{-   else if and (hasKey .chezmoi.osRelease "idLike") (or (contains "debian" .chezmoi.osRelease.idLike) (contains "ubuntu" .chezmoi.osRelease.idLike)) -}}
+{{-     $isDebianBased = true -}}
+{{-   else if stat "/usr/bin/apt-get" -}}
+{{-     $isDebianBased = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Detect RHEL-based distros (RHEL, CentOS, Fedora, Rocky, Alma, etc.) */ -}}
+{{- $isRHELBased := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if or (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "fedora") (eq .chezmoi.osRelease.id "rocky") (eq .chezmoi.osRelease.id "almalinux") -}}
+{{-     $isRHELBased = true -}}
+{{-   else if and (hasKey .chezmoi.osRelease "idLike") (or (contains "rhel" .chezmoi.osRelease.idLike) (contains "fedora" .chezmoi.osRelease.idLike) (contains "centos" .chezmoi.osRelease.idLike)) -}}
+{{-     $isRHELBased = true -}}
+{{-   else if stat "/usr/bin/dnf" -}}
+{{-     $isRHELBased = true -}}
+{{-   end -}}
+{{- end -}}
+
 {{- /* Detect Omarchy (Arch-based Linux with Hyprland desktop) */ -}}
 {{- $isOmarchy := false -}}
 {{- if and (eq .chezmoi.os "linux") $isArchBased -}}
@@ -101,6 +125,8 @@
     isWSL = {{ $isWSL }}
     arch = {{ $arch | quote }}
     isArchBased = {{ $isArchBased }}
+    isDebianBased = {{ $isDebianBased }}
+    isRHELBased = {{ $isRHELBased }}
     isOmarchy = {{ $isOmarchy }}
     useHomebrew = {{ $useHomebrew }}
     isHeadless = {{ $isHeadless }}
@@ -118,13 +144,13 @@
     install_cmd = "sudo pacman -S"
     update_cmd = "sudo pacman -Syu"
     search_cmd = "pacman -Ss"
-{{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
+{{- else if $isRHELBased }}
 [data.packages]
     manager = "dnf"
     install_cmd = "sudo dnf install"
     update_cmd = "sudo dnf update"
     search_cmd = "dnf search"
-{{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+{{- else if $isDebianBased }}
 [data.packages]
     manager = "apt"
     install_cmd = "sudo apt install"

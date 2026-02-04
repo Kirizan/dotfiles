@@ -26,8 +26,8 @@ fi
 echo "Generating locale..."
 sudo locale-gen
 
-{{-   else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") }}
-# CentOS/RHEL
+{{-   else if .isRHELBased }}
+# RHEL-based (RHEL, CentOS, Fedora, Rocky, Alma, etc.)
 if ! rpm -q glibc-langpack-en &>/dev/null; then
     echo "Installing glibc language pack..."
     sudo dnf install -y glibc-langpack-en glibc-locale-source
@@ -35,8 +35,8 @@ fi
 echo "Generating en_DK.UTF-8 locale..."
 sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || true
 
-{{-   else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
-# Ubuntu/Debian
+{{-   else if .isDebianBased }}
+# Debian-based (Debian, Ubuntu, Mint, etc.)
 if ! dpkg -l locales &>/dev/null; then
     echo "Installing locales package..."
     sudo apt-get update

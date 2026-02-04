@@ -51,8 +51,8 @@ if command -v archlinux-java >/dev/null 2>&1; then
     fi
 fi
 
-{{-   else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
-# Debian/Ubuntu (including WSL)
+{{-   else if .isDebianBased }}
+# Debian-based (Debian, Ubuntu, Mint, etc.)
 sudo apt update
 sudo apt install -y openjdk-21-jre
 echo "✓ OpenJDK 21 installed via apt"
@@ -66,8 +66,8 @@ else
     echo "⚠ Could not auto-set Java 21 as default. Run: sudo update-alternatives --config java"
 fi
 
-{{-   else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "fedora") }}
-# RHEL/CentOS/Fedora
+{{-   else if .isRHELBased }}
+# RHEL-based (RHEL, CentOS, Fedora, Rocky, Alma, etc.)
 sudo dnf install -y java-21-openjdk
 echo "✓ OpenJDK 21 installed via dnf"
 

@@ -31,14 +31,14 @@ fi
 sudo pacman -S --needed --noconfirm tmux
 echo "✓ tmux installed via pacman"
 
-{{-   else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
-# Debian/Ubuntu (including WSL)
+{{-   else if .isDebianBased }}
+# Debian-based (Debian, Ubuntu, Mint, etc.)
 sudo apt update
 sudo apt install -y tmux
 echo "✓ tmux installed via apt"
 
-{{-   else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "fedora") }}
-# RHEL/CentOS/Fedora
+{{-   else if .isRHELBased }}
+# RHEL-based (RHEL, CentOS, Fedora, Rocky, Alma, etc.)
 sudo dnf install -y tmux
 echo "✓ tmux installed via dnf"
 
@@ -61,9 +61,9 @@ if ! command -v fzf >/dev/null 2>&1; then
     brew install fzf
 {{- else if .isArchBased }}
     sudo pacman -S --needed --noconfirm fzf
-{{- else if or (eq .chezmoi.osRelease.id "ubuntu") (eq .chezmoi.osRelease.id "debian") }}
+{{- else if .isDebianBased }}
     sudo apt install -y fzf
-{{- else if or (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "fedora") }}
+{{- else if .isRHELBased }}
     sudo dnf install -y fzf
 {{- end }}
     echo "✓ fzf installed"
