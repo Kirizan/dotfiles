@@ -1,70 +1,89 @@
 #!/bin/bash
-# Install en_DK.UTF-8 locale for ISO 8601 timestamp formatting
+# Install en_DK.UTF-8 locale and configure system LC_TIME for ISO 8601 formatting
 # This runs once before other configurations are applied
 
 set -e
 
+LOCALE_INSTALLED=false
+
 # Check if locale already exists
 if locale -a 2>/dev/null | grep -qi "en_DK.utf8\|en_DK.UTF-8"; then
     echo "✓ en_DK.UTF-8 locale already available"
-    exit 0
+    LOCALE_INSTALLED=true
 fi
 
-echo "Installing en_DK.UTF-8 locale..."
+if [ "$LOCALE_INSTALLED" = false ]; then
+    echo "Installing en_DK.UTF-8 locale..."
 
 {{- if eq .chezmoi.os "darwin" }}
-# macOS has locales built-in, no installation needed
-echo "✓ macOS - locale support built-in"
+    # macOS has locales built-in, no installation needed
+    echo "✓ macOS - locale support built-in"
+    LOCALE_INSTALLED=true
 
 {{- else if eq .chezmoi.os "linux" }}
 {{-   if .isArchBased }}
-# Arch-based Linux (Arch, CachyOS, EndeavourOS, etc.)
-if ! grep -q "^en_DK.UTF-8 UTF-8" /etc/locale.gen 2>/dev/null; then
-    echo "Enabling en_DK.UTF-8 in /etc/locale.gen..."
-    echo "en_DK.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen > /dev/null
-fi
-echo "Generating locale..."
-sudo locale-gen
+    # Arch-based Linux (Arch, CachyOS, EndeavourOS, etc.)
+    if ! grep -q "^en_DK.UTF-8 UTF-8" /etc/locale.gen 2>/dev/null; then
+        echo "Enabling en_DK.UTF-8 in /etc/locale.gen..."
+        echo "en_DK.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen > /dev/null
+    fi
+    echo "Generating locale..."
+    sudo locale-gen
 
 {{-   else if .isRHELBased }}
-# RHEL-based (RHEL, CentOS, Fedora, Rocky, Alma, etc.)
-if ! rpm -q glibc-langpack-en &>/dev/null; then
-    echo "Installing glibc language pack..."
-    sudo dnf install -y glibc-langpack-en glibc-locale-source
-fi
-echo "Generating en_DK.UTF-8 locale..."
-sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || true
+    # RHEL-based (RHEL, CentOS, Fedora, Rocky, Alma, etc.)
+    if ! rpm -q glibc-langpack-en &>/dev/null; then
+        echo "Installing glibc language pack..."
+        sudo dnf install -y glibc-langpack-en glibc-locale-source
+    fi
+    echo "Generating en_DK.UTF-8 locale..."
+    sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || true
 
 {{-   else if .isDebianBased }}
-# Debian-based (Debian, Ubuntu, Mint, etc.)
-if ! dpkg -l locales &>/dev/null; then
-    echo "Installing locales package..."
-    sudo apt-get update
-    sudo apt-get install -y locales
-fi
-echo "Generating locale..."
-sudo locale-gen en_DK.UTF-8
+    # Debian-based (Debian, Ubuntu, Mint, etc.)
+    if ! dpkg -l locales &>/dev/null; then
+        echo "Installing locales package..."
+        sudo apt-get update
+        sudo apt-get install -y locales
+    fi
+    echo "Generating locale..."
+    sudo locale-gen en_DK.UTF-8
 
 {{-   else }}
-# Generic Linux - try localedef
-echo "Attempting to generate locale with localedef..."
-sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || {
-    echo "Warning: Could not generate en_DK.UTF-8 locale automatically"
-    echo "You may need to install it manually for ISO 8601 timestamps"
-    exit 0
-}
+    # Generic Linux - try localedef
+    echo "Attempting to generate locale with localedef..."
+    sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || {
+        echo "Warning: Could not generate en_DK.UTF-8 locale automatically"
+        echo "You may need to install it manually for ISO 8601 timestamps"
+    }
 {{-   end }}
 
-# Update locale cache
-sudo locale-gen 2>/dev/null || true
+    # Update locale cache
+    sudo locale-gen 2>/dev/null || true
 
 {{- else }}
-echo "Warning: Unsupported OS for automatic locale installation"
+    echo "Warning: Unsupported OS for automatic locale installation"
 {{- end }}
 
-# Verify installation
-if locale -a 2>/dev/null | grep -qi "en_DK.utf8\|en_DK.UTF-8"; then
-    echo "✓ en_DK.UTF-8 locale installed successfully"
-else
-    echo "⚠ Locale installation may have failed - check manually with 'locale -a'"
+    # Verify installation
+    if locale -a 2>/dev/null | grep -qi "en_DK.utf8\|en_DK.UTF-8"; then
+        echo "✓ en_DK.UTF-8 locale installed successfully"
+        LOCALE_INSTALLED=true
+    else
+        echo "⚠ Locale installation may have failed - check manually with 'locale -a'"
+    fi
 fi
+
+{{- if eq .chezmoi.os "linux" }}
+# Set LC_TIME at the system level so graphical applications also use ISO 8601
+if [ "$LOCALE_INSTALLED" = true ]; then
+    CURRENT_LC_TIME=$(grep "^LC_TIME=" /etc/locale.conf 2>/dev/null | cut -d= -f2 || true)
+    if [ "$CURRENT_LC_TIME" != "en_DK.UTF-8" ]; then
+        echo "Setting system-level LC_TIME=en_DK.UTF-8 in /etc/locale.conf..."
+        sudo localectl set-locale LC_TIME=en_DK.UTF-8
+        echo "✓ System LC_TIME set to en_DK.UTF-8 (ISO 8601)"
+    else
+        echo "✓ System LC_TIME already set to en_DK.UTF-8"
+    fi
+fi
+{{- end }}
