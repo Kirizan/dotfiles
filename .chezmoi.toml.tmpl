@@ -15,6 +15,14 @@
 {{-   $isOmarchy = true -}}
 {{- end -}}
 
+{{- /* Detect NVIDIA DGX Spark (ARM64 + Blackwell GPU, ships with CUDA 13.0+) */ -}}
+{{- $isDGXSpark := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if stat "/etc/dgx-release" -}}
+{{-     $isDGXSpark = true -}}
+{{-   end -}}
+{{- end -}}
+
 {{- /* Detect headless systems (no GUI — SSH-only servers, WSL without WSLg, etc.) */ -}}
 {{- $isHeadless := false -}}
 {{- if eq .chezmoi.os "linux" -}}
@@ -83,6 +91,7 @@
     isOmarchy = {{ $isOmarchy }}
     useHomebrew = {{ $useHomebrew }}
     isHeadless = {{ $isHeadless }}
+    isDGXSpark = {{ $isDGXSpark }}
 
 {{- if eq .chezmoi.os "darwin" }}
 [data.packages]
