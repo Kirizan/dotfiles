@@ -1,0 +1,26 @@
+# Work profile configuration for bash/zsh
+# This file is only sourced when chezmoi profile = "work"
+# (auto-detected via hostname containing "work", "corp", or "company",
+# or set manually via CHEZMOI_PROFILE=work)
+
+# Git identity override
+# export GIT_AUTHOR_NAME="Your Name"
+# export GIT_AUTHOR_EMAIL="you@company.com"
+# export GIT_COMMITTER_NAME="Your Name"
+# export GIT_COMMITTER_EMAIL="you@company.com"
+
+# Proxy / VPN settings
+# export HTTP_PROXY="http://proxy.company.com:8080"
+# export HTTPS_PROXY="http://proxy.company.com:8080"
+# export NO_PROXY="localhost,127.0.0.1,.company.com"
+
+# AWS / Cloud profiles
+# export AWS_PROFILE=work
+# export AWS_DEFAULT_REGION=us-east-1
+
+# Internal tools and paths
+# export PATH="/opt/company/bin:$PATH"
+
+# Work-specific aliases
+# alias vpn='sudo openconnect vpn.company.com'
+# alias jira='open https://company.atlassian.net'
