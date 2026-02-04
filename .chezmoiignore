@@ -24,9 +24,6 @@ temp/
 # Neovim plugin lockfile (machine-specific, changes frequently)
 .config/nvim/lazy-lock.json
 
-# Deprecated files (no longer used)
-.p10k.zsh
-
 # macOS-specific files (ignore on Linux)
 {{- if ne .chezmoi.os "darwin" }}
 .Brewfile
