@@ -13,8 +13,8 @@ fi
 # Linux: Install system dependencies, then packages via Homebrew or native package manager
 
 # Install minimal system dependencies based on distro
-{{- if eq .chezmoi.osRelease.id "arch" }}
-echo "Installing base dependencies on Arch Linux..."
+{{- if .isArchBased }}
+echo "Installing base dependencies on Arch-based Linux..."
 sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
 
 # Install Liberation Fonts for Typst and other document rendering
@@ -226,7 +226,7 @@ if ! command -v wslview &> /dev/null; then
     echo "Installing wslu..."
     WSLU_INSTALLED=false
 
-    {{- if eq .chezmoi.osRelease.id "arch" }}
+    {{- if .isArchBased }}
     if sudo pacman -S --needed --noconfirm wslu 2>/dev/null; then
         WSLU_INSTALLED=true
     fi

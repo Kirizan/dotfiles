@@ -17,8 +17,8 @@ echo "Installing en_DK.UTF-8 locale..."
 echo "✓ macOS - locale support built-in"
 
 {{- else if eq .chezmoi.os "linux" }}
-{{-   if eq .chezmoi.osRelease.id "arch" }}
-# Arch Linux
+{{-   if .isArchBased }}
+# Arch-based Linux (Arch, CachyOS, EndeavourOS, etc.)
 if ! grep -q "^en_DK.UTF-8 UTF-8" /etc/locale.gen 2>/dev/null; then
     echo "Enabling en_DK.UTF-8 in /etc/locale.gen..."
     echo "en_DK.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen > /dev/null

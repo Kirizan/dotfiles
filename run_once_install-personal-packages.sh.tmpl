@@ -14,9 +14,9 @@ if command -v brew &> /dev/null; then
     # brew install --cask discord
 fi
 
-{{- else if eq .chezmoi.osRelease.id "arch" }}
-# Arch Linux personal packages
-echo "Installing personal packages on Arch Linux..."
+{{- else if .isArchBased }}
+# Arch-based Linux personal packages
+echo "Installing personal packages on Arch-based Linux..."
 
 PERSONAL_PACKAGES=(
     discord
