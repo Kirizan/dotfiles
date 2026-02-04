@@ -76,14 +76,10 @@
 {{- end -}}
 
 {{- /* Determine whether to use Homebrew for package management */ -}}
-{{- /* true on macOS (always), true on Linux x86_64, false on Linux ARM64 */ -}}
+{{- /* true on macOS only — Linux uses native package managers (pacman, apt, dnf) */ -}}
 {{- $useHomebrew := false -}}
 {{- if eq .chezmoi.os "darwin" -}}
 {{-   $useHomebrew = true -}}
-{{- else if eq .chezmoi.os "linux" -}}
-{{-   if eq $arch "amd64" -}}
-{{-     $useHomebrew = true -}}
-{{-   end -}}
 {{- end -}}
 {{- /* Allow override via environment variable */ -}}
 {{- if eq (env "CHEZMOI_USE_HOMEBREW") "true" -}}

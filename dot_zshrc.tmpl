@@ -7,11 +7,6 @@ if command -v starship &> /dev/null; then
 fi
 
 {{- if eq .chezmoi.os "linux" }}
-# Initialize Homebrew on Linux
-if [ -d "/home/linuxbrew/.linuxbrew" ]; then
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-fi
-
 # CUDA toolkit environment
 if [ -d "/usr/local/cuda" ]; then
   export CUDA_HOME="/usr/local/cuda"

@@ -28,7 +28,7 @@ temp/
 
 # macOS-specific files (ignore on Linux)
 {{- if ne .chezmoi.os "darwin" }}
-Brewfile
+.Brewfile
 Library/
 .zshrc
 .zprofile

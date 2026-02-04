@@ -2,11 +2,6 @@
 # If not running interactively, don't do anything (leave this at the top of this file)
 [[ $- != *i* ]] && return
 
-# Initialize Homebrew on Linux
-if [ -d "/home/linuxbrew/.linuxbrew" ]; then
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-fi
-
 # CUDA toolkit environment
 if [ -d "/usr/local/cuda" ]; then
   export CUDA_HOME="/usr/local/cuda"

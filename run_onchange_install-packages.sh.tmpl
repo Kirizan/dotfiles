@@ -1,6 +1,8 @@
 #!/bin/bash
 # This script installs essential packages on the system
+{{- if eq .chezmoi.os "darwin" }}
 # Brewfile hash: {{ include "dot_Brewfile.tmpl" | sha256sum }}
+{{- end }}
 
 # Set askpass for sudo if available
 {{- if eq .chezmoi.os "linux" }}
@@ -10,7 +12,7 @@ fi
 {{- end }}
 
 {{- if eq .chezmoi.os "linux" }}
-# Linux: Install system dependencies, then packages via Homebrew or native package manager
+# Linux: Install system dependencies, then packages via native package manager
 
 # Install minimal system dependencies based on distro
 {{- if .isArchBased }}
@@ -57,74 +59,82 @@ elif command -v pacman &> /dev/null; then
 fi
 {{- end }}
 
-{{- if .useHomebrew }}
-# Use Homebrew for package management on this Linux system
-echo "Setting up Homebrew on Linux..."
+# Install packages via native package manager
+echo "Installing packages via native package manager..."
 
-# Install Homebrew if not already installed
-if ! command -v brew &> /dev/null; then
-    echo "Installing Homebrew on Linux..."
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+{{- if .isArchBased }}
+# Core dev tools and CLI utilities via pacman
+echo "Installing core packages via pacman..."
+sudo pacman -S --needed --noconfirm \
+    neovim \
+    ripgrep \
+    fzf \
+    fd \
+    jq \
+    tree \
+    wget \
+    direnv \
+    shellcheck \
+    pandoc-cli \
+    cmake \
+    go \
+    nodejs \
+    npm \
+    python-pip \
+    python-pipx \
+    tmux \
+    zsh \
+    zsh-completions \
+    p7zip \
+    subversion \
+    aria2 \
+    curl \
+    expect \
+    bash-completion \
+    stow \
+    github-cli \
+    nushell \
+    starship \
+    eza \
+    typst
 
-    # Add Homebrew to PATH
-    echo "Adding Homebrew to PATH..."
-    if [ -d "/home/linuxbrew/.linuxbrew" ]; then
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+{{- if not .isHeadless }}
+# Install wezterm (GUI terminal emulator)
+if ! command -v wezterm &> /dev/null; then
+    echo "Installing wezterm..."
+    sudo pacman -S --needed --noconfirm wezterm
+fi
+{{- end }}
+
+# Install awscli via pipx
+if ! command -v aws &> /dev/null; then
+    echo "Installing AWS CLI via pipx..."
+    pipx install awscli 2>/dev/null || {
+        echo "Warning: awscli install via pipx failed, trying pip..."
+        pip install --user awscli 2>/dev/null || echo "Warning: awscli installation failed"
+    }
+fi
+
+# Install Poetry via pipx
+if ! command -v poetry &> /dev/null; then
+    echo "Installing Poetry..."
+    pipx install poetry
+fi
+
+# Install terraform
+if ! command -v terraform &> /dev/null; then
+    echo "Installing Terraform..."
+    # Try AUR helper first, fall back to manual install
+    if command -v yay &> /dev/null; then
+        yay -S --needed --noconfirm terraform
+    elif command -v paru &> /dev/null; then
+        paru -S --needed --noconfirm terraform
+    else
+        echo "Warning: No AUR helper found. Install terraform manually or install yay/paru first."
     fi
-else
-    echo "Homebrew already installed"
-    # Ensure it's in PATH
-    if [ -d "/home/linuxbrew/.linuxbrew" ]; then
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    fi
 fi
 
-# Prevent Homebrew from replacing system utilities on Linux
-export HOMEBREW_NO_INSTALL_FROM_API=1
-
-# List of system packages that should never be installed via Homebrew on Linux
-SYSTEM_PACKAGES="util-linux coreutils grep findutils gnu-tar gnu-sed binutils"
-
-# Install packages via Homebrew (same as macOS for consistency)
-echo "Installing packages via Homebrew..."
-
-# Install packages individually to handle conflicts gracefully
-if brew bundle check --file="$HOME/.Brewfile" &>/dev/null; then
-    echo "All Brewfile packages already installed"
-else
-    echo "Installing Brewfile packages..."
-    # Try bundle install, skip packages that conflict with system utilities
-    for pkg in $SYSTEM_PACKAGES; do
-        if brew list "$pkg" &>/dev/null 2>&1; then
-            echo "Skipping system package: $pkg (conflicts with system utilities)"
-            brew uninstall --ignore-dependencies "$pkg" 2>/dev/null || true
-        fi
-    done
-
-    brew bundle --file="$HOME/.Brewfile" || echo "Warning: Some Brewfile packages may have failed"
-
-    # After bundle install, check if any system packages were installed as dependencies
-    # and remove them to prevent conflicts
-    echo "Checking for system package conflicts..."
-    for pkg in $SYSTEM_PACKAGES; do
-        if brew list "$pkg" &>/dev/null 2>&1; then
-            echo "Removing system package installed as dependency: $pkg"
-            brew uninstall --ignore-dependencies "$pkg" 2>/dev/null || true
-        fi
-    done
-fi
-
-# Install eza
-if ! command -v eza &> /dev/null; then
-    echo "Installing eza..."
-    brew install eza
-fi
-
-{{- else }}
-# No Homebrew — install packages via native package manager (e.g., ARM64 Linux)
-echo "Installing packages via native package manager (Homebrew not used on this system)..."
-
-{{- if .isDebianBased }}
+{{- else if .isDebianBased }}
 # Core dev tools and CLI utilities via apt
 echo "Installing core packages via apt..."
 sudo apt-get update
@@ -186,6 +196,22 @@ if ! command -v gh &> /dev/null; then
     rm -f "$out"
 fi
 
+{{- if not .isHeadless }}
+# Install wezterm (GUI terminal emulator)
+if ! command -v wezterm &> /dev/null; then
+    echo "Installing wezterm..."
+    # Try apt first, fall back to flatpak
+    sudo apt-get install -y wezterm 2>/dev/null || {
+        echo "wezterm not in apt repos, trying flatpak..."
+        if command -v flatpak &> /dev/null; then
+            flatpak install -y flathub org.wezfurlong.wezterm
+        else
+            echo "Warning: wezterm not available via apt or flatpak, skipping"
+        fi
+    }
+fi
+{{- end }}
+
 # Install awscli via pipx
 if ! command -v aws &> /dev/null; then
     echo "Installing AWS CLI via pipx..."
@@ -209,12 +235,109 @@ if ! command -v terraform &> /dev/null; then
     sudo apt-get update && sudo apt-get install -y terraform
 fi
 
-{{- else }}
-# Generic non-Homebrew Linux fallback
-echo "Warning: Non-Homebrew installation only has full support for Ubuntu/Debian."
-echo "Please install packages manually for your distribution."
+{{- else if .isRHELBased }}
+# Core dev tools and CLI utilities via dnf
+echo "Installing core packages via dnf..."
+sudo dnf install -y \
+    neovim \
+    ripgrep \
+    fzf \
+    fd-find \
+    jq \
+    tree \
+    wget \
+    direnv \
+    ShellCheck \
+    pandoc \
+    cmake \
+    golang \
+    nodejs \
+    npm \
+    python3-pip \
+    python3-pipx \
+    tmux \
+    zsh \
+    p7zip \
+    subversion \
+    aria2 \
+    curl \
+    expect \
+    bash-completion \
+    gh
+
+# Install eza (modern ls replacement)
+if ! command -v eza &> /dev/null; then
+    echo "Installing eza..."
+    sudo dnf install -y eza 2>/dev/null || {
+        echo "eza not in dnf repos, installing via cargo..."
+        if command -v cargo &> /dev/null; then
+            cargo install eza
+        else
+            echo "Warning: eza not available via dnf and cargo not found, skipping"
+        fi
+    }
+fi
+
+# Install starship prompt
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+# Install nushell
+if ! command -v nu &> /dev/null; then
+    echo "Installing nushell..."
+    sudo dnf install -y nushell 2>/dev/null || {
+        echo "nushell not in dnf repos, trying cargo..."
+        if command -v cargo &> /dev/null; then
+            cargo install nu
+        else
+            echo "Warning: nushell not available, skipping"
+        fi
+    }
+fi
+
+{{- if not .isHeadless }}
+# Install wezterm (GUI terminal emulator)
+if ! command -v wezterm &> /dev/null; then
+    echo "Installing wezterm..."
+    sudo dnf install -y wezterm 2>/dev/null || {
+        echo "wezterm not in dnf repos, trying COPR..."
+        sudo dnf copr enable -y wezfurlong/wezterm-nightly 2>/dev/null && \
+            sudo dnf install -y wezterm 2>/dev/null || {
+            echo "Warning: wezterm installation failed, skipping"
+        }
+    }
+fi
 {{- end }}
 
+# Install awscli via pipx
+if ! command -v aws &> /dev/null; then
+    echo "Installing AWS CLI via pipx..."
+    pipx install awscli 2>/dev/null || {
+        echo "Warning: awscli install via pipx failed, trying pip..."
+        pip3 install --user awscli 2>/dev/null || echo "Warning: awscli installation failed"
+    }
+fi
+
+# Install Poetry via pipx
+if ! command -v poetry &> /dev/null; then
+    echo "Installing Poetry..."
+    pipx install poetry
+fi
+
+# Install terraform via HashiCorp dnf repo
+if ! command -v terraform &> /dev/null; then
+    echo "Installing Terraform..."
+    sudo dnf install -y dnf-plugins-core 2>/dev/null
+    sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo 2>/dev/null
+    sudo dnf install -y terraform 2>/dev/null || echo "Warning: terraform installation failed"
+fi
+
+{{- else }}
+# Generic Linux fallback
+echo "Warning: Native package installation only has full support for Arch, Debian, and RHEL-based distros."
+echo "Please install packages manually for your distribution."
 {{- end }}
 
 {{- if .isWSL }}
