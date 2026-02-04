@@ -80,10 +80,3 @@ run_once_install-personal-packages.sh.tmpl
 .config/work
 {{- end }}
 
-# Files ending in _personal.* are only for personal profile
-{{- if ne .profile "personal" }}
-*_personal
-*_personal.*
-.profile_personal
-.config/personal
-{{- end }}

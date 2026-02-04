@@ -125,13 +125,7 @@ if type -q starship
     starship init fish | source
 end
 
-# Profile-specific configurations
-{{- if eq .profile "personal" }}
-if test -f {{ .chezmoi.homeDir }}/.profile_personal.fish
-    source {{ .chezmoi.homeDir }}/.profile_personal.fish
-end
-{{- end }}
-
+# Work profile configuration
 {{- if eq .profile "work" }}
 if test -f {{ .chezmoi.homeDir }}/.profile_work.fish
     source {{ .chezmoi.homeDir }}/.profile_work.fish

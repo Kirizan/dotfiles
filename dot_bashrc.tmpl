@@ -129,19 +129,10 @@ if command -v starship &> /dev/null; then
   eval "$(starship init bash)"
 fi
 
-# Profile-specific configurations
-{{- if eq .profile "personal" }}
-if [ -f ~/.profile_personal ]; then
-  source ~/.profile_personal
-fi
-{{- end }}
-
+# Work profile configuration
 {{- if eq .profile "work" }}
 if [ -f ~/.profile_work ]; then
   source ~/.profile_work
 fi
 {{- end }}
-
-# Bash-specific aliases and functions
-# Add your own exports, aliases, and functions here.
 {{- end }}

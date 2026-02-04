@@ -199,13 +199,7 @@ if command -v go &> /dev/null; then
   go env -w GOPROXY=direct
 fi
 
-# Profile-specific configurations
-{{- if eq .profile "personal" }}
-if test -f "{{ .chezmoi.homeDir }}/.profile_personal"; then
-  source "{{ .chezmoi.homeDir }}/.profile_personal"
-fi
-{{- end }}
-
+# Work profile configuration
 {{- if eq .profile "work" }}
 if test -f "{{ .chezmoi.homeDir }}/.profile_work"; then
   source "{{ .chezmoi.homeDir }}/.profile_work"
