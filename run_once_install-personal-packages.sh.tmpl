@@ -20,7 +20,6 @@ echo "Installing personal packages on Arch-based Linux..."
 
 PERSONAL_PACKAGES=(
     discord
-    # Add more personal packages here
 )
 
 for pkg in "${PERSONAL_PACKAGES[@]}"; do
@@ -31,6 +30,20 @@ for pkg in "${PERSONAL_PACKAGES[@]}"; do
         echo "$pkg is already installed"
     fi
 done
+
+# Install NVIDIA Sync (DGX Spark remote access client) from AUR
+if ! command -v nvidia-sync &> /dev/null; then
+    echo "Installing NVIDIA Sync..."
+    if command -v paru &> /dev/null; then
+        paru -S --needed --noconfirm nvidia-sync
+    elif command -v yay &> /dev/null; then
+        yay -S --needed --noconfirm nvidia-sync
+    else
+        echo "Warning: No AUR helper found. Install nvidia-sync manually or install paru/yay first."
+    fi
+else
+    echo "NVIDIA Sync already installed"
+fi
 
 echo "Personal package installation complete!"
 
