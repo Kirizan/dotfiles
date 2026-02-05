@@ -32,18 +32,25 @@ for pkg in "${PERSONAL_PACKAGES[@]}"; do
 done
 
 # Install NVIDIA Sync (DGX Spark remote access client) from AUR
-if ! command -v nvidia-sync &> /dev/null; then
-    echo "Installing NVIDIA Sync..."
-    if command -v paru &> /dev/null; then
-        paru -S --needed --noconfirm nvidia-sync
-    elif command -v yay &> /dev/null; then
-        yay -S --needed --noconfirm nvidia-sync
+AUR_PACKAGES=(
+    nvidia-sync
+    nvidia-sync-terminal-fix
+)
+
+for pkg in "${AUR_PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        if command -v paru &> /dev/null; then
+            paru -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+        elif command -v yay &> /dev/null; then
+            yay -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+        else
+            echo "Warning: No AUR helper found. Install $pkg manually or install paru/yay first."
+        fi
     else
-        echo "Warning: No AUR helper found. Install nvidia-sync manually or install paru/yay first."
+        echo "$pkg is already installed"
     fi
-else
-    echo "NVIDIA Sync already installed"
-fi
+done
 
 echo "Personal package installation complete!"
 
