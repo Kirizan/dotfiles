@@ -18,6 +18,9 @@ fi
 # Arch-based Linux personal packages
 echo "Installing personal packages on Arch-based Linux..."
 
+# Sync package databases to avoid 404 errors from stale mirrors
+sudo pacman -Sy --noconfirm
+
 PERSONAL_PACKAGES=(
     discord
 )

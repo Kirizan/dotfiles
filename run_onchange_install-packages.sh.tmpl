@@ -17,6 +17,8 @@ fi
 # Install minimal system dependencies based on distro
 {{- if .isArchBased }}
 echo "Installing base dependencies on Arch-based Linux..."
+# Sync package databases to avoid 404 errors from stale mirrors
+sudo pacman -Sy --noconfirm
 sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
 
 # Install Liberation Fonts for Typst and other document rendering

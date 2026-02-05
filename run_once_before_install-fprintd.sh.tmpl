@@ -25,6 +25,8 @@ echo "Fingerprint reader detected, setting up fprintd..."
 if ! command -v fprintd-enroll &> /dev/null; then
     echo "Installing fprintd..."
 {{- if .isArchBased }}
+    # Sync package databases to avoid 404 errors from stale mirrors
+    sudo pacman -Sy --noconfirm
     sudo pacman -S --needed --noconfirm fprintd
 {{- else if .isDebianBased }}
     sudo apt-get install -y fprintd
