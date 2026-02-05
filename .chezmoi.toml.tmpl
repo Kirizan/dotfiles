@@ -59,6 +59,14 @@
 {{-   end -}}
 {{- end -}}
 
+{{- /* Detect desktop systems (no battery = desktop, has battery = laptop) */ -}}
+{{- $isDesktop := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if not (glob "/sys/class/power_supply/BAT*") -}}
+{{-     $isDesktop = true -}}
+{{-   end -}}
+{{- end -}}
+
 {{- /* Detect headless systems (no GUI — SSH-only servers, WSL without WSLg, etc.) */ -}}
 {{- $isHeadless := false -}}
 {{- if eq .chezmoi.os "linux" -}}
@@ -126,6 +134,7 @@
     isOmarchy = {{ $isOmarchy }}
     useHomebrew = {{ $useHomebrew }}
     isHeadless = {{ $isHeadless }}
+    isDesktop = {{ $isDesktop }}
     isDGXSpark = {{ $isDGXSpark }}
 
 {{- if eq .chezmoi.os "darwin" }}
