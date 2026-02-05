@@ -67,6 +67,11 @@ Library/
 {{- if not (lookPath "fish") }}
 .config/fish/
 {{- end }}
+{{- if not (stat "/opt/NVIDIA Sync/nvidia-sync") }}
+.local/bin/nvidia-sync-fix-position
+.local/bin/nvidia-sync-wrapper
+.local/share/applications/nvidia-sync.desktop
+{{- end }}
 
 # Headless systems (SSH-only servers, WSL without WSLg, etc.)
 # Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages

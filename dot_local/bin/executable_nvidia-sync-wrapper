@@ -1,0 +1,25 @@
+#!/bin/bash
+# Wrapper for NVIDIA Sync that applies the tray popup position fix.
+#
+# On Wayland, NVIDIA Sync's tray popup appears on the wrong monitor because
+# Electron can't determine the tray icon's position. This wrapper launches
+# nvidia-sync with the Node.js inspector enabled, then runs a patcher script
+# that monkey-patches the window positioning to place the popup on the
+# primary display near the system tray.
+
+INSPECT_PORT=9229
+NVIDIA_SYNC="/opt/NVIDIA Sync/nvidia-sync"
+PATCHER="$HOME/.local/bin/nvidia-sync-fix-position"
+
+if [ ! -x "$NVIDIA_SYNC" ]; then
+    echo "nvidia-sync not found at $NVIDIA_SYNC" >&2
+    exit 1
+fi
+
+# Launch nvidia-sync with inspector
+"$NVIDIA_SYNC" --inspect=$INSPECT_PORT "$@" &
+
+# Apply the position fix in the background
+if [ -x "$PATCHER" ]; then
+    "$PATCHER" &
+fi
