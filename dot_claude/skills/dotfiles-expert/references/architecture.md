@@ -15,11 +15,11 @@
 ### Shell Configurations
 | File | Shell | Platform | Features |
 |------|-------|----------|----------|
-| `dot_zshrc.tmpl` (~6,400 bytes) | zsh | macOS | Homebrew PATH, GNU tool aliases (eza, gsed, ggrep, gtar), fzf with Catppuccin Mocha, pyenv, direnv, Terraform/AWS completion, starship prompt |
-| `dot_bashrc.tmpl` (~3,900 bytes) | bash | Linux | Omarchy integration, WSL clipboard (clip.exe), CUDA support, fzf, pyenv, direnv, starship prompt |
+| `dot_zshrc.tmpl` (~6,400 bytes) | zsh | macOS | Homebrew PATH, GNU tool aliases (eza, gsed, ggrep, gtar), fzf with Catppuccin Mocha, pyenv, direnv, Terraform/AWS completion, starship prompt, EDITOR/VISUAL=nvim |
+| `dot_bashrc.tmpl` (~3,900 bytes) | bash | Linux | Omarchy integration, WSL clipboard (clip.exe), CUDA support, fzf, pyenv, direnv, starship prompt, EDITOR/VISUAL=nvim |
 | `dot_bash_profile.tmpl` (~100 bytes) | bash | Linux | Sources .bashrc |
 | `dot_zprofile` (34 bytes) | zsh | macOS | Static, emacs keybindings |
-| `dot_config/fish/config.fish.tmpl` | fish | Both | Cross-platform, CUDA, Homebrew, WSL, work profiles |
+| `dot_config/fish/config.fish.tmpl` | fish | Both | Cross-platform, CUDA, Homebrew, WSL, work profiles, EDITOR/VISUAL=nvim |
 | `dot_config/nushell/` | nushell | Both | Private config |
 
 ### Application Configurations
