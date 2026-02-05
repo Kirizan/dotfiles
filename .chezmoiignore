@@ -5,7 +5,20 @@ Makefile
 PROFILES.md
 .gitignore
 .git/
-.claude
+# Claude Code runtime data (machine-specific, not managed)
+.claude/cache
+.claude/.credentials.json
+.claude/debug
+.claude/downloads
+.claude/file-history
+.claude/history.jsonl
+.claude/plans
+.claude/plugins
+.claude/projects
+.claude/session-env
+.claude/shell-snapshots
+.claude/tasks
+.claude/todos
 templates/
 
 # Claude Code user config (contains machine-specific data: MCP servers, projects, caches)

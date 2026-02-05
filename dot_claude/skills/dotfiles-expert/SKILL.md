@@ -1,7 +1,6 @@
 ---
 name: dotfiles-expert
 description: This skill should be used when the user asks to "add a package", "create a template", "modify shell config", "add a run script", "update chezmoi config", "fix dotfiles", "add platform support", or discusses chezmoi templates, platform detection, shell configuration, or cross-platform dotfile management in this repository.
-version: 0.1.0
 ---
 
 # Dotfiles Repository Expert
