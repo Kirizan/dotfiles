@@ -9,6 +9,9 @@ echo "Installing gaming packages..."
 # Arch-based Linux gaming packages
 echo "Installing gaming packages on Arch-based Linux..."
 
+# Sync package databases to avoid 404 errors from stale mirrors
+sudo pacman -Sy --noconfirm
+
 GAMING_PACKAGES=(
     cachyos-gaming-applications
     gamemode
