@@ -1,0 +1,73 @@
+#!/bin/bash
+# Personal profile only - gaming packages not needed on work or headless systems
+
+{{- if and (eq .profile "personal") (not .isWSL) (not .isHeadless) }}
+
+echo "Installing gaming packages..."
+
+{{- if .isArchBased }}
+# Arch-based Linux gaming packages
+echo "Installing gaming packages on Arch-based Linux..."
+
+GAMING_PACKAGES=(
+    cachyos-gaming-applications
+    gamemode
+    lib32-gamemode
+    lib32-pipewire
+)
+
+for pkg in "${GAMING_PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        sudo pacman -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+    else
+        echo "$pkg is already installed"
+    fi
+done
+
+# Install AUR gaming packages
+AUR_PACKAGES=(
+    protonup-qt-bin
+)
+
+for pkg in "${AUR_PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        if command -v paru &> /dev/null; then
+            paru -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+        elif command -v yay &> /dev/null; then
+            yay -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+        else
+            echo "Warning: No AUR helper found. Install $pkg manually or install paru/yay first."
+        fi
+    else
+        echo "$pkg is already installed"
+    fi
+done
+
+# Configure vm.max_map_count for gaming (matches SteamOS default)
+SYSCTL_FILE="/etc/sysctl.d/80-gamecompatibility.conf"
+DESIRED_VALUE="vm.max_map_count=2147483642"
+
+if [ -f "$SYSCTL_FILE" ] && grep -q "$DESIRED_VALUE" "$SYSCTL_FILE"; then
+    echo "vm.max_map_count already configured"
+else
+    echo "Setting vm.max_map_count=2147483642 (SteamOS default)..."
+    echo "$DESIRED_VALUE" | sudo tee "$SYSCTL_FILE" > /dev/null
+    sudo sysctl --system > /dev/null
+    echo "vm.max_map_count configured"
+fi
+
+echo "Gaming package installation complete!"
+
+{{- else }}
+echo "Gaming packages are only supported on Arch-based systems"
+{{- end }}
+
+{{- else }}
+{{- if or .isWSL .isHeadless }}
+echo "Skipping gaming packages (no GUI on this system)"
+{{- else }}
+echo "Skipping gaming packages (not on personal profile)"
+{{- end }}
+{{- end }}
