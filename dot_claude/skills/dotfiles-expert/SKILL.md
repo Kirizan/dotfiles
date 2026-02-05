@@ -86,6 +86,8 @@ Follow naming conventions: `run_once_` (one-time), `run_onchange_` (re-run on ch
 4. **Profile guards:** Personal-only features use `{{ if eq .profile "personal" }}`
 5. **Testing:** Always recommend `chezmoi diff` and `chezmoi apply --dry-run --verbose`
 6. **Git workflow:** Commit with descriptive messages, NEVER push automatically
+7. **Claude Code skills are user-specific:** All skills live in `dot_claude/skills/` in this dotfiles repo, NOT in individual project repos. This ensures skills travel with the user via chezmoi, not with the project. New project skills should be created here (e.g., `dot_claude/skills/devon-expert/`, `dot_claude/skills/kitt-expert/`)
+8. **App configs managed by chezmoi:** When a project creates config files in `~/.config/`, add them to this repo as templates (e.g., `dot_config/devon/config.yaml.tmpl`) using `{{ .chezmoi.homeDir }}` for paths
 
 ## Additional Resources
 
