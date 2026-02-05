@@ -1,0 +1,79 @@
+{{- if and (eq .profile "personal") (not .isWSL) (not .isHeadless) .isArchBased -}}
+#!/bin/bash
+# Configure NVIDIA Sync terminal launcher to use WezTerm with tab support
+# This overwrites the nvidia-sync-terminal-fix package's default launcher
+# which prefers konsole, replacing it with one that prefers WezTerm and
+# opens new tabs in an existing WezTerm instance when possible.
+
+set -e
+
+LAUNCHER="/usr/bin/nvidia-sync-terminal-launcher"
+
+if [ ! -f "$LAUNCHER" ]; then
+    echo "nvidia-sync-terminal-launcher not found — skipping"
+    exit 0
+fi
+
+echo "Configuring NVIDIA Sync terminal launcher for WezTerm..."
+
+sudo tee "$LAUNCHER" > /dev/null <<'SCRIPT'
+#!/bin/sh
+#
+# Custom NVIDIA Sync terminal launcher
+# Prefers WezTerm and opens new tabs in existing instances
+#
+
+HOLD_COMMAND="echo '---'; echo 'SSH session finished. Press Enter to close.'; read"
+
+shift # Discard $1 (which is --)
+
+# --- Argument Parsing ---
+SSH_CMD_AND_FLAGS=""
+HOST=""
+
+SSH_CMD="$1"
+shift
+
+while [ -n "$1" ]; do
+    case "$1" in
+        -*)
+            SSH_CMD_AND_FLAGS="$SSH_CMD_AND_FLAGS $1"
+            shift
+            ;;
+        *)
+            HOST="$1"
+            shift
+            break
+            ;;
+    esac
+done
+
+REMOTE_CMD="$*"
+CMD_STRING="$SSH_CMD $SSH_CMD_AND_FLAGS $HOST \"$REMOTE_CMD\""
+CMD_STRING=$(echo "$CMD_STRING" | sed 's/^ *//')
+
+FULL_CMD="$CMD_STRING; $HOLD_COMMAND"
+
+# --- Terminal Launch ---
+# Prefer WezTerm with tab support
+if command -v wezterm >/dev/null 2>&1; then
+    if wezterm cli list >/dev/null 2>&1; then
+        exec wezterm cli spawn -- sh -c "$FULL_CMD"
+    else
+        exec wezterm start -- sh -c "$FULL_CMD"
+    fi
+fi
+
+# Fallback to other terminals
+for t in /usr/bin/ghostty /usr/bin/alacritty /usr/bin/konsole; do
+    if [ -x "$t" ]; then
+        exec "$t" -e sh -c "$FULL_CMD"
+    fi
+done
+
+echo "No supported terminal found."
+exit 1
+SCRIPT
+
+echo "✓ NVIDIA Sync terminal launcher configured for WezTerm"
+{{- end }}
