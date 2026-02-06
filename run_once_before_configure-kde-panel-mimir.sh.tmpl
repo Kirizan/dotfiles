@@ -1,0 +1,73 @@
+#!/bin/bash
+# Move KDE Plasma panel (taskbar) to the secondary monitor (LG) on mimir
+# The Dell remains the primary monitor; only the panel and system tray move
+
+{{- if and (eq .chezmoi.os "linux") (eq .chezmoi.hostname "mimir") (not .isHeadless) }}
+
+set -e
+
+APPLETS_RC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+
+if [ ! -f "$APPLETS_RC" ]; then
+    echo "KDE panel config not found, skipping (Plasma may not have run yet)"
+    exit 0
+fi
+
+# Check if the panel is already on screen 1
+PANEL_SECTION=$(grep -n '^\[Containments\]\[[0-9]*\]$' "$APPLETS_RC" | while read line; do
+    lineno=$(echo "$line" | cut -d: -f1)
+    section=$(echo "$line" | cut -d: -f2)
+    # Check if this containment is the panel
+    if sed -n "$((lineno+1)),$((lineno+10))p" "$APPLETS_RC" | grep -q "plugin=org.kde.panel"; then
+        echo "$lineno"
+        break
+    fi
+done)
+
+if [ -z "$PANEL_SECTION" ]; then
+    echo "No panel containment found in KDE config, skipping"
+    exit 0
+fi
+
+# Check current lastScreen value for the panel
+CURRENT=$(sed -n "$((PANEL_SECTION)),$((PANEL_SECTION+10))p" "$APPLETS_RC" | grep "lastScreen=" | head -1 | cut -d= -f2)
+
+if [ "$CURRENT" = "1" ]; then
+    echo "KDE panel already on secondary monitor (screen 1)"
+    exit 0
+fi
+
+echo "Moving KDE panel to secondary monitor (LG)..."
+
+# Update the panel containment's lastScreen
+sed -i "/^\[Containments\]\[.*\]$/,/^\[/{
+    /plugin=org.kde.panel/,/^\[/{
+        s/lastScreen=0/lastScreen=1/
+    }
+}" "$APPLETS_RC"
+
+# Also update the embedded system tray's lastScreen
+sed -i "/plugin=org.kde.plasma.systemtray/{
+    N
+    s/lastScreen=0/lastScreen=1/
+}" "$APPLETS_RC"
+
+# More targeted approach: find the panel's containment ID and update all lastScreen in it
+# Get the containment number for the panel
+PANEL_ID=$(grep -B5 "plugin=org.kde.panel" "$APPLETS_RC" | grep -oP '(?<=\[Containments\]\[)\d+(?=\])' | head -1)
+
+if [ -n "$PANEL_ID" ]; then
+    # Update lastScreen for the panel containment and all its applets
+    sed -i "/^\[Containments\]\[$PANEL_ID\]/,/^\[Containments\]\[/{
+        s/lastScreen=0/lastScreen=1/
+    }" "$APPLETS_RC"
+    echo "KDE panel (containment $PANEL_ID) moved to screen 1 (LG monitor)"
+else
+    echo "Warning: Could not identify panel containment ID"
+fi
+
+echo "Panel change will take effect on next Plasma restart or login"
+
+{{- else }}
+echo "Skipping KDE panel configuration (not applicable on this system)"
+{{- end }}
