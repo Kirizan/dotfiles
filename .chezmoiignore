@@ -87,6 +87,11 @@ run_once_install-personal-packages.sh.tmpl
 # Scripts and bin directories are handled separately
 # (they're managed but not as dotfiles in home directory)
 
+# Personal-only files (Claude Code, projects workspace)
+{{- if ne .profile "personal" }}
+projects/
+{{- end }}
+
 # Profile-specific ignores
 # Files ending in _work.* are only for work profile
 {{- if ne .profile "work" }}
