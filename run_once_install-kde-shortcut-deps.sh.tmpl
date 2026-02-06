@@ -1,0 +1,29 @@
+{{- if and (not .isHeadless) (not .isWSL) .isArchBased -}}
+#!/bin/bash
+# Install dependencies for KDE Omarchy-style keybindings
+# ydotool: synthetic keypresses on Wayland (for Super+W→Ctrl+W, Super+T→Ctrl+T)
+# rofi: searchable popup for keybinding viewer (Super+K)
+
+set -e
+
+echo "Installing KDE shortcut dependencies..."
+
+sudo pacman -S --needed --noconfirm ydotool rofi
+
+# Enable ydotool daemon so it can send key events without root
+if systemctl --user is-enabled ydotool.service >/dev/null 2>&1; then
+    echo "ydotool service already enabled"
+else
+    systemctl --user enable ydotool.service
+    echo "ydotool service enabled"
+fi
+
+if systemctl --user is-active ydotool.service >/dev/null 2>&1; then
+    echo "ydotool service already running"
+else
+    systemctl --user start ydotool.service
+    echo "ydotool service started"
+fi
+
+echo "KDE shortcut dependencies installed successfully"
+{{- end }}

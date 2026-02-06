@@ -1,0 +1,9 @@
+{{- if and (not .isHeadless) (not .isWSL) .isArchBased -}}
+[Desktop Entry]
+Name=Music
+Exec=sh -c 'xdg-open https://www.deezer.com'
+Terminal=false
+Type=Application
+NoDisplay=true
+X-KDE-GlobalAccel-CommandShortcut=true
+{{- end }}
