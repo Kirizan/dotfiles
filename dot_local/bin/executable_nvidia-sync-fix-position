@@ -79,9 +79,12 @@ def apply_patch(ws_url):
         var origSetPosition = win.setPosition.bind(win);
 
         function getCorrectedPosition(width, height) {
+            // Find the display with the panel/system tray (non-primary, top monitor)
+            var displays = screen.getAllDisplays();
             var primary = screen.getPrimaryDisplay();
-            var x = primary.bounds.x + primary.bounds.width - width - MARGIN;
-            var y = primary.bounds.y + primary.bounds.height - PANEL_HEIGHT - height - MARGIN;
+            var target = displays.find(function(d) { return d.id !== primary.id; }) || primary;
+            var x = target.bounds.x + target.bounds.width - width - MARGIN;
+            var y = target.bounds.y + target.bounds.height - PANEL_HEIGHT - height - MARGIN;
             return {x: x, y: y};
         }
 
