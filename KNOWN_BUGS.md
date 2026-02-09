@@ -77,25 +77,48 @@ pacman -Si nvidia-utils | grep Version
 
 ---
 
-## USB-001: GenesysLogic USB hub autosuspend causes device disconnects
+## USB-001: GenesysLogic USB hub chain resets disconnect all downstream devices
 
 - **Status:** Active (hardware/firmware limitation)
 - **Affected systems:** mimir
-- **Symptoms:** GenesysLogic USB 2.1 Hub (05e3:0610) repeatedly disconnects
-  and reconnects, taking downstream devices (Logitech receiver, keyboard) with
-  it. Device numbers climb rapidly (50+ re-enumerations per boot).
+- **Symptoms:** A chain of two GenesysLogic USB 2.1 Hubs (05e3:0610) on Bus 001
+  Port 3 repeatedly disconnects and reconnects, taking all downstream devices
+  with it. The Logitech PowerPlay Wireless Charging System (046d:c53a) is at the
+  end of the chain, providing the G502 X PLUS mouse and "Candy" keyboard via its
+  built-in receiver. Each hub reset cascades down the chain, causing full
+  re-enumeration of both hubs and the Logitech receiver. Device numbers climb
+  rapidly (50+ re-enumerations per boot).
+- **Topology:**
+  ```
+  Bus 001 Port 3: GenesysLogic Hub (external hub)
+  └── Port 4: GenesysLogic Hub (internal to PowerPlay mat)
+      └── Port 4: Logitech PowerPlay Wireless Charging System
+                   └── G502 X PLUS mouse + Candy keyboard
+  ```
 - **Date identified:** 2026-02-05
 
 ### Workaround applied
 
-- **File:** `/etc/udev/rules.d/90-usb-fixes.rules` (disables autosuspend)
+- **File:** `/etc/udev/rules.d/90-usb-fixes.rules` (disables autosuspend on
+  GenesysLogic hubs)
 - **Managed by:** `run_once_before_fix-usb-mimir.sh.tmpl`
+- Reduces frequency of resets but does not fully eliminate them.
+
+### Potential fixes
+
+1. **Connect the PowerPlay mat directly to a motherboard USB port** with a
+   longer cable, bypassing the external hub entirely. This eliminates the
+   cascading hub chain and isolates whether the external hub is the root cause.
+2. **Replace the external USB hub** with a non-GenesysLogic hub that handles
+   autosuspend/resume more reliably.
 
 ### Check condition
 
-Replace the hub with one that properly supports USB autosuspend, or check for
-a firmware update from GenesysLogic. Alternatively, a kernel update that
-improves xHCI handling for this chipset would resolve it.
+This bug can be considered resolved when the PowerPlay mat maintains a stable
+connection without repeated re-enumerations. If a direct motherboard connection
+is stable, the udev autosuspend rule can be removed and the external hub should
+be replaced or retired. If disconnects persist even on a direct connection, the
+issue is in the PowerPlay mat's internal hub and Logitech should be contacted.
 
 ---
 
