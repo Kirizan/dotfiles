@@ -27,6 +27,7 @@ templates/
 # Documentation files
 CLAUDE.md
 HOTKEYS.md
+KNOWN_BUGS.md
 *.org
 system.org
 
