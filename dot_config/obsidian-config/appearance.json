@@ -4,5 +4,6 @@
   "interfaceFontFamily": "",
   "textFontFamily": "",
   "monospaceFontFamily": "",
-  "theme": "obsidian"
+  "theme": "obsidian",
+  "cssTheme": "Catppuccin"
 }

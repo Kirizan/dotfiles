@@ -1,4 +1,4 @@
-{{- if and (not .isHeadless) (eq .profile "personal") -}}
+{{- if not .isHeadless -}}
 #!/bin/bash
 # Create Obsidian vault directory structure with PARA folders
 # Run once on initial setup — vaults must be opened in Obsidian to fully initialize
@@ -9,20 +9,22 @@ VAULT_ROOT="{{ .obsidian.vault_root }}"
 
 echo "Setting up Obsidian vault structure..."
 
+{{- if eq .profile "work" }}
+# Work vault — PARA structure
+WORK="$VAULT_ROOT/{{ .obsidian.work_vault }}"
+mkdir -p "$WORK"/{1-Projects,2-Areas,3-Resources,4-Archive,daily,templates,assets}
+echo "  Created Work vault structure at $WORK"
+{{- else }}
 # Primary vault — full PARA structure
 PRIMARY="$VAULT_ROOT/{{ .obsidian.primary_vault }}"
 mkdir -p "$PRIMARY"/{1-Projects,2-Areas,3-Resources,4-Archive,daily,templates,assets,Claude-Skills}
 echo "  Created Primary vault structure at $PRIMARY"
 
-# Work vault — lighter structure
-WORK="$VAULT_ROOT/{{ .obsidian.work_vault }}"
-mkdir -p "$WORK"/{1-Projects,2-Areas,3-Resources,4-Archive,daily,templates,assets}
-echo "  Created Work vault structure at $WORK"
-
 # Sandbox vault — minimal structure for experimentation
 SANDBOX="$VAULT_ROOT/{{ .obsidian.sandbox_vault }}"
 mkdir -p "$SANDBOX"/{templates,assets}
 echo "  Created Sandbox vault structure at $SANDBOX"
+{{- end }}
 
 echo ""
 echo "Obsidian vault directories created!"

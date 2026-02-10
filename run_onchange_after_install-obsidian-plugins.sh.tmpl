@@ -1,4 +1,4 @@
-{{- if and (not .isHeadless) (eq .profile "personal") -}}
+{{- if not .isHeadless -}}
 #!/bin/bash
 # Install Obsidian community plugins from GitHub releases
 # Reads plugin IDs from community-plugins.json and downloads latest releases
@@ -10,11 +10,14 @@ set -e
 
 VAULT_ROOT="{{ .obsidian.vault_root }}"
 
-# All vaults to install plugins to
+# Vaults to install plugins to (profile-aware)
 VAULTS=(
-    "{{ .obsidian.primary_vault }}"
+{{- if eq .profile "work" }}
     "{{ .obsidian.work_vault }}"
+{{- else }}
+    "{{ .obsidian.primary_vault }}"
     "{{ .obsidian.sandbox_vault }}"
+{{- end }}
 )
 
 # Map plugin IDs to their GitHub repos

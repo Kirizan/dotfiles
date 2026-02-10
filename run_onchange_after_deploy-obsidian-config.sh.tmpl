@@ -1,4 +1,4 @@
-{{- if and (not .isHeadless) (eq .profile "personal") -}}
+{{- if not .isHeadless -}}
 #!/bin/bash
 # Deploy Obsidian config to all vaults using hybrid strategy:
 # - Symlink read-only files (hotkeys, graph, templates, bookmarks, types, snippets)
@@ -20,11 +20,14 @@ set -e
 CONFIG_DIR="$HOME/.config/obsidian-config"
 VAULT_ROOT="{{ .obsidian.vault_root }}"
 
-# All vaults to deploy to
+# Vaults to deploy to (profile-aware)
 VAULTS=(
-    "{{ .obsidian.primary_vault }}"
+{{- if eq .profile "work" }}
     "{{ .obsidian.work_vault }}"
+{{- else }}
+    "{{ .obsidian.primary_vault }}"
     "{{ .obsidian.sandbox_vault }}"
+{{- end }}
 )
 
 # Files to symlink (read-only by Obsidian)
@@ -94,6 +97,23 @@ for vault in "${VAULTS[@]}"; do
             fi
         fi
     done
+
+    # Install Catppuccin theme if not present
+    THEME_DIR="$OBS_DIR/themes/Catppuccin"
+    if [ ! -f "$THEME_DIR/theme.css" ]; then
+        echo "    Installing Catppuccin theme..."
+        mkdir -p "$THEME_DIR"
+        curl -sL -o "$THEME_DIR/manifest.json" \
+            "https://raw.githubusercontent.com/catppuccin/obsidian/main/manifest.json" 2>/dev/null
+        curl -sL -o "$THEME_DIR/theme.css" \
+            "https://raw.githubusercontent.com/catppuccin/obsidian/main/theme.css" 2>/dev/null
+        if [ -f "$THEME_DIR/theme.css" ] && [ -s "$THEME_DIR/theme.css" ]; then
+            echo "    Installed: Catppuccin theme"
+        else
+            echo "    Warning: Failed to download Catppuccin theme"
+            rm -rf "$THEME_DIR"
+        fi
+    fi
 done
 
 echo "Obsidian config deployment complete!"
