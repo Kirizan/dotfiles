@@ -210,12 +210,28 @@ return {
     },
   },
 
-  -- markdown-togglecheck: Checkbox toggling
+  -- Checkbox toggling (inline replacement for unmaintained markdown-togglecheck
+  -- which depends on removed nvim-treesitter.ts_utils module)
   {
-    "nfrid/markdown-togglecheck",
-    ft = "markdown",
-    dependencies = { "nfrid/treesitter-utils" },
-    config = true,
+    "LazyVim/LazyVim",
+    opts = function()
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "markdown",
+        callback = function()
+          -- Toggle markdown checkbox on current line: none -> [ ] -> [x] -> [ ]
+          vim.keymap.set("n", "<Plug>MarkdownToggleCheck", function()
+            local line = vim.api.nvim_get_current_line()
+            if line:match("%[x%]") then
+              vim.api.nvim_set_current_line((line:gsub("%[x%]", "[ ]", 1)))
+            elseif line:match("%[ %]") then
+              vim.api.nvim_set_current_line((line:gsub("%[ %]", "[x]", 1)))
+            elseif line:match("^(%s*)[%-*%+]%s") then
+              vim.api.nvim_set_current_line((line:gsub("^(%s*[%-*%+])(%s)", "%1 [ ]%2", 1)))
+            end
+          end, { buffer = true, desc = "Toggle Checkbox" })
+        end,
+      })
+    end,
   },
 
   -- Treesitter: Ensure markdown parsers installed
@@ -333,9 +349,8 @@ return {
 
           -- CHECKBOX COMMANDS --
           -- <leader>kmx - Toggle checkbox
-          vim.keymap.set("n", "<leader>kmx", function()
-            require("markdown-togglecheck").toggle()
-          end, { buffer = buf, desc = "Toggle Checkbox" })
+          vim.keymap.set("n", "<leader>kmx", "<Plug>MarkdownToggleCheck",
+            { buffer = buf, desc = "Toggle Checkbox" })
 
           -- TOC COMMANDS --
           -- <leader>kmT - Generate/update TOC
