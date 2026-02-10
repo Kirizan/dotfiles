@@ -1,0 +1,100 @@
+{{- if and (not .isHeadless) (eq .profile "personal") -}}
+#!/bin/bash
+# Deploy Obsidian config to all vaults using hybrid strategy:
+# - Symlink read-only files (hotkeys, graph, templates, bookmarks, types, snippets)
+# - Copy writable files (app.json, appearance.json, community-plugins.json, core-plugins.json)
+#
+# Re-runs when any config file changes:
+# hash: {{ include "dot_config/obsidian-config/hotkeys.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/graph.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/templates.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/bookmarks.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/types.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/app.json.tmpl" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/appearance.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/community-plugins.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/core-plugins.json" | sha256sum }}
+
+set -e
+
+CONFIG_DIR="$HOME/.config/obsidian-config"
+VAULT_ROOT="{{ .obsidian.vault_root }}"
+
+# All vaults to deploy to
+VAULTS=(
+    "{{ .obsidian.primary_vault }}"
+    "{{ .obsidian.work_vault }}"
+    "{{ .obsidian.sandbox_vault }}"
+)
+
+# Files to symlink (read-only by Obsidian)
+SYMLINK_FILES=(
+    "hotkeys.json"
+    "graph.json"
+    "templates.json"
+    "bookmarks.json"
+    "types.json"
+)
+
+# Files to copy (actively written by Obsidian)
+COPY_FILES=(
+    "app.json"
+    "appearance.json"
+    "community-plugins.json"
+    "core-plugins.json"
+)
+
+echo "Deploying Obsidian config from $CONFIG_DIR..."
+
+for vault in "${VAULTS[@]}"; do
+    VAULT_PATH="$VAULT_ROOT/$vault"
+    OBS_DIR="$VAULT_PATH/.obsidian"
+
+    # Skip vaults that don't exist yet
+    if [ ! -d "$VAULT_PATH" ]; then
+        echo "  Vault not found: $VAULT_PATH — skipping (create it in Obsidian first)"
+        continue
+    fi
+
+    # Create .obsidian directory if missing
+    mkdir -p "$OBS_DIR"
+    mkdir -p "$OBS_DIR/snippets"
+
+    echo "  Deploying to $vault..."
+
+    # Symlink read-only files
+    for file in "${SYMLINK_FILES[@]}"; do
+        if [ -f "$CONFIG_DIR/$file" ]; then
+            # Remove existing file/symlink first
+            rm -f "$OBS_DIR/$file"
+            ln -s "$CONFIG_DIR/$file" "$OBS_DIR/$file"
+            echo "    Linked: $file"
+        fi
+    done
+
+    # Symlink snippets directory contents
+    if [ -d "$CONFIG_DIR/snippets" ]; then
+        for snippet in "$CONFIG_DIR/snippets"/*.css; do
+            [ -f "$snippet" ] || continue
+            snippet_name="$(basename "$snippet")"
+            rm -f "$OBS_DIR/snippets/$snippet_name"
+            ln -s "$snippet" "$OBS_DIR/snippets/$snippet_name"
+            echo "    Linked snippet: $snippet_name"
+        done
+    fi
+
+    # Copy writable files (only if vault doesn't already have them, or if canonical is newer)
+    for file in "${COPY_FILES[@]}"; do
+        if [ -f "$CONFIG_DIR/$file" ]; then
+            if [ ! -f "$OBS_DIR/$file" ] || [ "$CONFIG_DIR/$file" -nt "$OBS_DIR/$file" ]; then
+                cp "$CONFIG_DIR/$file" "$OBS_DIR/$file"
+                echo "    Copied: $file"
+            else
+                echo "    Skipped (vault copy is newer): $file"
+            fi
+        fi
+    done
+done
+
+echo "Obsidian config deployment complete!"
+{{- end }}

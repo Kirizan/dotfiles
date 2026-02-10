@@ -81,6 +81,7 @@ Library/
 .config/wezterm/
 .config/autostart/
 .config/vim/gvimrc
+.config/obsidian-config/
 run_onchange_set-default-browser.sh.tmpl
 run_once_install-personal-packages.sh.tmpl
 {{- end }}

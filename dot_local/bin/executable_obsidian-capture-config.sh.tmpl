@@ -1,0 +1,60 @@
+#!/bin/bash
+# Capture Obsidian config changes back to the canonical config directory
+# Run this after changing settings in the Obsidian UI, then run: chezmoi re-add
+#
+# Usage: obsidian-capture-config [vault-name]
+#   vault-name: Optional vault to capture from (default: {{ .obsidian.primary_vault }})
+
+set -e
+
+VAULT_ROOT="{{ .obsidian.vault_root }}"
+CONFIG_DIR="$HOME/.config/obsidian-config"
+VAULT_NAME="${1:-{{ .obsidian.primary_vault }}}"
+VAULT_PATH="$VAULT_ROOT/$VAULT_NAME"
+OBS_DIR="$VAULT_PATH/.obsidian"
+
+if [ ! -d "$OBS_DIR" ]; then
+    echo "Error: .obsidian directory not found at $OBS_DIR"
+    echo "Available vaults:"
+    for d in "$VAULT_ROOT"/*/; do
+        [ -d "$d/.obsidian" ] && echo "  $(basename "$d")"
+    done
+    exit 1
+fi
+
+# Only capture writable files (files that Obsidian actively writes to)
+CAPTURE_FILES=(
+    "app.json"
+    "appearance.json"
+    "community-plugins.json"
+    "core-plugins.json"
+)
+
+echo "Capturing Obsidian config from $VAULT_NAME vault..."
+
+captured=0
+for file in "${CAPTURE_FILES[@]}"; do
+    if [ -f "$OBS_DIR/$file" ]; then
+        # Skip if it's a symlink (read-only files shouldn't be captured)
+        if [ -L "$OBS_DIR/$file" ]; then
+            echo "  Skipped (symlink): $file"
+            continue
+        fi
+        cp "$OBS_DIR/$file" "$CONFIG_DIR/$file"
+        echo "  Captured: $file"
+        captured=$((captured + 1))
+    else
+        echo "  Not found: $file"
+    fi
+done
+
+if [ "$captured" -gt 0 ]; then
+    echo ""
+    echo "Captured $captured file(s) to $CONFIG_DIR"
+    echo "Next steps:"
+    echo "  1. Review changes: diff $CONFIG_DIR/ $OBS_DIR/"
+    echo "  2. Update chezmoi source: chezmoi re-add ~/.config/obsidian-config"
+    echo "  3. Redeploy to all vaults: chezmoi apply"
+else
+    echo "No files captured — vault config may be empty or all symlinked"
+fi

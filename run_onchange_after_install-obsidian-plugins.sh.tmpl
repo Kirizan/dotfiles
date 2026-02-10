@@ -1,0 +1,133 @@
+{{- if and (not .isHeadless) (eq .profile "personal") -}}
+#!/bin/bash
+# Install Obsidian community plugins from GitHub releases
+# Reads plugin IDs from community-plugins.json and downloads latest releases
+#
+# Re-runs when the plugin list changes:
+# hash: {{ include "dot_config/obsidian-config/community-plugins.json" | sha256sum }}
+
+set -e
+
+VAULT_ROOT="{{ .obsidian.vault_root }}"
+
+# All vaults to install plugins to
+VAULTS=(
+    "{{ .obsidian.primary_vault }}"
+    "{{ .obsidian.work_vault }}"
+    "{{ .obsidian.sandbox_vault }}"
+)
+
+# Map plugin IDs to their GitHub repos
+# Format: plugin-id=owner/repo
+declare -A PLUGIN_REPOS=(
+    ["dataview"]="blacksmithgu/obsidian-dataview"
+    ["tag-wrangler"]="pjeby/tag-wrangler"
+    ["templater-obsidian"]="SilentVoid13/Templater"
+    ["obsidian-local-rest-api"]="coddingtonbear/obsidian-local-rest-api"
+    ["calendar"]="liamcain/obsidian-calendar-plugin"
+)
+
+# Files to download for each plugin
+PLUGIN_FILES=("main.js" "manifest.json" "styles.css")
+
+install_plugin() {
+    local plugin_id="$1"
+    local plugin_dir="$2"
+    local repo="${PLUGIN_REPOS[$plugin_id]}"
+
+    if [ -z "$repo" ]; then
+        echo "    Warning: No GitHub repo mapping for plugin '$plugin_id' — skipping"
+        return 0
+    fi
+
+    # Skip if plugin already installed (has manifest.json)
+    if [ -f "$plugin_dir/manifest.json" ]; then
+        echo "    Already installed: $plugin_id"
+        return 0
+    fi
+
+    mkdir -p "$plugin_dir"
+
+    echo "    Installing: $plugin_id (from $repo)..."
+
+    # Get latest release tag
+    local release_info
+    release_info=$(curl -sL "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null) || {
+        echo "    Warning: Failed to fetch release info for $plugin_id — skipping"
+        return 0
+    }
+
+    local tag
+    tag=$(echo "$release_info" | grep -o '"tag_name": *"[^"]*"' | head -1 | cut -d'"' -f4)
+
+    if [ -z "$tag" ]; then
+        echo "    Warning: No release found for $plugin_id — skipping"
+        return 0
+    fi
+
+    local downloaded=0
+    for file in "${PLUGIN_FILES[@]}"; do
+        local url="https://github.com/$repo/releases/download/$tag/$file"
+        if curl -sL --fail -o "$plugin_dir/$file" "$url" 2>/dev/null; then
+            downloaded=$((downloaded + 1))
+        else
+            # styles.css is optional for most plugins
+            if [ "$file" != "styles.css" ]; then
+                echo "    Warning: Failed to download $file for $plugin_id"
+            fi
+            rm -f "$plugin_dir/$file"
+        fi
+    done
+
+    if [ "$downloaded" -ge 2 ]; then
+        echo "    Installed: $plugin_id ($tag)"
+    else
+        echo "    Warning: Incomplete install for $plugin_id (only $downloaded files)"
+        rm -rf "$plugin_dir"
+    fi
+}
+
+# Read plugin list from community-plugins.json
+CONFIG_DIR="$HOME/.config/obsidian-config"
+PLUGINS_JSON="$CONFIG_DIR/community-plugins.json"
+
+if [ ! -f "$PLUGINS_JSON" ]; then
+    echo "community-plugins.json not found at $PLUGINS_JSON — skipping plugin install"
+    exit 0
+fi
+
+# Parse JSON array (simple grep approach — no jq dependency)
+PLUGIN_IDS=()
+while IFS= read -r line; do
+    # Strip quotes, commas, whitespace, brackets
+    plugin=$(echo "$line" | tr -d '",[] ' | tr -d '\n')
+    [ -n "$plugin" ] && PLUGIN_IDS+=("$plugin")
+done < "$PLUGINS_JSON"
+
+if [ ${#PLUGIN_IDS[@]} -eq 0 ]; then
+    echo "No plugins found in community-plugins.json — skipping"
+    exit 0
+fi
+
+echo "Installing Obsidian community plugins..."
+echo "Plugins to install: ${PLUGIN_IDS[*]}"
+
+for vault in "${VAULTS[@]}"; do
+    VAULT_PATH="$VAULT_ROOT/$vault"
+
+    if [ ! -d "$VAULT_PATH" ]; then
+        echo "  Vault not found: $VAULT_PATH — skipping"
+        continue
+    fi
+
+    echo "  Processing vault: $vault"
+    PLUGINS_DIR="$VAULT_PATH/.obsidian/plugins"
+    mkdir -p "$PLUGINS_DIR"
+
+    for plugin_id in "${PLUGIN_IDS[@]}"; do
+        install_plugin "$plugin_id" "$PLUGINS_DIR/$plugin_id"
+    done
+done
+
+echo "Obsidian plugin installation complete!"
+{{- end }}

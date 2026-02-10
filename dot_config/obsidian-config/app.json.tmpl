@@ -1,0 +1,25 @@
+{
+  "vimMode": true,
+  "showLineNumber": true,
+  "livePreview": true,
+  "defaultViewMode": "source",
+  "foldHeading": true,
+  "foldIndent": true,
+  "showFrontmatter": true,
+  "strictLineBreaks": false,
+  "readableLineLength": true,
+  "tabSize": 2,
+  "attachmentFolderPath": "assets",
+  "newFileLocation": "folder",
+  "newFileFolderPath": "0-Inbox",
+  "alwaysUpdateLinks": true,
+  "promptDelete": true,
+  "trashOption": "local",
+  "spellcheck": true,
+{{- if eq .chezmoi.os "darwin" }}
+  "nativeMenus": true,
+{{- else }}
+  "nativeMenus": false,
+{{- end }}
+  "propertiesInDocument": "visible"
+}

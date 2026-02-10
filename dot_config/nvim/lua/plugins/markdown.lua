@@ -19,10 +19,12 @@ return {
     opts = function(_, opts)
       opts.servers = opts.servers or {}
 
-      -- Marksman: Primary markdown LSP (completion, navigation, broken links)
+      -- Marksman: General markdown LSP (completion, navigation, broken links)
+      -- Disabled in favor of markdown-oxide which provides superset of features
+      -- for Obsidian vaults. Start manually with :LspStart marksman if needed.
       opts.servers.marksman = {
         enabled = true,
-        autostart = true,
+        autostart = false,
       }
 
       -- Harper: Lightweight grammar checking for markdown
@@ -48,10 +50,10 @@ return {
         }
       }
 
-      -- markdown-oxide: PKM/Obsidian features (manual start only)
+      -- markdown-oxide: PKM/Obsidian features (vault completions, backlinks, tags)
       opts.servers.markdown_oxide = {
         enabled = true,
-        autostart = false,  -- Manual start for Obsidian vaults only
+        autostart = true,
         capabilities = {
           workspace = {
             didChangeWatchedFiles = {
@@ -358,11 +360,11 @@ return {
             { buffer = buf, desc = "Generate TOC" })
 
           -- LSP COMMANDS --
-          -- <leader>kmo - Start markdown-oxide (for Obsidian vaults)
+          -- <leader>kmo - Start marksman LSP (general markdown, disabled by default)
           vim.keymap.set("n", "<leader>kmo", function()
-            vim.cmd("LspStart markdown_oxide")
-            vim.notify("Started markdown-oxide LSP", vim.log.levels.INFO)
-          end, { buffer = buf, desc = "Start Obsidian LSP" })
+            vim.cmd("LspStart marksman")
+            vim.notify("Started marksman LSP", vim.log.levels.INFO)
+          end, { buffer = buf, desc = "Start Marksman LSP" })
 
           -- Register which-key descriptions for this buffer
           wk.add({
@@ -388,7 +390,7 @@ return {
             { "<leader>kmT", desc = "Generate TOC", buffer = buf },
 
             -- LSP
-            { "<leader>kmo", desc = "Start Obsidian LSP", buffer = buf },
+            { "<leader>kmo", desc = "Start Marksman LSP", buffer = buf },
           })
         end,
       })

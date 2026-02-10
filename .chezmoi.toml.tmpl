@@ -172,13 +172,21 @@
     manager = "unknown"
 {{- end }}
 
-[data.paths]
 {{- if eq .chezmoi.os "darwin" }}
+
+[data.paths]
     homebrew = "/opt/homebrew"
 {{- end }}
 
+[data.obsidian]
+    primary_vault = "Primary"
+    work_vault = "Work"
+    sandbox_vault = "Sandbox"
+    vault_root = "{{ .chezmoi.homeDir }}/Obsidian"
+
 {{- /* Theme configuration for Omarchy (Arch-based Linux with Hyprland) */ -}}
 {{- if and (eq .chezmoi.os "linux") $isArchBased }}
+
 [data.theme]
     # Current Omarchy theme name
     # Available: osaka-jade, catppuccin, everforest, gruvbox, kanagawa, nord, rose-pine, tokyo-night, etc.
