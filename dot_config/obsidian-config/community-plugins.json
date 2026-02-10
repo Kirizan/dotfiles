@@ -3,5 +3,6 @@
   "tag-wrangler",
   "templater-obsidian",
   "obsidian-local-rest-api",
-  "calendar"
+  "calendar",
+  "obsidian-plantuml"
 ]
