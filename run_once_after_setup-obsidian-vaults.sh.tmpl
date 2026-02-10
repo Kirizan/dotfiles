@@ -1,0 +1,33 @@
+{{- if and (not .isHeadless) (eq .profile "personal") -}}
+#!/bin/bash
+# Create Obsidian vault directory structure with PARA folders
+# Run once on initial setup — vaults must be opened in Obsidian to fully initialize
+
+set -e
+
+VAULT_ROOT="{{ .obsidian.vault_root }}"
+
+echo "Setting up Obsidian vault structure..."
+
+# Primary vault — full PARA structure
+PRIMARY="$VAULT_ROOT/{{ .obsidian.primary_vault }}"
+mkdir -p "$PRIMARY"/{1-Projects,2-Areas,3-Resources,4-Archive,daily,templates,assets,Claude-Skills}
+echo "  Created Primary vault structure at $PRIMARY"
+
+# Work vault — lighter structure
+WORK="$VAULT_ROOT/{{ .obsidian.work_vault }}"
+mkdir -p "$WORK"/{1-Projects,2-Areas,3-Resources,4-Archive,daily,templates,assets}
+echo "  Created Work vault structure at $WORK"
+
+# Sandbox vault — minimal structure for experimentation
+SANDBOX="$VAULT_ROOT/{{ .obsidian.sandbox_vault }}"
+mkdir -p "$SANDBOX"/{templates,assets}
+echo "  Created Sandbox vault structure at $SANDBOX"
+
+echo ""
+echo "Obsidian vault directories created!"
+echo "Next steps:"
+echo "  1. Open Obsidian and open each vault folder to initialize it"
+echo "  2. Run 'chezmoi apply' again to deploy config and install plugins"
+echo "  3. Enable Obsidian Sync for each vault (data only, config sync OFF)"
+{{- end }}
