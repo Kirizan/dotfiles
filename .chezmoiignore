@@ -68,7 +68,7 @@ Library/
 {{- if not (lookPath "fish") }}
 .config/fish/
 {{- end }}
-{{- if not (lookPath "polkit-kde-authentication-agent-1") }}
+{{- if not (stat "/usr/lib/polkit-kde-authentication-agent-1") }}
 .config/polkit-kde-authentication-agent-1.notifyrc
 {{- end }}
 {{- if not (stat "/opt/NVIDIA Sync/nvidia-sync") }}
