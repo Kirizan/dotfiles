@@ -15,6 +15,7 @@ $git_branch\
 $git_status\
 $fill\
 $time\
+$hostname\
 $status\
 $cmd_duration\
 $jobs\
@@ -84,6 +85,13 @@ deleted = "✘${count} "
 # Fill space between left and right prompt
 [fill]
 symbol = " "
+
+# Hostname display
+[hostname]
+disabled = false
+ssh_only = false
+format = "[$hostname](bold peach) "
+trim_at = "."
 
 # Time display (ISO 8601 format)
 [time]
