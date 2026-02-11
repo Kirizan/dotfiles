@@ -28,17 +28,58 @@ if [ "$response" != "200" ]; then
     exit 0
 fi
 
-# List files under Claude-Skills/ directory
-listing=$(curl -sk --connect-timeout 5 \
-    -H "Authorization: Bearer ${API_KEY}" \
-    -H "Accept: application/json" \
-    "${API_BASE}/vault/${SKILLS_DIR}/" 2>/dev/null) || exit 0
+# Fetch a directory listing from the API, returning entries one per line
+# Directories have trailing /, files do not
+api_list() {
+    local path="$1"
+    local result
+    result=$(curl -sk --connect-timeout 5 \
+        -H "Authorization: Bearer ${API_KEY}" \
+        -H "Accept: application/json" \
+        "${API_BASE}/vault/${path}" 2>/dev/null) || return 1
+    echo "$result" | grep -o '"[^"]*"' | sed 's/"//g' | grep -v '^files$'
+}
 
-# Extract file paths from JSON response (no jq dependency)
-# Response format: {"files":["Claude-Skills/skill-name/SKILL.md",...]}
-file_paths=$(echo "$listing" | grep -o '"[^"]*"' | sed 's/"//g' | grep "^${SKILLS_DIR}/")
+# Recursively fetch all files under a vault path into a local directory
+# Usage: fetch_dir <vault_path> <local_dir>
+fetch_dir() {
+    local vault_path="$1"
+    local local_dir="$2"
+    local entries entry
 
-if [ -z "$file_paths" ]; then
+    entries=$(api_list "$vault_path") || return 1
+
+    for entry in $entries; do
+        if [ "${entry%/}" != "$entry" ]; then
+            # Directory — recurse
+            mkdir -p "$local_dir/${entry%/}"
+            fetch_dir "${vault_path}${entry}" "$local_dir/${entry%/}"
+        else
+            # File — download
+            local content
+            content=$(curl -sk --connect-timeout 5 \
+                -H "Authorization: Bearer ${API_KEY}" \
+                "${API_BASE}/vault/${vault_path}${entry}" 2>/dev/null) || continue
+
+            local target_file="$local_dir/$entry"
+            if [ -f "$target_file" ]; then
+                local existing
+                existing=$(cat "$target_file")
+                if [ "$content" = "$existing" ]; then
+                    continue
+                fi
+            fi
+
+            printf '%s' "$content" > "$target_file"
+            fetched=$((fetched + 1))
+        fi
+    done
+}
+
+# List skill directories under Claude-Skills/
+skill_dirs=$(api_list "${SKILLS_DIR}/") || exit 0
+
+if [ -z "$skill_dirs" ]; then
     exit 0
 fi
 
@@ -46,47 +87,18 @@ mkdir -p "$SKILLS_TARGET"
 
 # Track which skills we find in the vault for cleanup later
 found_skills=""
-
-# Process each file path
 fetched=0
-for file_path in $file_paths; do
-    # Extract skill name: Claude-Skills/skill-name/file.md -> skill-name
-    # Skip files directly in Claude-Skills/ (not in a subdirectory)
-    relative="${file_path#${SKILLS_DIR}/}"
-    skill_name="${relative%%/*}"
-    file_name="${relative#*/}"
 
-    # Skip if no subdirectory (file directly in Claude-Skills/)
-    if [ "$skill_name" = "$relative" ]; then
-        continue
-    fi
+for entry in $skill_dirs; do
+    # Only process directories (trailing /)
+    [ "${entry%/}" != "$entry" ] || continue
+    skill_name="${entry%/}"
 
-    # Track this skill name
-    case "$found_skills" in
-        *"|${skill_name}|"*) ;;
-        *) found_skills="${found_skills}|${skill_name}|" ;;
-    esac
+    found_skills="${found_skills}|${skill_name}|"
 
-    # Create skill directory
-    skill_target="$SKILLS_TARGET/$skill_name"
-    mkdir -p "$skill_target/$(dirname "$file_name")"
-
-    # Fetch file content
-    content=$(curl -sk --connect-timeout 5 \
-        -H "Authorization: Bearer ${API_KEY}" \
-        "${API_BASE}/vault/${file_path}" 2>/dev/null) || continue
-
-    # Write to target — only if content changed
-    target_file="$skill_target/$file_name"
-    if [ -f "$target_file" ]; then
-        existing=$(cat "$target_file")
-        if [ "$content" = "$existing" ]; then
-            continue
-        fi
-    fi
-
-    printf '%s' "$content" > "$target_file"
-    fetched=$((fetched + 1))
+    # Fetch entire skill directory tree
+    mkdir -p "$SKILLS_TARGET/$skill_name"
+    fetch_dir "${SKILLS_DIR}/${entry}" "$SKILLS_TARGET/$skill_name"
 done
 
 # Clean up stale skills no longer in the vault
