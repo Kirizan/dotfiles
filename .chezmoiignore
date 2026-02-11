@@ -69,7 +69,7 @@ Library/
 .config/fish/
 {{- end }}
 {{- if not (stat "/usr/lib/polkit-kde-authentication-agent-1") }}
-.config/polkit-kde-authentication-agent-1.notifyrc
+.local/share/knotifications6/polkit-kde-authentication-agent-1.notifyrc
 {{- end }}
 {{- if not (stat "/opt/NVIDIA Sync/nvidia-sync") }}
 .local/bin/nvidia-sync-fix-position
