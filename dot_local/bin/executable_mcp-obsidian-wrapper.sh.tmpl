@@ -1,0 +1,32 @@
+{{- if eq .profile "personal" -}}
+#!/bin/bash
+# MCP server wrapper for Obsidian Local REST API
+# Configures connection (localhost on GUI, remote on headless) and launches mcp-obsidian
+
+API_KEY_FILE="$HOME/.config/obsidian-api-key"
+
+if [ ! -f "$API_KEY_FILE" ]; then
+    echo "Error: API key not found at $API_KEY_FILE" >&2
+    exit 1
+fi
+
+export OBSIDIAN_API_KEY="$(cat "$API_KEY_FILE")"
+
+{{- if .isHeadless }}
+export OBSIDIAN_HOST="https://{{ .obsidian.rest_api_host }}"
+{{- else }}
+export OBSIDIAN_HOST="https://127.0.0.1"
+{{- end }}
+export OBSIDIAN_PORT="{{ .obsidian.rest_api_port }}"
+export OBSIDIAN_VERIFY_SSL="false"
+
+# Launch mcp-obsidian: prefer uvx, fall back to npx
+if command -v uvx >/dev/null 2>&1; then
+    exec uvx mcp-obsidian
+elif command -v npx >/dev/null 2>&1; then
+    exec npx -y mcp-obsidian
+else
+    echo "Error: neither uvx nor npx found — install uv or Node.js" >&2
+    exit 1
+fi
+{{- end }}

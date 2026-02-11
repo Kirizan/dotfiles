@@ -97,6 +97,11 @@ run_once_install-personal-packages.sh.tmpl
 projects/
 {{- end }}
 
+# Skills: Obsidian is single source of truth
+# GUI: symlinked from local vault; Headless: fetched via REST API
+# Non-personal: Claude not deployed, skills not needed
+.claude/skills/
+
 # Profile-specific ignores
 # Files ending in _work.* are only for work profile
 {{- if ne .profile "work" }}

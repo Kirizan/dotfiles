@@ -183,6 +183,8 @@
     work_vault = "Work"
     sandbox_vault = "Sandbox"
     vault_root = "{{ .chezmoi.homeDir }}/Obsidian"
+    rest_api_host = "192.168.1.81"
+    rest_api_port = "27124"
 
 {{- /* Theme configuration for Omarchy (Arch-based Linux with Hyprland) */ -}}
 {{- if and (eq .chezmoi.os "linux") $isArchBased }}

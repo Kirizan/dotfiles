@@ -1,0 +1,14 @@
+{{- if eq .profile "personal" -}}
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "{{ .chezmoi.homeDir }}/.local/bin/mcp-obsidian-wrapper.sh",
+      "args": []
+    }
+  }
+}
+{{- else -}}
+{
+  "mcpServers": {}
+}
+{{- end }}

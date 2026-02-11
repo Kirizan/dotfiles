@@ -1,4 +1,4 @@
-{{- if eq .profile "personal" -}}
+{{- if and (eq .profile "personal") (not .isHeadless) -}}
 #!/bin/bash
 # Link Claude Code skills from Obsidian vault to ~/.claude/skills/
 # Scans for SKILL.md files in the Claude-Skills directory and creates symlinks
