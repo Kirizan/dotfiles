@@ -108,6 +108,10 @@ if ! command -v wezterm &> /dev/null; then
     echo "Installing wezterm..."
     sudo pacman -S --needed --noconfirm wezterm
 fi
+
+# Install mpv (video player)
+echo "Installing mpv..."
+sudo pacman -S --needed --noconfirm mpv
 {{- end }}
 
 # Install awscli via pipx
@@ -214,6 +218,10 @@ if ! command -v wezterm &> /dev/null; then
         fi
     }
 fi
+
+# Install mpv (video player)
+echo "Installing mpv..."
+sudo apt-get install -y mpv
 {{- end }}
 
 # Install awscli via pipx
@@ -313,6 +321,10 @@ if ! command -v wezterm &> /dev/null; then
         }
     }
 fi
+
+# Install mpv (video player)
+echo "Installing mpv..."
+sudo dnf install -y mpv
 {{- end }}
 
 # Install awscli via pipx
