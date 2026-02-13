@@ -89,6 +89,20 @@ run_onchange_set-default-browser.sh.tmpl
 run_once_install-personal-packages.sh.tmpl
 {{- end }}
 
+# HexOS / TrueNAS Scale — minimal NAS deployment
+# Skip dev tools, AI tooling, and non-essential system scripts
+{{- if .isHexOS }}
+run_once_install-tmux.sh.tmpl
+run_once_install-java.sh.tmpl
+run_once_install-personal-cli-tools.sh.tmpl
+run_once_before_fix-etc-hosts.sh.tmpl
+run_onchange_before_configure-passwordless-sudo.sh.tmpl
+run_once_before_configure-1password-noauth.sh.tmpl
+run_after_fetch-obsidian-skills.sh.tmpl
+run_once_before_disable-desktop-sleep.sh.tmpl
+.config/devon/
+{{- end }}
+
 # Scripts and bin directories are handled separately
 # (they're managed but not as dotfiles in home directory)
 

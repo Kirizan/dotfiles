@@ -59,6 +59,20 @@
 {{-   end -}}
 {{- end -}}
 
+{{- /* Detect HexOS / TrueNAS Scale (Debian-based NAS appliance) */ -}}
+{{- $isHexOS := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if stat "/usr/bin/midclt" -}}
+{{-     $isHexOS = true -}}
+{{-   end -}}
+{{- end -}}
+{{- /* Allow override via environment variable */ -}}
+{{- if eq (env "CHEZMOI_HEXOS") "true" -}}
+{{-   $isHexOS = true -}}
+{{- else if eq (env "CHEZMOI_HEXOS") "false" -}}
+{{-   $isHexOS = false -}}
+{{- end -}}
+
 {{- /* Detect desktop systems (no battery = desktop, has battery = laptop) */ -}}
 {{- $isDesktop := false -}}
 {{- if eq .chezmoi.os "linux" -}}
@@ -136,6 +150,7 @@
     isHeadless = {{ $isHeadless }}
     isDesktop = {{ $isDesktop }}
     isDGXSpark = {{ $isDGXSpark }}
+    isHexOS = {{ $isHexOS }}
 
 {{- if eq .chezmoi.os "darwin" }}
 [data.packages]

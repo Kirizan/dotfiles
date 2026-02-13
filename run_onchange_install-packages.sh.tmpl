@@ -25,6 +25,11 @@ sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
 echo "Installing Liberation Fonts..."
 sudo pacman -S --needed --noconfirm ttf-liberation
 
+{{- else if and .isDebianBased .isHexOS }}
+echo "Installing base dependencies on HexOS..."
+sudo apt-get update
+sudo apt-get install -y git curl procps file
+
 {{- else if .isDebianBased }}
 echo "Installing base dependencies on Debian-based Linux..."
 sudo apt-get update
@@ -140,6 +145,28 @@ if ! command -v terraform &> /dev/null; then
     else
         echo "Warning: No AUR helper found. Install terraform manually or install yay/paru first."
     fi
+fi
+
+{{- else if and .isDebianBased .isHexOS }}
+# Minimal NAS packages — no dev toolchains
+echo "Installing minimal packages on HexOS..."
+sudo apt-get update
+sudo apt-get install -y \
+    git \
+    curl \
+    wget \
+    neovim \
+    ripgrep \
+    fzf \
+    fd-find \
+    jq \
+    tree \
+    bash-completion
+
+# Install starship prompt
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
 fi
 
 {{- else if .isDebianBased }}
