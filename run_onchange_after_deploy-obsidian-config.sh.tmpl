@@ -1,14 +1,13 @@
 {{- if not .isHeadless -}}
 #!/bin/bash
 # Deploy Obsidian config to all vaults using hybrid strategy:
-# - Symlink read-only files (hotkeys, graph, templates, bookmarks, types, snippets)
+# - Symlink read-only files (templates, types, snippets)
 # - Copy writable files (app.json, appearance.json, community-plugins.json, core-plugins.json)
+# Note: graph.json, hotkeys.json, bookmarks.json are NOT managed — Obsidian creates and
+# modifies these at runtime.
 #
 # Re-runs when any config file changes:
-# hash: {{ include "dot_config/obsidian-config/hotkeys.json" | sha256sum }}
-# hash: {{ include "dot_config/obsidian-config/graph.json" | sha256sum }}
 # hash: {{ include "dot_config/obsidian-config/templates.json" | sha256sum }}
-# hash: {{ include "dot_config/obsidian-config/bookmarks.json" | sha256sum }}
 # hash: {{ include "dot_config/obsidian-config/types.json" | sha256sum }}
 # hash: {{ include "dot_config/obsidian-config/app.json.tmpl" | sha256sum }}
 # hash: {{ include "dot_config/obsidian-config/appearance.json" | sha256sum }}
@@ -32,10 +31,7 @@ VAULTS=(
 
 # Files to symlink (read-only by Obsidian)
 SYMLINK_FILES=(
-    "hotkeys.json"
-    "graph.json"
     "templates.json"
-    "bookmarks.json"
     "types.json"
 )
 

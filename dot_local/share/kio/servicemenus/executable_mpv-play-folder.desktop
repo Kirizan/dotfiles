@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Service
+MimeType=inode/directory;
+Actions=playWithMpv;
+
+[Desktop Action playWithMpv]
+Name=Play with mpv
+Icon=mpv
+Exec=bash -c 'find "$1" -maxdepth 1 -type f -iregex ".*\\.\\(mp4\\|mkv\\|avi\\|mov\\|wmv\\|flv\\|webm\\|m4v\\|mpg\\|mpeg\\|ts\\|ogv\\|vob\\)" -print0 | sort -zV | xargs -0 -r mpv' _ "%f"
