@@ -1,0 +1,8 @@
+[AC][DPMSControl]
+idleTime=0
+lockBeforeTurnOff=0
+
+[AC][SuspendAndShutdown]
+AutoSuspendAction=0
+AutoSuspendIdleTimeoutSec=0
+PowerButtonAction=0
