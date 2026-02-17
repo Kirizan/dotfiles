@@ -1,0 +1,9 @@
+[AC][Display]
+DimDisplayWhenIdle=false
+TurnOffDisplayIdleTimeoutSec=600000
+TurnOffDisplayWhenIdle=false
+
+[AC][SuspendAndShutdown]
+LidAction=0
+PowerButtonAction=0
+PowerDownAction=0

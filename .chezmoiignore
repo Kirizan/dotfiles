@@ -73,6 +73,7 @@ Library/
 {{- end }}
 {{- if not .isDesktop }}
 .config/kscreenlockerrc
+.config/powerdevilrc
 .config/powermanagementprofilesrc
 run_once_after_disable-sleep.sh.tmpl
 {{- end }}
