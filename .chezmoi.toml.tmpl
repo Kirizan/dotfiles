@@ -197,6 +197,10 @@
     dns_server = "192.168.1.223"
     dns_routing_domain = "internal.kirby.network"
 
+[data.openbao]
+    addr = "https://vault.internal.kirby.network"
+    ssh_ca_url = "https://vault.internal.kirby.network/v1/ssh/public_key"
+
 [data.obsidian]
     primary_vault = "Primary"
     work_vault = "Work"
