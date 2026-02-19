@@ -106,6 +106,7 @@ run_onchange_before_configure-passwordless-sudo.sh.tmpl
 run_once_before_configure-1password-noauth.sh.tmpl
 run_after_fetch-obsidian-skills.sh.tmpl
 run_once_before_disable-desktop-sleep.sh.tmpl
+run_onchange_configure-dns-adguard.sh.tmpl
 .config/devon/
 {{- end }}
 
