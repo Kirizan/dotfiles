@@ -37,6 +37,11 @@ if [ -f "/usr/bin/lxqt-openssh-askpass" ]; then
   export SUDO_ASKPASS="/usr/bin/lxqt-openssh-askpass"
 fi
 
+{{- if not .isHexOS }}
+# OpenBao CLI
+export BAO_ADDR="{{ .openbao.addr }}"
+{{- end }}
+
 # Add custom bin directory
 export PATH="$PATH:$HOME/.dotfiles/bin"
 

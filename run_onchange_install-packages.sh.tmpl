@@ -147,6 +147,17 @@ if ! command -v terraform &> /dev/null; then
     fi
 fi
 
+# Install OpenBao CLI (official Arch package from GitHub releases)
+if ! command -v bao &> /dev/null; then
+    echo "Installing OpenBao CLI..."
+    BAO_VERSION="2.5.0"
+    BAO_PKG="/tmp/openbao_${BAO_VERSION}_linux_amd64.pkg.tar.zst"
+    if [ ! -f "$BAO_PKG" ]; then
+        curl -sL "https://github.com/openbao/openbao/releases/download/v${BAO_VERSION}/openbao_${BAO_VERSION}_linux_amd64.pkg.tar.zst" -o "$BAO_PKG"
+    fi
+    sudo pacman -U --noconfirm "$BAO_PKG"
+fi
+
 {{- else if and .isDebianBased .isHexOS }}
 # Minimal NAS packages — no dev toolchains
 echo "Installing minimal packages on HexOS..."
