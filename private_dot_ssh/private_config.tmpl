@@ -1,0 +1,11 @@
+{{- if stat (joinPath .chezmoi.homeDir ".config/NVIDIA/Sync/config/ssh_config") -}}
+Include "{{ .chezmoi.homeDir }}/.config/NVIDIA/Sync/config/ssh_config"
+
+{{ end -}}
+Host *
+	IdentityAgent ~/.1password/agent.sock
+
+Host avalon
+	HostName {{ .network.dns_server }}
+	User kirizan
+	IdentityFile ~/.ssh/id_ed25519

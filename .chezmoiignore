@@ -109,6 +109,7 @@ run_once_before_disable-desktop-sleep.sh.tmpl
 run_onchange_configure-dns-adguard.sh.tmpl
 run_onchange_configure-ssh-ca.sh.tmpl
 .config/devon/
+.ssh/config
 {{- end }}
 
 # Scripts and bin directories are handled separately
