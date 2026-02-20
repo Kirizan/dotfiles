@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code status line script
-# Shows: Model | Directory | Token Usage
+# Shows: Model | Directory | Context Usage %
 
 # Read JSON input from stdin
 input=$(cat)
@@ -8,16 +8,9 @@ input=$(cat)
 # Extract information from JSON
 MODEL=$(echo "$input" | jq -r '.model.display_name')
 DIR=$(echo "$input" | jq -r '.workspace.current_dir' | sed 's|.*/||')
-CONTEXT_SIZE=$(echo "$input" | jq -r '.context_window.context_window_size')
+USED_PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
 
-# Get total input tokens from the session (not just current request)
-TOTAL_INPUT=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
+# Round to integer
+USED_INT=$(printf "%.0f" "$USED_PCT")
 
-# Calculate percentage
-if [ "$TOTAL_INPUT" != "0" ] && [ "$TOTAL_INPUT" != "null" ]; then
-    PERCENT_USED=$((TOTAL_INPUT * 100 / CONTEXT_SIZE))
-    echo "[$MODEL] 📁 $DIR | ${TOTAL_INPUT}/${CONTEXT_SIZE} (${PERCENT_USED}%)"
-else
-    # No usage yet (start of session)
-    echo "[$MODEL] 📁 $DIR | 0/${CONTEXT_SIZE} (0%)"
-fi
+echo "[$MODEL] $DIR | ctx: ${USED_INT}%"
