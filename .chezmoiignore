@@ -77,6 +77,9 @@ Library/
 .config/powermanagementprofilesrc
 run_once_after_disable-sleep.sh.tmpl
 {{- end }}
+{{- if or (ne .chezmoi.os "linux") .isHeadless }}
+.config/plasma-localerc
+{{- end }}
 {{- if not (stat "/opt/NVIDIA Sync/nvidia-sync") }}
 .local/bin/nvidia-sync-fix-position
 .local/bin/nvidia-sync-wrapper
