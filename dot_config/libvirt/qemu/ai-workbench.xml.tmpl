@@ -85,21 +85,7 @@
       <model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1' primary='yes'/>
     </video>
 
-    <!-- RTX 5090 GPU passthrough -->
-    <hostdev mode='subsystem' type='pci' managed='yes'>
-      <source>
-        <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
-      </source>
-      <address type='pci' domain='0x0000' bus='0x06' slot='0x00' function='0x0' multifunction='on'/>
-    </hostdev>
-
-    <!-- RTX 5090 HDMI Audio passthrough -->
-    <hostdev mode='subsystem' type='pci' managed='yes'>
-      <source>
-        <address domain='0x0000' bus='0x01' slot='0x00' function='0x1'/>
-      </source>
-      <address type='pci' domain='0x0000' bus='0x06' slot='0x00' function='0x1'/>
-    </hostdev>
+    <!-- RTX 5090 GPU attached dynamically via gpu-vm-start fish function -->
 
     <!-- Virtio RNG for better entropy -->
     <rng model='virtio'>

@@ -228,21 +228,62 @@ function gpu-nvidia --description "Unbind RTX 5090 from vfio-pci and return to n
     gpu-status
 end
 
-function gpu-vm-start --description "Bind GPU to vfio-pci and start ai-workbench VM"
+function gpu-vm-start --description "Bind GPU to vfio-pci, start VM, and attach GPU"
     gpu-vfio
     if test $status -ne 0
         return 1
     end
     echo "Starting ai-workbench VM..."
     sudo virsh start ai-workbench
+    or return 1
+
+    # Attach GPU and audio to the running VM
+    echo "Attaching RTX 5090 GPU to VM..."
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x0"/></source>
+</hostdev>' | sudo virsh attach-device ai-workbench /dev/stdin
+    echo "Attaching RTX 5090 HDMI Audio to VM..."
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x1"/></source>
+</hostdev>' | sudo virsh attach-device ai-workbench /dev/stdin
+
+    echo "VM started with GPU attached."
 end
 
-function gpu-vm-stop --description "Gracefully shutdown ai-workbench VM"
+function gpu-vm-stop --description "Detach GPU, shutdown VM, and return GPU to host"
+    echo "Detaching RTX 5090 GPU from VM..."
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x0"/></source>
+</hostdev>' | sudo virsh detach-device ai-workbench /dev/stdin 2>/dev/null
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x1"/></source>
+</hostdev>' | sudo virsh detach-device ai-workbench /dev/stdin 2>/dev/null
+
     echo "Shutting down ai-workbench VM..."
     sudo virsh shutdown ai-workbench
     echo ""
-    echo "VM shutdown signal sent. Wait for VM to fully stop, then run"
-    echo "'gpu-nvidia' to return the GPU to the host (may require reboot)."
+    echo "VM shutdown signal sent. Waiting for VM to stop..."
+
+    # Wait up to 60s for clean shutdown
+    set -l timeout 60
+    while test $timeout -gt 0
+        if not sudo virsh domstate ai-workbench 2>/dev/null | grep -q "running"
+            break
+        end
+        sleep 2
+        set timeout (math $timeout - 2)
+    end
+
+    if sudo virsh domstate ai-workbench 2>/dev/null | grep -q "running"
+        echo "VM still running after 60s. Force off? [y/N]"
+        read -P "" confirm
+        if test "$confirm" = "y" -o "$confirm" = "Y"
+            sudo virsh destroy ai-workbench
+        end
+    end
+
+    echo "Returning GPU to host..."
+    gpu-nvidia
 end
 {{- end }}
 
