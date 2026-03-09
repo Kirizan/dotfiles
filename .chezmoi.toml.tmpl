@@ -59,6 +59,14 @@
 {{-   end -}}
 {{- end -}}
 
+{{- /* Detect NVIDIA GPU passthrough systems (RTX 5090 on mimir for AI Workbench VM) */ -}}
+{{- $hasNvidiaPassthrough := false -}}
+{{- if and (eq .chezmoi.os "linux") $isDesktop (not $isHeadless) -}}
+{{-   if eq .chezmoi.hostname "mimir" -}}
+{{-     $hasNvidiaPassthrough = true -}}
+{{-   end -}}
+{{- end -}}
+
 {{- /* Detect HexOS / TrueNAS Scale (Debian-based NAS appliance) */ -}}
 {{- $isHexOS := false -}}
 {{- if eq .chezmoi.os "linux" -}}
@@ -151,6 +159,7 @@
     isDesktop = {{ $isDesktop }}
     isDGXSpark = {{ $isDGXSpark }}
     isHexOS = {{ $isHexOS }}
+    hasNvidiaPassthrough = {{ $hasNvidiaPassthrough }}
 
 {{- if eq .chezmoi.os "darwin" }}
 [data.packages]
@@ -216,4 +225,13 @@
     # Current Omarchy theme name
     # Available: osaka-jade, catppuccin, everforest, gruvbox, kanagawa, nord, rose-pine, tokyo-night, etc.
     name = "catppuccin-dark"
+{{- end }}
+
+{{- if $hasNvidiaPassthrough }}
+
+[data.gpu]
+    nvidia_pci_id = "10de:2b85"
+    nvidia_audio_pci_id = "10de:22e8"
+    nvidia_pci_slot = "0000:01:00.0"
+    nvidia_audio_pci_slot = "0000:01:00.1"
 {{- end }}

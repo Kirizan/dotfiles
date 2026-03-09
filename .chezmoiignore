@@ -85,6 +85,9 @@ run_once_after_disable-sleep.sh.tmpl
 .local/bin/nvidia-sync-wrapper
 .local/share/applications/nvidia-sync.desktop
 {{- end }}
+{{- if not .hasNvidiaPassthrough }}
+.config/libvirt/
+{{- end }}
 
 # Headless systems (SSH-only servers, WSL without WSLg, etc.)
 # Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages
@@ -96,6 +99,8 @@ run_once_after_disable-sleep.sh.tmpl
 .config/obsidian-config/
 run_onchange_set-default-browser.sh.tmpl
 run_once_install-personal-packages.sh.tmpl
+run_once_before_install-vm-packages.sh
+run_once_before_configure-iommu-mimir.sh
 {{- end }}
 
 # HexOS / TrueNAS Scale — minimal NAS deployment
@@ -113,6 +118,8 @@ run_onchange_configure-dns-adguard.sh.tmpl
 run_onchange_configure-ssh-ca.sh.tmpl
 .config/devon/
 .ssh/config
+run_once_before_install-vm-packages.sh
+run_once_before_configure-iommu-mimir.sh
 {{- end }}
 
 # Scripts and bin directories are handled separately

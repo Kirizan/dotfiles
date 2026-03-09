@@ -137,6 +137,115 @@ if test -f {{ .chezmoi.homeDir }}/.profile_corp.fish
 end
 {{- end }}
 
+{{- if .hasNvidiaPassthrough }}
+
+# GPU passthrough functions for RTX 5090 / AI Workbench VM
+# PCI slots: GPU={{ .gpu.nvidia_pci_slot }}, Audio={{ .gpu.nvidia_audio_pci_slot }}
+
+function gpu-status --description "Show current driver binding for RTX 5090"
+    echo "RTX 5090 GPU ({{ .gpu.nvidia_pci_slot }}):"
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver
+        echo "  Driver: "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver))
+    else
+        echo "  Driver: (none)"
+    end
+    echo "RTX 5090 HDMI Audio ({{ .gpu.nvidia_audio_pci_slot }}):"
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver
+        echo "  Driver: "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver))
+    else
+        echo "  Driver: (none)"
+    end
+end
+
+function gpu-vfio --description "Unbind RTX 5090 from nvidia and bind to vfio-pci"
+    # Check for active GPU processes
+    if type -q nvidia-smi
+        set -l gpu_procs (nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | string trim)
+        if test -n "$gpu_procs"
+            echo "Error: GPU has active processes. Stop them first:"
+            nvidia-smi
+            return 1
+        end
+    end
+
+    # Load vfio-pci module if needed
+    if not lsmod | grep -q vfio_pci
+        echo "Loading vfio-pci module..."
+        sudo modprobe vfio-pci
+    end
+
+    # Unbind GPU from nvidia
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver
+        echo "Unbinding GPU from "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver))"..."
+        echo "{{ .gpu.nvidia_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver/unbind > /dev/null
+    end
+
+    # Unbind audio from snd_hda_intel
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver
+        echo "Unbinding HDMI audio from "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver))"..."
+        echo "{{ .gpu.nvidia_audio_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver/unbind > /dev/null
+    end
+
+    # Bind to vfio-pci
+    echo "Binding GPU to vfio-pci..."
+    echo "{{ .gpu.nvidia_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id > /dev/null 2>&1
+    echo "{{ .gpu.nvidia_audio_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id > /dev/null 2>&1
+
+    echo "Done. GPU bound to vfio-pci."
+    gpu-status
+end
+
+function gpu-nvidia --description "Unbind RTX 5090 from vfio-pci and return to nvidia driver"
+    echo "WARNING: RTX 5090 (Blackwell) has a known FLR reset bug."
+    echo "The GPU may become unresponsive after unbinding from vfio-pci."
+    echo "If this happens, a host reboot will be required."
+    echo ""
+    read -P "Continue? [y/N] " confirm
+    if test "$confirm" != "y" -a "$confirm" != "Y"
+        echo "Aborted."
+        return 1
+    end
+
+    # Unbind from vfio-pci
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver
+        echo "Unbinding GPU from vfio-pci..."
+        echo "{{ .gpu.nvidia_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver/unbind > /dev/null
+    end
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver
+        echo "Unbinding HDMI audio from vfio-pci..."
+        echo "{{ .gpu.nvidia_audio_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver/unbind > /dev/null
+    end
+
+    # Remove vfio-pci device IDs
+    echo "{{ .gpu.nvidia_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/remove_id > /dev/null 2>&1
+    echo "{{ .gpu.nvidia_audio_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/remove_id > /dev/null 2>&1
+
+    # Trigger PCI rescan to let nvidia reclaim
+    echo "Rescanning PCI bus..."
+    echo 1 | sudo tee /sys/bus/pci/rescan > /dev/null
+
+    echo "Done. nvidia driver should reclaim the GPU."
+    gpu-status
+end
+
+function gpu-vm-start --description "Bind GPU to vfio-pci and start ai-workbench VM"
+    gpu-vfio
+    if test $status -ne 0
+        return 1
+    end
+    echo "Starting ai-workbench VM..."
+    sudo virsh start ai-workbench
+end
+
+function gpu-vm-stop --description "Gracefully shutdown ai-workbench VM"
+    echo "Shutting down ai-workbench VM..."
+    sudo virsh shutdown ai-workbench
+    echo ""
+    echo "VM shutdown signal sent. Wait for VM to fully stop, then run"
+    echo "'gpu-nvidia' to return the GPU to the host (may require reboot)."
+end
+{{- end }}
+
 # Local overrides (not synced to git)
 if test -f {{ .chezmoi.homeDir }}/.config/fish/local.fish
     source {{ .chezmoi.homeDir }}/.config/fish/local.fish

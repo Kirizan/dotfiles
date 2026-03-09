@@ -1,0 +1,38 @@
+#!/bin/bash
+# Install QEMU/KVM/libvirt packages for GPU passthrough VM
+# Only runs on Arch-based systems with NVIDIA passthrough enabled
+
+{{- if and .hasNvidiaPassthrough .isArchBased }}
+
+echo "Installing QEMU/KVM/libvirt packages for GPU passthrough..."
+
+# Sync package databases to avoid 404 errors from stale mirrors
+sudo pacman -Sy --noconfirm
+
+VM_PACKAGES=(
+    qemu-desktop
+    libvirt
+    virt-manager
+    virt-viewer
+    dnsmasq
+    edk2-ovmf
+    bridge-utils
+    openbsd-netcat
+    dmidecode
+    swtpm
+)
+
+for pkg in "${VM_PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo "Installing $pkg..."
+        sudo pacman -S --needed --noconfirm "$pkg" || echo "Warning: Failed to install $pkg"
+    else
+        echo "$pkg is already installed"
+    fi
+done
+
+echo "VM package installation complete!"
+
+{{- else }}
+echo "Skipping VM packages (not applicable on this system)"
+{{- end }}

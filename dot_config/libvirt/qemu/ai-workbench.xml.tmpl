@@ -1,0 +1,150 @@
+{{- if .hasNvidiaPassthrough -}}
+<!--
+  AI Workbench VM — Ubuntu 24.04 with RTX 5090 passthrough
+  Managed by chezmoi, deployed to ~/.config/libvirt/qemu/ai-workbench.xml
+
+  FIRST-TIME SETUP:
+  1. Create VM disk:
+     sudo qemu-img create -f qcow2 /var/lib/libvirt/images/ai-workbench.qcow2 200G
+  2. Download Ubuntu 24.04 server ISO
+  3. Attach ISO: uncomment the <disk type='file'> cdrom block below
+  4. Import VM definition:
+     sudo virsh define ~/.config/libvirt/qemu/ai-workbench.xml
+  5. Start VM: sudo virsh start ai-workbench
+  6. Install Ubuntu via SPICE viewer (virt-viewer or virt-manager)
+  7. After install, comment out the cdrom block and redefine
+
+  VM PROVISIONING (inside Ubuntu):
+  1. Install NVIDIA drivers:
+     sudo apt install nvidia-driver-570
+  2. Install Docker:
+     curl -fsSL https://get.docker.com | sh
+     sudo usermod -aG docker $USER
+  3. Install NVIDIA Container Toolkit:
+     distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
+     curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+     curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
+       sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+       sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+     sudo apt update && sudo apt install -y nvidia-container-toolkit
+     sudo nvidia-ctk runtime configure --runtime=docker
+     sudo systemctl restart docker
+  4. Install NVIDIA AI Workbench:
+     https://www.nvidia.com/en-us/deep-learning-ai/solutions/data-science/workbench/
+-->
+<domain type='kvm'>
+  <name>ai-workbench</name>
+  <metadata>
+    <description>Ubuntu 24.04 with RTX 5090 passthrough for NVIDIA AI Workbench</description>
+  </metadata>
+  <memory unit='GiB'>16</memory>
+  <currentMemory unit='GiB'>16</currentMemory>
+  <vcpu placement='static'>12</vcpu>
+  <cputune>
+    <!-- Pin to cores 4-9 (with SMT), leaving cores 0-3 for host -->
+    <vcpupin vcpu='0' cpuset='4'/>
+    <vcpupin vcpu='1' cpuset='12'/>
+    <vcpupin vcpu='2' cpuset='5'/>
+    <vcpupin vcpu='3' cpuset='13'/>
+    <vcpupin vcpu='4' cpuset='6'/>
+    <vcpupin vcpu='5' cpuset='14'/>
+    <vcpupin vcpu='6' cpuset='7'/>
+    <vcpupin vcpu='7' cpuset='15'/>
+    <vcpupin vcpu='8' cpuset='8'/>
+    <vcpupin vcpu='9' cpuset='16'/>
+    <vcpupin vcpu='10' cpuset='9'/>
+    <vcpupin vcpu='11' cpuset='17'/>
+  </cputune>
+  <os>
+    <type arch='x86_64' machine='q35'>hvm</type>
+    <loader readonly='yes' type='pflash'>/usr/share/edk2/x64/OVMF_CODE.4m.fd</loader>
+    <nvram template='/usr/share/edk2/x64/OVMF_VARS.4m.fd'/>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <kvm>
+      <!-- Hide KVM from NVIDIA driver to avoid Code 43 -->
+      <hidden state='on'/>
+    </kvm>
+  </features>
+  <cpu mode='host-passthrough' check='none'>
+    <topology sockets='1' dies='1' cores='6' threads='2'/>
+  </cpu>
+  <clock offset='utc'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+
+    <!-- Primary disk (virtio for best performance) -->
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2' discard='unmap'/>
+      <source file='/var/lib/libvirt/images/ai-workbench.qcow2'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+
+    <!-- Uncomment to attach Ubuntu ISO for installation:
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='/var/lib/libvirt/images/ubuntu-24.04-live-server-amd64.iso'/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+    </disk>
+    -->
+
+    <!-- Network (virtio NAT) -->
+    <interface type='network'>
+      <source network='default'/>
+      <model type='virtio'/>
+    </interface>
+
+    <!-- SPICE display for initial setup (before GPU passthrough is active) -->
+    <graphics type='spice' autoport='yes'>
+      <listen type='address' address='127.0.0.1'/>
+    </graphics>
+    <video>
+      <model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1' primary='yes'/>
+    </video>
+
+    <!-- RTX 5090 GPU passthrough -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <source>
+        <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x06' slot='0x00' function='0x0' multifunction='on'/>
+    </hostdev>
+
+    <!-- RTX 5090 HDMI Audio passthrough -->
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <source>
+        <address domain='0x0000' bus='0x01' slot='0x00' function='0x1'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x06' slot='0x00' function='0x1'/>
+    </hostdev>
+
+    <!-- Virtio RNG for better entropy -->
+    <rng model='virtio'>
+      <backend model='random'>/dev/urandom</backend>
+    </rng>
+
+    <!-- Serial console for headless access -->
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+  </devices>
+</domain>
+{{- end }}
