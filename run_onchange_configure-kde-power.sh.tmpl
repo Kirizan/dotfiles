@@ -1,0 +1,86 @@
+{{- if and (not .isHeadless) (not .isWSL) .isDesktop -}}
+#!/bin/bash
+# Configure KDE Plasma 6 power management via kwriteconfig6
+# This is the proper way to set Plasma config — static .rc files get
+# overwritten by PowerDevil on session start.
+# config-hash: {{ "DimDisplay=false,TurnOff=false,DPMS=0,Autolock=60,NoSuspend" | sha256sum }}
+
+set -e
+
+echo "Configuring KDE Plasma 6 power management..."
+
+# ==== PowerDevil: Display (AC Power) ====
+# Never dim display when idle
+kwriteconfig6 --file ~/.config/powerdevilrc \
+    --group "AC" --group "Display" \
+    --key "DimDisplayWhenIdle" --type bool "false"
+
+# Never turn off display when idle
+kwriteconfig6 --file ~/.config/powerdevilrc \
+    --group "AC" --group "Display" \
+    --key "TurnOffDisplayWhenIdle" --type bool "false"
+
+# ==== PowerDevil: Suspend/Shutdown (AC Power) ====
+# Lid action: do nothing (0)
+kwriteconfig6 --file ~/.config/powerdevilrc \
+    --group "AC" --group "SuspendAndShutdown" \
+    --key "LidAction" "0"
+
+# Power button action: do nothing (0)
+kwriteconfig6 --file ~/.config/powerdevilrc \
+    --group "AC" --group "SuspendAndShutdown" \
+    --key "PowerButtonAction" "0"
+
+# Power down action: do nothing (0)
+kwriteconfig6 --file ~/.config/powerdevilrc \
+    --group "AC" --group "SuspendAndShutdown" \
+    --key "PowerDownAction" "0"
+
+# ==== Power Management Profiles: DPMS (AC Power) ====
+# DPMS idle time: 0 (never blank via DPMS)
+kwriteconfig6 --file ~/.config/powermanagementprofilesrc \
+    --group "AC" --group "DPMSControl" \
+    --key "idleTime" "0"
+
+# Don't lock before turning off display
+kwriteconfig6 --file ~/.config/powermanagementprofilesrc \
+    --group "AC" --group "DPMSControl" \
+    --key "lockBeforeTurnOff" "0"
+
+# No auto-suspend
+kwriteconfig6 --file ~/.config/powermanagementprofilesrc \
+    --group "AC" --group "SuspendAndShutdown" \
+    --key "AutoSuspendAction" "0"
+
+kwriteconfig6 --file ~/.config/powermanagementprofilesrc \
+    --group "AC" --group "SuspendAndShutdown" \
+    --key "AutoSuspendIdleTimeoutSec" "0"
+
+kwriteconfig6 --file ~/.config/powermanagementprofilesrc \
+    --group "AC" --group "SuspendAndShutdown" \
+    --key "PowerButtonAction" "0"
+
+# ==== Screen Locker ====
+# Keep autolock enabled but set timeout to 60 seconds
+kwriteconfig6 --file ~/.config/kscreenlockerrc \
+    --group "Daemon" \
+    --key "Autolock" --type bool "true"
+
+# Don't lock on resume from sleep
+kwriteconfig6 --file ~/.config/kscreenlockerrc \
+    --group "Daemon" \
+    --key "LockOnResume" --type bool "false"
+
+# Lock after 60 seconds idle
+kwriteconfig6 --file ~/.config/kscreenlockerrc \
+    --group "Daemon" \
+    --key "Timeout" "60"
+
+# Restart PowerDevil to pick up changes immediately
+systemctl --user restart plasma-powerdevil.service 2>/dev/null || true
+
+echo "KDE Plasma power management configured."
+{{- else -}}
+#!/bin/bash
+exit 0
+{{- end }}
