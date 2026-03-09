@@ -139,6 +139,9 @@ end
 
 {{- if .hasNvidiaPassthrough }}
 
+# Libvirt: use system connection by default (user is in libvirt group)
+set -gx LIBVIRT_DEFAULT_URI "qemu:///system"
+
 # GPU passthrough functions for RTX 5090 / AI Workbench VM
 # PCI slots: GPU={{ .gpu.nvidia_pci_slot }}, Audio={{ .gpu.nvidia_audio_pci_slot }}
 
@@ -230,12 +233,12 @@ end
 
 function gpu-vm-start --description "Start ai-workbench VM (no GPU attached)"
     echo "Starting ai-workbench VM..."
-    sudo virsh start ai-workbench
+    virsh start ai-workbench
 end
 
 function gpu-vm-stop --description "Gracefully shutdown ai-workbench VM"
     echo "Shutting down ai-workbench VM..."
-    sudo virsh shutdown ai-workbench
+    virsh shutdown ai-workbench
 end
 
 function gpu-vm-attach --description "Bind GPU to vfio-pci and attach to running VM"
@@ -246,11 +249,11 @@ function gpu-vm-attach --description "Bind GPU to vfio-pci and attach to running
     echo "Attaching RTX 5090 GPU to VM..."
     echo '<hostdev mode="subsystem" type="pci" managed="yes">
   <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x0"/></source>
-</hostdev>' | sudo virsh attach-device ai-workbench /dev/stdin
+</hostdev>' | virsh attach-device ai-workbench /dev/stdin
     echo "Attaching RTX 5090 HDMI Audio to VM..."
     echo '<hostdev mode="subsystem" type="pci" managed="yes">
   <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x1"/></source>
-</hostdev>' | sudo virsh attach-device ai-workbench /dev/stdin
+</hostdev>' | virsh attach-device ai-workbench /dev/stdin
     echo "GPU attached to VM."
 end
 
@@ -258,10 +261,10 @@ function gpu-vm-detach --description "Detach GPU from VM and return to nvidia dr
     echo "Detaching RTX 5090 GPU from VM..."
     echo '<hostdev mode="subsystem" type="pci" managed="yes">
   <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x0"/></source>
-</hostdev>' | sudo virsh detach-device ai-workbench /dev/stdin 2>/dev/null
+</hostdev>' | virsh detach-device ai-workbench /dev/stdin 2>/dev/null
     echo '<hostdev mode="subsystem" type="pci" managed="yes">
   <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x1"/></source>
-</hostdev>' | sudo virsh detach-device ai-workbench /dev/stdin 2>/dev/null
+</hostdev>' | virsh detach-device ai-workbench /dev/stdin 2>/dev/null
     echo "Returning GPU to host..."
     gpu-nvidia
 end
