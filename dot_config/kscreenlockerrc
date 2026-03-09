@@ -1,4 +1,4 @@
 [Daemon]
 Autolock=true
 LockOnResume=false
-Timeout=60
+Timeout=3600
