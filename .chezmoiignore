@@ -100,7 +100,7 @@ run_once_after_disable-sleep.sh.tmpl
 run_onchange_set-default-browser.sh.tmpl
 run_once_install-personal-packages.sh.tmpl
 run_once_before_install-vm-packages.sh
-run_once_before_configure-iommu-mimir.sh
+run_once_after_configure-iommu-mimir.sh
 {{- end }}
 
 # HexOS / TrueNAS Scale — minimal NAS deployment
@@ -119,7 +119,7 @@ run_onchange_configure-ssh-ca.sh.tmpl
 .config/devon/
 .ssh/config
 run_once_before_install-vm-packages.sh
-run_once_before_configure-iommu-mimir.sh
+run_once_after_configure-iommu-mimir.sh
 {{- end }}
 
 # Scripts and bin directories are handled separately

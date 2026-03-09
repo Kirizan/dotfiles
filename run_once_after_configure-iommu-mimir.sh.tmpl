@@ -75,12 +75,12 @@ else
     echo "Add 'iommu=pt' to your kernel command line:"
     echo ""
     echo "  1. Edit /etc/default/limine"
-    echo "  2. Add 'iommu=pt' to the CMDLINE= line"
+    echo "  2. Add 'iommu=pt' to the KERNEL_CMDLINE line"
     echo "  3. Run: sudo limine-update"
     echo "  4. Reboot"
     echo ""
-    echo "Example CMDLINE line:"
-    echo "  CMDLINE=... iommu=pt"
+    echo "Example KERNEL_CMDLINE line:"
+    echo '  KERNEL_CMDLINE[default]+="... iommu=pt"'
     echo ""
 fi
 

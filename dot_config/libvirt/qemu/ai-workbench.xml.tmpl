@@ -1,37 +1,5 @@
 {{- if .hasNvidiaPassthrough -}}
-<!--
-  AI Workbench VM — Ubuntu 24.04 with RTX 5090 passthrough
-  Managed by chezmoi, deployed to ~/.config/libvirt/qemu/ai-workbench.xml
-
-  FIRST-TIME SETUP:
-  1. Create VM disk:
-     sudo qemu-img create -f qcow2 /var/lib/libvirt/images/ai-workbench.qcow2 200G
-  2. Download Ubuntu 24.04 server ISO
-  3. Attach ISO: uncomment the <disk type='file'> cdrom block below
-  4. Import VM definition:
-     sudo virsh define ~/.config/libvirt/qemu/ai-workbench.xml
-  5. Start VM: sudo virsh start ai-workbench
-  6. Install Ubuntu via SPICE viewer (virt-viewer or virt-manager)
-  7. After install, comment out the cdrom block and redefine
-
-  VM PROVISIONING (inside Ubuntu):
-  1. Install NVIDIA drivers:
-     sudo apt install nvidia-driver-570
-  2. Install Docker:
-     curl -fsSL https://get.docker.com | sh
-     sudo usermod -aG docker $USER
-  3. Install NVIDIA Container Toolkit:
-     distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
-     curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-     curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
-       sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-       sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-     sudo apt update && sudo apt install -y nvidia-container-toolkit
-     sudo nvidia-ctk runtime configure --runtime=docker
-     sudo systemctl restart docker
-  4. Install NVIDIA AI Workbench:
-     https://www.nvidia.com/en-us/deep-learning-ai/solutions/data-science/workbench/
--->
+<!-- AI Workbench VM: Ubuntu 24.04 with RTX 5090 passthrough. Managed by chezmoi. -->
 <domain type='kvm'>
   <name>ai-workbench</name>
   <metadata>

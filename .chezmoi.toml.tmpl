@@ -59,14 +59,6 @@
 {{-   end -}}
 {{- end -}}
 
-{{- /* Detect NVIDIA GPU passthrough systems (RTX 5090 on mimir for AI Workbench VM) */ -}}
-{{- $hasNvidiaPassthrough := false -}}
-{{- if and (eq .chezmoi.os "linux") $isDesktop (not $isHeadless) -}}
-{{-   if eq .chezmoi.hostname "mimir" -}}
-{{-     $hasNvidiaPassthrough = true -}}
-{{-   end -}}
-{{- end -}}
-
 {{- /* Detect HexOS / TrueNAS Scale (Debian-based NAS appliance) */ -}}
 {{- $isHexOS := false -}}
 {{- if eq .chezmoi.os "linux" -}}
@@ -103,6 +95,14 @@
 {{-   $isHeadless = true -}}
 {{- else if eq (env "CHEZMOI_HEADLESS") "false" -}}
 {{-   $isHeadless = false -}}
+{{- end -}}
+
+{{- /* Detect NVIDIA GPU passthrough systems (RTX 5090 on mimir for AI Workbench VM) */ -}}
+{{- $hasNvidiaPassthrough := false -}}
+{{- if and (eq .chezmoi.os "linux") $isDesktop (not $isHeadless) -}}
+{{-   if eq .chezmoi.hostname "mimir" -}}
+{{-     $hasNvidiaPassthrough = true -}}
+{{-   end -}}
 {{- end -}}
 
 {{- /* Determine whether to use Homebrew for package management */ -}}
