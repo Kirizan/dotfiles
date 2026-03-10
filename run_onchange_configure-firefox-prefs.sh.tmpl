@@ -16,23 +16,24 @@ fi
 DEPLOYED=0
 
 {{- if eq .chezmoi.os "darwin" }}
-PROFILE_BASE="$HOME/Library/Application Support/Firefox/Profiles"
+PROFILE_BASES=("$HOME/Library/Application Support/Firefox/Profiles")
 {{- else }}
-PROFILE_BASE="$HOME/.mozilla/firefox"
+# Firefox may use either ~/.mozilla/firefox or ~/.config/mozilla/firefox
+PROFILE_BASES=("$HOME/.mozilla/firefox" "$HOME/.config/mozilla/firefox")
 {{- end }}
 
-if [ ! -d "$PROFILE_BASE" ]; then
-    echo "Firefox profile directory not found at $PROFILE_BASE — skipping"
-    echo "Run Firefox at least once, then re-run: chezmoi apply"
-    exit 0
-fi
-
-for PROFILE_DIR in "$PROFILE_BASE"/*.default-release "$PROFILE_BASE"/*.default; do
-    if [ -d "$PROFILE_DIR" ]; then
-        cp "$USER_JS" "$PROFILE_DIR/user.js"
-        echo "Deployed user.js to $PROFILE_DIR"
-        DEPLOYED=$((DEPLOYED + 1))
+for PROFILE_BASE in "${PROFILE_BASES[@]}"; do
+    if [ ! -d "$PROFILE_BASE" ]; then
+        continue
     fi
+
+    for PROFILE_DIR in "$PROFILE_BASE"/*.default-release "$PROFILE_BASE"/*.default; do
+        if [ -d "$PROFILE_DIR" ]; then
+            cp "$USER_JS" "$PROFILE_DIR/user.js"
+            echo "Deployed user.js to $PROFILE_DIR"
+            DEPLOYED=$((DEPLOYED + 1))
+        fi
+    done
 done
 
 if [ "$DEPLOYED" -eq 0 ]; then
