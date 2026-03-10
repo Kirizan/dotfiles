@@ -108,6 +108,14 @@ sudo pacman -S --needed --noconfirm \
     ttf-cascadia-mono-nerd
 
 {{- if not .isHeadless }}
+
+# Install PipeWire camera support (needed for webcams on Wayland)
+echo "Installing PipeWire camera support..."
+sudo pacman -S --needed --noconfirm \
+    pipewire-v4l2 \
+    libcamera \
+    libcamera-ipa
+
 # Install wezterm (GUI terminal emulator)
 if ! command -v wezterm &> /dev/null; then
     echo "Installing wezterm..."
