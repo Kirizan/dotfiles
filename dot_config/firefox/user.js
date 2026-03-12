@@ -18,3 +18,10 @@ user_pref("browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features", 
 user_pref("browser.preferences.moreFromMozilla", false);
 user_pref("browser.aboutwelcome.enabled", false);
 user_pref("messaging-system.askForFeedback", false);
+
+// Enable PipeWire for WebRTC media capture (microphone/camera on Wayland)
+user_pref("media.webrtc.camera.allow-pipewire", true);
+user_pref("media.navigator.mediadatadecoder_vpx_enabled", true);
+
+// Enable audio output device selection (required for Teams speaker detection)
+user_pref("media.setsinkid.enabled", true);
