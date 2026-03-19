@@ -59,6 +59,20 @@ done
 
 echo "Personal package installation complete!"
 
+{{- else if .isDebianBased }}
+# Debian-based Linux personal packages
+echo "Installing personal packages on Debian-based Linux..."
+
+# Install Obsidian via snap (official distribution method for Ubuntu)
+if ! command -v obsidian &> /dev/null && ! snap list obsidian &> /dev/null 2>&1; then
+    echo "Installing Obsidian via snap..."
+    sudo snap install obsidian --classic || echo "Warning: Failed to install Obsidian"
+else
+    echo "Obsidian is already installed"
+fi
+
+echo "Personal package installation complete!"
+
 {{- else }}
 echo "Unsupported operating system for personal packages"
 {{- end }}

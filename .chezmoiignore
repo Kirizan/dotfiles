@@ -87,6 +87,12 @@ run_once_after_disable-sleep.sh.tmpl
 .config/libvirt/
 {{- end }}
 
+# Gaming scripts — only deploy on Arch-based systems
+{{- if not .isArchBased }}
+run_once_install-gaming-packages.sh.tmpl
+run_once_after_install-battlenet.sh.tmpl
+{{- end }}
+
 # Headless systems (SSH-only servers, WSL without WSLg, etc.)
 # Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages
 {{- if .isHeadless }}

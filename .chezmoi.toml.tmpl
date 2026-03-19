@@ -86,6 +86,8 @@
 {{- if eq .chezmoi.os "linux" -}}
 {{-   if $isWSL -}}
 {{-     $isHeadless = true -}}
+{{-   else if $isDGXSpark -}}
+{{-     $isHeadless = false -}}
 {{-   else if not (or (env "DISPLAY") (env "WAYLAND_DISPLAY") (env "MIR_SOCKET")) -}}
 {{-     $isHeadless = true -}}
 {{-   end -}}
