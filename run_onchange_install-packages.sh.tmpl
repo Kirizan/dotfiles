@@ -174,13 +174,29 @@ sudo apt-get install -y \
     git \
     curl \
     wget \
-    neovim \
     ripgrep \
     fzf \
     fd-find \
     jq \
     tree \
     bash-completion
+
+# Install neovim from GitHub releases (apt repos ship outdated versions that break LazyVim)
+NVIM_REQUIRED="0.10.0"
+NVIM_CURRENT="$(nvim --version 2>/dev/null | head -1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")"
+if [ "$(printf '%s\n' "$NVIM_REQUIRED" "$NVIM_CURRENT" | sort -V | head -1)" != "$NVIM_REQUIRED" ]; then
+    echo "Installing neovim from GitHub releases (need >= $NVIM_REQUIRED, have $NVIM_CURRENT)..."
+    NVIM_VERSION="$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name"' | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')"
+    NVIM_ARCH="$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/')"
+    curl -sL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}.tar.gz" -o /tmp/nvim.tar.gz
+    sudo rm -rf /usr/local/nvim
+    sudo mkdir -p /usr/local/nvim
+    sudo tar -xzf /tmp/nvim.tar.gz -C /usr/local/nvim --strip-components=1
+    sudo ln -sf /usr/local/nvim/bin/nvim /usr/local/bin/nvim
+    rm -f /tmp/nvim.tar.gz
+    # Remove apt neovim if present to avoid confusion
+    sudo apt-get remove -y neovim neovim-runtime 2>/dev/null || true
+fi
 
 # Install starship prompt
 if ! command -v starship &> /dev/null; then
@@ -193,7 +209,6 @@ fi
 echo "Installing core packages via apt..."
 sudo apt-get update
 sudo apt-get install -y \
-    neovim \
     ripgrep \
     fzf \
     fd-find \
@@ -216,6 +231,23 @@ sudo apt-get install -y \
     p7zip-full \
     subversion \
     aria2
+
+# Install neovim from GitHub releases (apt repos ship outdated versions that break LazyVim)
+NVIM_REQUIRED="0.10.0"
+NVIM_CURRENT="$(nvim --version 2>/dev/null | head -1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")"
+if [ "$(printf '%s\n' "$NVIM_REQUIRED" "$NVIM_CURRENT" | sort -V | head -1)" != "$NVIM_REQUIRED" ]; then
+    echo "Installing neovim from GitHub releases (need >= $NVIM_REQUIRED, have $NVIM_CURRENT)..."
+    NVIM_VERSION="$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name"' | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')"
+    NVIM_ARCH="$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/')"
+    curl -sL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}.tar.gz" -o /tmp/nvim.tar.gz
+    sudo rm -rf /usr/local/nvim
+    sudo mkdir -p /usr/local/nvim
+    sudo tar -xzf /tmp/nvim.tar.gz -C /usr/local/nvim --strip-components=1
+    sudo ln -sf /usr/local/nvim/bin/nvim /usr/local/bin/nvim
+    rm -f /tmp/nvim.tar.gz
+    # Remove apt neovim if present to avoid confusion
+    sudo apt-get remove -y neovim neovim-runtime 2>/dev/null || true
+fi
 
 # Install eza (modern ls replacement)
 if ! command -v eza &> /dev/null; then
@@ -301,7 +333,6 @@ fi
 # Core dev tools and CLI utilities via dnf
 echo "Installing core packages via dnf..."
 sudo dnf install -y \
-    neovim \
     ripgrep \
     fzf \
     fd-find \
@@ -326,6 +357,23 @@ sudo dnf install -y \
     expect \
     bash-completion \
     gh
+
+# Install neovim from GitHub releases (dnf repos may ship outdated versions that break LazyVim)
+NVIM_REQUIRED="0.10.0"
+NVIM_CURRENT="$(nvim --version 2>/dev/null | head -1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")"
+if [ "$(printf '%s\n' "$NVIM_REQUIRED" "$NVIM_CURRENT" | sort -V | head -1)" != "$NVIM_REQUIRED" ]; then
+    echo "Installing neovim from GitHub releases (need >= $NVIM_REQUIRED, have $NVIM_CURRENT)..."
+    NVIM_VERSION="$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name"' | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')"
+    NVIM_ARCH="$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/')"
+    curl -sL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}.tar.gz" -o /tmp/nvim.tar.gz
+    sudo rm -rf /usr/local/nvim
+    sudo mkdir -p /usr/local/nvim
+    sudo tar -xzf /tmp/nvim.tar.gz -C /usr/local/nvim --strip-components=1
+    sudo ln -sf /usr/local/nvim/bin/nvim /usr/local/bin/nvim
+    rm -f /tmp/nvim.tar.gz
+    # Remove dnf neovim if present to avoid confusion
+    sudo dnf remove -y neovim 2>/dev/null || true
+fi
 
 # Install eza (modern ls replacement)
 if ! command -v eza &> /dev/null; then
