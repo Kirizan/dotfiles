@@ -142,4 +142,9 @@ if [ -f ~/.profile_work ]; then
   source ~/.profile_work
 fi
 {{- end }}
+
+# NVIDIA AI Workbench
+if [ -f "$HOME/.local/share/nvwb/nvwb-wrapper.sh" ]; then
+  source "$HOME/.local/share/nvwb/nvwb-wrapper.sh"
+fi
 {{- end }}

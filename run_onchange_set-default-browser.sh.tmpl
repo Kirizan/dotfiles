@@ -5,20 +5,28 @@
 # Web apps will still use Brave via omarchy-launch-webapp
 # Note: This script is skipped on WSL and headless systems
 
-CURRENT_BROWSER=$(xdg-settings get default-web-browser 2>/dev/null)
 DESIRED_BROWSER="firefox.desktop"
+
+if ! command -v xdg-settings &> /dev/null; then
+    echo "xdg-settings not found — skipping default browser configuration"
+    exit 0
+fi
+
+# Check if the Firefox desktop entry exists
+if ! xdg-settings check default-web-browser "$DESIRED_BROWSER" 2>/dev/null && \
+   ! [ -f "/usr/share/applications/$DESIRED_BROWSER" ]; then
+    echo "Firefox desktop entry not found — skipping default browser configuration"
+    exit 0
+fi
+
+CURRENT_BROWSER=$(xdg-settings get default-web-browser 2>/dev/null)
 
 if [[ "$CURRENT_BROWSER" != "$DESIRED_BROWSER" ]]; then
     echo "Setting Firefox as default browser..."
-    xdg-settings set default-web-browser "$DESIRED_BROWSER"
-
-    # Verify the change
-    NEW_BROWSER=$(xdg-settings get default-web-browser)
-    if [[ "$NEW_BROWSER" == "$DESIRED_BROWSER" ]]; then
+    if xdg-settings set default-web-browser "$DESIRED_BROWSER" 2>/dev/null; then
         echo "✓ Firefox is now the default browser"
     else
-        echo "⚠ Warning: Failed to set Firefox as default browser"
-        exit 1
+        echo "⚠ Warning: Could not set Firefox as default browser — skipping"
     fi
 else
     echo "Firefox is already the default browser"

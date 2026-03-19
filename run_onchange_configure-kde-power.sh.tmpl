@@ -7,6 +7,11 @@
 
 set -e
 
+if ! command -v kwriteconfig6 &> /dev/null; then
+    echo "kwriteconfig6 not found — skipping KDE power management configuration"
+    exit 0
+fi
+
 echo "Configuring KDE Plasma 6 power management..."
 
 # ==== PowerDevil: Display (AC Power) ====
