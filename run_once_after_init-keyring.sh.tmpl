@@ -1,0 +1,39 @@
+#!/bin/bash
+# Initialize the default GNOME Keyring collection on desktop Debian systems
+# Required for apps that use the D-Bus Secret Service API (e.g., NVIDIA Workbench)
+# Without this, RDP/remote desktop sessions have no default collection and
+# credential storage silently fails.
+
+{{- if and .isDebianBased (not .isHeadless) (not .isWSL) }}
+
+echo "Checking GNOME Keyring default collection..."
+
+if ! command -v secret-tool &> /dev/null; then
+    echo "secret-tool not found, skipping keyring initialization"
+    exit 0
+fi
+
+# Check if the default collection already exists by attempting a lookup
+# (returns exit 1 if no match, but that's fine — it means the collection is accessible)
+if secret-tool lookup __chezmoi_keyring_test __nonexistent 2>/dev/null; then
+    echo "Default keyring collection is already accessible"
+    exit 0
+fi
+
+# If we get here, either the collection exists (lookup returned 1 = no match, which is fine)
+# or it doesn't exist. Try storing a test secret to trigger collection creation.
+# Note: On interactive sessions this may prompt for a keyring password.
+# On headless/automated runs it may fail — that's OK, the user can init manually.
+echo "Initializing default keyring collection..."
+echo -n "chezmoi-init-test" | secret-tool store --label="chezmoi keyring init" chezmoi init_test 2>/dev/null && {
+    echo "Default keyring collection created successfully"
+    # Clean up the test secret
+    secret-tool clear chezmoi init_test 2>/dev/null || true
+} || {
+    echo "Note: Could not auto-initialize keyring (may need interactive session)"
+    echo "Run manually: echo test | secret-tool store --label=test foo bar"
+}
+
+{{- else }}
+echo "Skipping keyring initialization (not a Debian desktop system)"
+{{- end }}

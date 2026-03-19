@@ -251,6 +251,10 @@ if ! command -v gh &> /dev/null; then
 fi
 
 {{- if not .isHeadless }}
+# Ensure D-Bus Secret Service is available (needed by NVIDIA Workbench, etc.)
+echo "Installing gnome-keyring and libsecret-tools..."
+sudo apt-get install -y gnome-keyring libsecret-tools
+
 # Install wezterm (GUI terminal emulator)
 if ! command -v wezterm &> /dev/null; then
     echo "Installing wezterm..."
