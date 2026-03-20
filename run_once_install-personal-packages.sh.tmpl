@@ -63,10 +63,28 @@ echo "Personal package installation complete!"
 # Debian-based Linux personal packages
 echo "Installing personal packages on Debian-based Linux..."
 
-# Install Obsidian via snap (official distribution method for Ubuntu)
+# Install Obsidian - snap only supports amd64, use AppImage for arm64
 if ! command -v obsidian &> /dev/null && ! snap list obsidian &> /dev/null 2>&1; then
-    echo "Installing Obsidian via snap..."
-    sudo snap install obsidian --classic || echo "Warning: Failed to install Obsidian"
+    ARCH="$(uname -m)"
+    if [ "$ARCH" = "x86_64" ]; then
+        echo "Installing Obsidian via snap..."
+        sudo snap install obsidian --classic || echo "Warning: Failed to install Obsidian via snap"
+    elif [ "$ARCH" = "aarch64" ]; then
+        echo "Installing Obsidian via AppImage (arm64)..."
+        OBSIDIAN_VERSION="$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | grep -oP '"tag_name": "v\K[^"]*')"
+        if [ -n "$OBSIDIAN_VERSION" ]; then
+            curl -sL "https://github.com/obsidianmd/obsidian-releases/releases/download/v${OBSIDIAN_VERSION}/Obsidian-${OBSIDIAN_VERSION}-arm64.AppImage" -o /tmp/Obsidian-arm64.AppImage
+            chmod +x /tmp/Obsidian-arm64.AppImage
+            sudo mkdir -p /opt/obsidian
+            sudo mv /tmp/Obsidian-arm64.AppImage /opt/obsidian/Obsidian.AppImage
+            sudo ln -sf /opt/obsidian/Obsidian.AppImage /usr/local/bin/obsidian
+            echo "Obsidian ${OBSIDIAN_VERSION} installed via AppImage"
+        else
+            echo "Warning: Failed to determine latest Obsidian version"
+        fi
+    else
+        echo "Warning: Unsupported architecture ($ARCH) for Obsidian"
+    fi
 else
     echo "Obsidian is already installed"
 fi
