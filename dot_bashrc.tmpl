@@ -83,6 +83,81 @@ alias pipxr='pipx run --spec .'
 # Alias to activate poetry environment
 alias activate_poetry='eval $(poetry env activate)'
 
+{{- if .isDGXSpark }}
+# Start NemoClaw sandbox with port forwarding and model warmup
+start_nemoclaw() {
+  openshell forward start 18789 nemoclaw-spark-prod --background 2>/dev/null
+  echo "Warming up Nemotron 3 Super (loading ~86 GB into memory)..."
+  curl -s http://127.0.0.1:11434/api/generate \
+    -d '{"model":"nemotron-3-super:120b","prompt":"hello","stream":false}' \
+    --max-time 180 > /dev/null 2>&1 &
+  echo "Model loading in background. Dashboard: http://127.0.0.1:18789/"
+}
+
+# Allowlist a domain for OpenClaw sandbox egress
+# Usage: nemoclaw_allow <domain> [label]
+#   nemoclaw_allow api.openai.com openai
+#   nemoclaw_allow docs.example.com example-docs
+nemoclaw_allow() {
+  local domain="${1:?Usage: nemoclaw_allow <domain> [label]}"
+  local label="${2:-$(echo "$domain" | tr '.' '_' | tr -d '*')}"
+  local sandbox="nemoclaw-spark-prod"
+  local policy_file="$HOME/.nemoclaw/sandbox-policy.yaml"
+
+  if [ ! -f "$policy_file" ]; then
+    echo "Error: policy file not found at $policy_file"
+    echo "Run the install script first, or copy your policy YAML there."
+    return 1
+  fi
+
+  # Check if domain is already allowlisted
+  if grep -q "host: ${domain}$" "$policy_file" 2>/dev/null; then
+    echo "Domain '$domain' is already allowlisted."
+    return 0
+  fi
+
+  # Add new network policy entry
+  python3 - "$policy_file" "$domain" "$label" <<'PYPOLICY'
+import sys, yaml
+
+policy_file, domain, label = sys.argv[1], sys.argv[2], sys.argv[3]
+
+with open(policy_file) as f:
+    policy = yaml.safe_load(f)
+
+policy.setdefault("network_policies", {})[label] = {
+    "name": label,
+    "endpoints": [{
+        "host": domain,
+        "port": 443,
+        "protocol": "rest",
+        "enforcement": "enforce",
+        "tls": "terminate",
+        "rules": [
+            {"allow": {"method": "GET", "path": "/**"}},
+            {"allow": {"method": "POST", "path": "/**"}},
+        ],
+    }],
+}
+
+with open(policy_file, "w") as f:
+    yaml.dump(policy, f, default_flow_style=False, sort_keys=False)
+PYPOLICY
+
+  if [ $? -ne 0 ]; then
+    echo "Error: failed to update policy YAML"
+    return 1
+  fi
+
+  if openshell policy set "$sandbox" --policy "$policy_file" --wait 2>/dev/null; then
+    echo "✓ Allowlisted '$domain' (label: $label) for sandbox '$sandbox'"
+  else
+    echo "Error: failed to apply policy. Check: $policy_file"
+    return 1
+  fi
+}
+{{- end }}
+
 # pipx autocompletion
 if command -v register-python-argcomplete &> /dev/null; then
   eval "$(register-python-argcomplete pipx)"

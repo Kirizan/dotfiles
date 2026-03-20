@@ -1,5 +1,6 @@
 # Repository management files
 README.md
+scripts/
 LICENSE
 Makefile
 PROFILES.md
