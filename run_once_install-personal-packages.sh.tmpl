@@ -78,6 +78,29 @@ if ! command -v obsidian &> /dev/null && ! snap list obsidian &> /dev/null 2>&1;
             sudo mkdir -p /opt/obsidian
             sudo mv /tmp/Obsidian-arm64.AppImage /opt/obsidian/Obsidian.AppImage
             sudo ln -sf /opt/obsidian/Obsidian.AppImage /usr/local/bin/obsidian
+
+            # Extract icon and create desktop entry so it appears in app launcher
+            cd /tmp
+            /opt/obsidian/Obsidian.AppImage --appimage-extract usr/share/icons/hicolor/512x512/apps/obsidian.png > /dev/null 2>&1
+            if [ -f /tmp/squashfs-root/usr/share/icons/hicolor/512x512/apps/obsidian.png ]; then
+                sudo cp /tmp/squashfs-root/usr/share/icons/hicolor/512x512/apps/obsidian.png /usr/share/pixmaps/obsidian.png
+            fi
+            rm -rf /tmp/squashfs-root
+
+            cat > /tmp/obsidian.desktop <<'DESKTOP'
+[Desktop Entry]
+Name=Obsidian
+Exec=/opt/obsidian/Obsidian.AppImage --no-sandbox %u
+Terminal=false
+Type=Application
+Icon=obsidian
+Categories=Office;
+MimeType=x-scheme-handler/obsidian;
+StartupWMClass=obsidian
+DESKTOP
+            sudo mv /tmp/obsidian.desktop /usr/share/applications/obsidian.desktop
+            sudo update-desktop-database /usr/share/applications/ 2>/dev/null || true
+
             echo "Obsidian ${OBSIDIAN_VERSION} installed via AppImage"
         else
             echo "Warning: Failed to determine latest Obsidian version"
