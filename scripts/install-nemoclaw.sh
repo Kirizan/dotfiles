@@ -276,6 +276,21 @@ else
         info "Installing GitHub CLI..."
         sudo apt-get install -y gh >> "$PHASE_LOG" 2>&1
     fi
+    pass "GitHub CLI: $(gh --version 2>/dev/null | head -1)"
+
+    # Install GitLab CLI (glab) if not present
+    if ! command -v glab &>/dev/null; then
+        info "Installing GitLab CLI (glab)..."
+        GLAB_TMPDIR=$(mktemp -d)
+        curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/latest/download/glab_linux_arm64.tar.gz" \
+            -o "$GLAB_TMPDIR/glab.tar.gz" >> "$PHASE_LOG" 2>&1
+        tar -xzf "$GLAB_TMPDIR/glab.tar.gz" -C "$GLAB_TMPDIR" >> "$PHASE_LOG" 2>&1
+        sudo install -m 755 "$GLAB_TMPDIR/bin/glab" /usr/local/bin/glab >> "$PHASE_LOG" 2>&1
+        rm -rf "$GLAB_TMPDIR"
+        pass "GitLab CLI: $(glab --version 2>/dev/null | head -1)"
+    else
+        pass "GitLab CLI: $(glab --version 2>/dev/null | head -1)"
+    fi
 
     info "Fetching latest release from NVIDIA/OpenShell..."
     RELEASE_JSON=$(gh release view --repo NVIDIA/OpenShell --json tagName,assets 2>/dev/null) \
@@ -406,6 +421,19 @@ else
     pass "SSH config present ($SSH_HOST)"
 fi
 
+# Create openclaw wrapper on host (proxies to sandbox via SSH)
+if [ ! -f /usr/local/bin/openclaw ] || [[ "$FORCE" == true ]]; then
+    cat > /tmp/openclaw-wrapper << 'OCWRAPPER'
+#!/bin/bash
+exec ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no openshell-nemoclaw-spark-prod "openclaw $*" 2>/dev/null
+OCWRAPPER
+    sudo install -m 755 /tmp/openclaw-wrapper /usr/local/bin/openclaw
+    rm -f /tmp/openclaw-wrapper
+    pass "openclaw host wrapper installed"
+else
+    pass "openclaw host wrapper present"
+fi
+
 info "Configuring OpenClaw inside sandbox..."
 ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_HOST" bash -s << 'SANDBOX_SETUP' >> "$PHASE_LOG" 2>&1
 set -e
@@ -414,6 +442,30 @@ mkdir -p ~/.openclaw ~/.nemoclaw /sandbox/.openclaw/workspace/memory
 echo "# Memory" > /sandbox/.openclaw/workspace/MEMORY.md
 
 openclaw config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true 2>/dev/null || true
+
+# Allow cron tool via gateway HTTP API (blocked by default as "dangerous")
+# Needed for Nerve UI cron management
+python3 -c "
+import json, os
+p = os.path.expanduser('~/.openclaw/openclaw.json')
+with open(p) as f: c = json.load(f)
+c.setdefault('gateway',{}).setdefault('tools',{})['allow'] = ['cron']
+with open(p,'w') as f: json.dump(c,f,indent=2)
+os.chmod(p, 0o600)
+" 2>/dev/null || true
+
+# Allow Nerve UI origin (port 3080)
+python3 -c "
+import json, os
+p = os.path.expanduser('~/.openclaw/openclaw.json')
+with open(p) as f: c = json.load(f)
+o = c.get('gateway',{}).get('controlUi',{}).get('allowedOrigins',[])
+if 'http://127.0.0.1:3080' not in o:
+    o.append('http://127.0.0.1:3080')
+    c['gateway']['controlUi']['allowedOrigins'] = o
+    with open(p,'w') as f: json.dump(c,f,indent=2)
+    os.chmod(p, 0o600)
+" 2>/dev/null || true
 openclaw config set gateway.auth.mode none 2>/dev/null || true
 
 python3 - <<'PYCFG'
@@ -443,8 +495,100 @@ with open(cfg_path, "w") as f:
 os.chmod(cfg_path, 0o600)
 PYCFG
 openclaw models set inference/nemotron-3-super:120b 2>/dev/null || true
+
+# Create SearXNG search skill
+mkdir -p /sandbox/.openclaw/skills/searxng-search
+cat > /sandbox/.openclaw/skills/searxng-search/SKILL.md << 'SKILL_CONTENT'
+---
+name: searxng-search
+description: Search the web using the self-hosted SearXNG instance. Use this skill whenever the user asks you to search the web, look something up, research a topic, or find current information.
+tools:
+  - name: web_search
+    description: Search the web via SearXNG and return results with titles, URLs, and snippets
+    parameters:
+      query:
+        type: string
+        description: The search query
+        required: true
+      max_results:
+        type: number
+        description: Maximum number of results to return (default 10)
+        required: false
+---
+
+# SearXNG Web Search
+
+You have access to a self-hosted SearXNG instance for web searches.
+
+## How to Search
+
+Run the `web_search` tool with a curl command:
+
+```bash
+curl -sf "https://searxng.internal.kirby.network/search?q=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "YOUR_QUERY")&format=json&pageno=1" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for r in data.get(\"results\", [])[:10]:
+    title = r.get(\"title\", \"No title\")
+    url = r.get(\"url\", \"\")
+    snippet = r.get(\"content\", \"\")[:200]
+    print(f\"### {title}\")
+    print(f\"URL: {url}\")
+    print(f\"{snippet}\")
+    print()
+"
+```
+
+## Guidelines
+
+- Always use this search when the user asks about current events, facts you are unsure about, or anything that benefits from up-to-date information
+- Present results clearly with titles and relevant snippets
+- If results are insufficient, refine the query and search again
+- You can fetch full page content with `curl -sf <url>` for any URL in the results
+SKILL_CONTENT
 SANDBOX_SETUP
-pass "OpenClaw inference configured"
+pass "OpenClaw inference + SearXNG skill configured"
+
+# Install base ClawHub skills (SkillGuard + Self-Improvement)
+info "Installing base OpenClaw skills..."
+ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no "$SSH_HOST" bash -s << 'BASE_SKILLS' >> "$PHASE_LOG" 2>&1
+cd /sandbox
+
+install_base_skill() {
+    local slug="$1"
+    if [ -d "/sandbox/.openclaw/skills/$slug" ] || [ -d "/sandbox/skills/$slug" ]; then
+        echo "SKIP: $slug — already installed"
+        return 0
+    fi
+    echo "INSTALLING: $slug..."
+    npx clawhub install "$slug" 2>&1
+    if [ -d "/sandbox/skills/$slug" ]; then
+        mkdir -p /sandbox/.openclaw/skills
+        cp -r "/sandbox/skills/$slug" /sandbox/.openclaw/skills/
+        echo "OK: $slug installed"
+    else
+        echo "WARN: $slug may not have installed"
+    fi
+}
+
+# SkillGuard — security scanner for vetting ClawHub skills
+install_base_skill "clawscan"
+
+# Self-Improvement — captures durable lessons from debugging and user corrections
+install_base_skill "actual-self-improvement"
+BASE_SKILLS
+if ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_HOST" \
+    'test -d /sandbox/.openclaw/skills/clawscan' 2>/dev/null; then
+    pass "SkillGuard (clawscan) installed"
+else
+    warn "SkillGuard install may have failed — check $PHASE_LOG"
+fi
+if ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_HOST" \
+    'test -d /sandbox/.openclaw/skills/actual-self-improvement' 2>/dev/null; then
+    pass "Self-Improvement skill installed"
+else
+    warn "Self-Improvement install may have failed — check $PHASE_LOG"
+fi
 
 info "Restarting gateway inside sandbox..."
 ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_HOST" bash -s << 'RESTART_GW' >> "$PHASE_LOG" 2>&1
@@ -526,7 +670,7 @@ network_policies:
     endpoints:
       - {host: github.com, port: 443, access: full}
       - {host: api.github.com, port: 443, access: full}
-    binaries: [{path: /usr/bin/gh}, {path: /usr/bin/git}]
+    binaries: [{path: /usr/bin/gh}, {path: /usr/bin/git}, {path: /sandbox/bin/gh}, {path: /sandbox/bin/git}]
   clawhub:
     name: clawhub
     endpoints:
@@ -557,6 +701,44 @@ network_policies:
     name: telegram
     endpoints:
       - {host: api.telegram.org, port: 443, protocol: rest, enforcement: enforce, tls: terminate, rules: [{allow: {method: GET, path: "/bot*/**"}}, {allow: {method: POST, path: "/bot*/**"}}]}
+  searxng:
+    name: searxng
+    endpoints:
+      - {host: searxng.internal.kirby.network, port: 443, access: full, allowed_ips: ["192.168.1.223/32"]}
+    binaries:
+      - {path: /usr/local/bin/node}
+      - {path: /usr/local/bin/openclaw}
+      - {path: /usr/bin/curl}
+  gitlab:
+    name: gitlab
+    endpoints:
+      - {host: gitlab.com, port: 443, access: full}
+      - {host: registry.gitlab.com, port: 443, access: full}
+    binaries: [{path: /usr/bin/glab}, {path: /usr/bin/git}, {path: /sandbox/bin/glab}, {path: /sandbox/bin/git}]
+  langfuse:
+    name: langfuse
+    endpoints:
+      - {host: langfuse.internal.kirby.network, port: 443, access: full, allowed_ips: ["192.168.1.223/32"]}
+    binaries: [{path: /usr/local/bin/node}, {path: /usr/local/bin/openclaw}, {path: /usr/bin/python3}, {path: /usr/bin/curl}]
+  gitlab_internal:
+    name: gitlab_internal
+    endpoints:
+      - {host: gitlab.internal.kirby.network, port: 443, access: full, allowed_ips: ["192.168.1.223/32"]}
+      - {host: registry.internal.kirby.network, port: 443, access: full, allowed_ips: ["192.168.1.223/32"]}
+    binaries: [{path: /sandbox/bin/glab}, {path: /sandbox/bin/git}, {path: /usr/bin/git}]
+  playwright:
+    name: playwright
+    endpoints:
+      - {host: cdn.playwright.dev, port: 443, access: full}
+      - {host: playwright.download.prss.microsoft.com, port: 443, access: full}
+      - {host: storage.googleapis.com, port: 443, access: full}
+    binaries: [{path: /usr/local/bin/node}, {path: /usr/local/bin/npx}]
+  discord:
+    name: discord
+    endpoints:
+      - {host: discord.com, port: 443, access: full}
+      - {host: gateway.discord.gg, port: 443, access: full}
+      - {host: cdn.discordapp.com, port: 443, access: full}
 POLICYEOF
     chmod 600 "$POLICY_FILE"
     openshell policy set "$SANDBOX_NAME" --policy "$POLICY_FILE" --wait >> "$PHASE_LOG" 2>&1 || true
@@ -600,4 +782,7 @@ echo -e "    start_nemoclaw                    ${DIM}# restart port forward${NC}
 echo -e "    cat ~/.nemoclaw/dashboard-token.txt  ${DIM}# get dashboard URL${NC}"
 echo -e "    openshell sandbox connect $SANDBOX_NAME"
 echo -e "    openshell term                    ${DIM}# monitoring TUI${NC}"
+echo ""
+echo -e "  ${BOLD}Next step:${NC}"
+echo -e "    ${CYAN}./scripts/install-nemoclaw-skills.sh${NC}  ${DIM}# install dev team skills${NC}"
 echo ""
