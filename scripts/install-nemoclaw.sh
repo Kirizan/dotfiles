@@ -602,7 +602,7 @@ for f in /proc/[0-9]*/cmdline; do
     fi
 done
 sleep 1
-nohup openclaw gateway run --allow-unconfigured --dev --bind loopback --port 18789 > /tmp/gateway.log 2>&1 &
+PATH="/sandbox/.npm-global/bin:/sandbox/bin:$PATH" NODE_OPTIONS="--require /sandbox/otel-tracing/tracing.js" nohup openclaw gateway run --allow-unconfigured --dev --auth password --password-file /sandbox/.openclaw/.gateway-password --bind loopback --port 18789 > /tmp/gateway.log 2>&1 &
 sleep 4
 RESTART_GW
 pass "OpenClaw gateway restarted"
