@@ -441,6 +441,33 @@ set -e
 mkdir -p ~/.openclaw ~/.nemoclaw /sandbox/.openclaw/workspace/memory
 echo "# Memory" > /sandbox/.openclaw/workspace/MEMORY.md
 
+# Seed workspace persona files from Obsidian (if available on host)
+SANDBOX_SETUP
+OBSIDIAN_WORKSPACE="$HOME/Obsidian/Primary/3-Resources/NemoClaw/workspace"
+PERSONA_FILES=(SOUL.md IDENTITY.md USER.md TOOLS.md AGENTS.md HEARTBEAT.md)
+if [[ -d "$OBSIDIAN_WORKSPACE" ]]; then
+    info "Seeding workspace persona files from Obsidian..."
+    for pf in "${PERSONA_FILES[@]}"; do
+        if [[ -f "$OBSIDIAN_WORKSPACE/$pf" ]]; then
+            cat "$OBSIDIAN_WORKSPACE/$pf" | ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_HOST" "cat > /sandbox/.openclaw/workspace/$pf"
+            pass "$pf"
+        fi
+    done
+else
+    info "Obsidian workspace not found, creating empty persona templates..."
+    ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_HOST" bash -s << 'PERSONA_TEMPLATES'
+for f in SOUL.md IDENTITY.md USER.md TOOLS.md AGENTS.md HEARTBEAT.md; do
+    if [[ ! -f "/sandbox/.openclaw/workspace/$f" ]]; then
+        echo "# $f" > "/sandbox/.openclaw/workspace/$f"
+    fi
+done
+PERSONA_TEMPLATES
+    pass "Empty persona templates created"
+fi
+
+ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$SSH_HOST" bash -s << 'SANDBOX_SETUP' >> "$PHASE_LOG" 2>&1
+set -e
+
 openclaw config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true 2>/dev/null || true
 
 # Allow cron tool via gateway HTTP API (blocked by default as "dangerous")

@@ -156,6 +156,12 @@ PYPOLICY
     return 1
   fi
 }
+
+# Sync OpenClaw workspace persona files from Obsidian to sandbox
+# Usage: nemoclaw_sync [file...]  (no args = sync all)
+nemoclaw_sync() {
+    ~/.dotfiles/scripts/sync-nemoclaw-workspace.sh "$@"
+}
 {{- end }}
 
 # pipx autocompletion
