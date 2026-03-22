@@ -670,6 +670,7 @@ network_policies:
     endpoints:
       - {host: github.com, port: 443, access: full}
       - {host: api.github.com, port: 443, access: full}
+      - {host: raw.githubusercontent.com, port: 443, access: full}
     binaries: [{path: /usr/bin/gh}, {path: /usr/bin/git}, {path: /sandbox/bin/gh}, {path: /sandbox/bin/git}]
   clawhub:
     name: clawhub
