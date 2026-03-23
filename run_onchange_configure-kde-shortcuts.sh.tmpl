@@ -185,6 +185,14 @@ kwriteconfig6 --file "$KGLOBALRC" --group "kirizan-screenshot-edit.desktop" --ke
 kwriteconfig6 --file "$KGLOBALRC" --group "kirizan-screenshot-edit.desktop" --key "_launch" "Meta+Print,none,Screenshot Region Edit"
 
 # ============================================================
+# KWIN WINDOW BEHAVIOR (kwinrc)
+# ============================================================
+
+# Disable edge maximize (dragging window to screen edge and holding makes it fullscreen)
+# Keep edge tiling (snap to edge) enabled — that's the default
+kwriteconfig6 --file "$KWINRC" --group "Windows" --key "ElectricBorderMaximize" "false"
+
+# ============================================================
 # VIRTUAL DESKTOPS (9 desktops in kwinrc)
 # ============================================================
 
