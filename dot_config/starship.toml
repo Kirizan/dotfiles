@@ -1,0 +1,232 @@
+# Starship configuration mimicking Powerlevel10k rainbow style
+# Generated for Arch Linux bash prompt
+# Themed with Catppuccin Mocha palette
+
+# Catppuccin Mocha color palette
+palette = "catppuccin_mocha"
+
+# Use custom format with two-line prompt
+format = """
+[╭─](bold bright-black)\
+$os\
+$shell\
+$directory\
+$git_branch\
+$git_status\
+$fill\
+$time\
+$hostname\
+$status\
+$cmd_duration\
+$jobs\
+$python\
+$nodejs\
+$terraform\
+$aws\
+$line_break\
+[╰─](bold bright-black)$character"""
+
+# Add a blank line between shell prompts
+add_newline = true
+
+# Replace the "❯" symbol in the prompt with "➜"
+[character]
+success_symbol = "[➜](bold green)"
+error_symbol = "[➜](bold red)"
+
+# OS icon (similar to p10k os_icon)
+[os]
+disabled = false
+format = "[$symbol](bold white)"
+
+[os.symbols]
+Arch = " "
+CentOS = " "
+Debian = " "
+Fedora = " "
+Macos = " "
+Redhat = " "
+RedHatEnterprise = " "
+Ubuntu = " "
+Windows = " "
+Unknown = " "
+
+# Directory (similar to p10k dir)
+[directory]
+format = "[ $path]($style)[$read_only]($read_only_style) "
+style = "bold cyan"
+truncation_length = 3
+truncate_to_repo = true
+read_only = " "
+read_only_style = "bold red"
+home_symbol = "~"
+
+# Git branch (similar to p10k vcs)
+[git_branch]
+format = "[on](white) [$symbol$branch]($style) "
+symbol = " "
+style = "bold purple"
+
+# Git status (similar to p10k vcs)
+[git_status]
+format = "([$all_status$ahead_behind]($style))"
+style = "bold red"
+conflicted = "🏳 "
+ahead = "⇡${count} "
+behind = "⇣${count} "
+diverged = "⇕⇡${ahead_count}⇣${behind_count} "
+untracked = "?${count} "
+stashed = "📦 "
+modified = "!${count} "
+staged = "+${count} "
+renamed = "»${count} "
+deleted = "✘${count} "
+
+# Fill space between left and right prompt
+[fill]
+symbol = " "
+
+# Hostname display
+[hostname]
+disabled = false
+ssh_only = false
+format = "[$hostname](bold peach) "
+trim_at = "."
+
+# Time display (ISO 8601 format)
+[time]
+disabled = false
+format = "[$time]($style) "
+time_format = "%Y-%m-%d %H:%M:%S"
+style = "bold white"
+
+# Exit status (similar to p10k status)
+[status]
+disabled = false
+format = "[$symbol$status]($style) "
+symbol = "✘ "
+style = "bold red"
+not_executable_symbol = "🚫 "
+not_found_symbol = "🔍 "
+sigint_symbol = "🧱 "
+signal_symbol = "⚡ "
+
+# Command duration (similar to p10k command_execution_time)
+[cmd_duration]
+format = "[⏱ $duration]($style) "
+min_time = 500
+style = "bold yellow"
+
+# Background jobs (similar to p10k background_jobs)
+[jobs]
+format = "[$symbol$number]($style) "
+symbol = "✦ "
+style = "bold blue"
+number_threshold = 1
+
+# Python environment (similar to p10k virtualenv/pyenv)
+[python]
+format = '[${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
+symbol = " "
+style = "bold yellow"
+pyenv_version_name = true
+
+# Node.js version (similar to p10k nvm/node_version)
+[nodejs]
+format = "[$symbol($version )]($style)"
+symbol = " "
+style = "bold green"
+
+# Terraform (similar to p10k terraform)
+[terraform]
+format = "[$symbol$workspace]($style) "
+symbol = "💠 "
+style = "bold 105"
+
+# AWS profile (similar to p10k aws)
+[aws]
+format = '[$symbol($profile )(\($region\) )]($style)'
+symbol = "☁️  "
+style = "bold yellow"
+
+# Docker context
+[docker_context]
+format = "[$symbol$context]($style) "
+symbol = " "
+style = "bold blue"
+
+# Kubernetes context
+[kubernetes]
+format = '[$symbol$context( \($namespace\))]($style) '
+symbol = "☸ "
+style = "bold blue"
+disabled = true
+
+# Go version
+[golang]
+format = "[$symbol($version )]($style)"
+symbol = " "
+style = "bold cyan"
+
+# Rust version
+[rust]
+format = "[$symbol($version )]($style)"
+symbol = " "
+style = "bold red"
+
+# Ruby version
+[ruby]
+format = "[$symbol($version )]($style)"
+symbol = " "
+style = "bold red"
+
+# Java version
+[java]
+format = "[$symbol($version )]($style)"
+symbol = " "
+style = "bold red"
+
+# Disable modules you don't need
+[package]
+disabled = true
+
+# Shell indicator - shows which shell you're using
+[shell]
+disabled = false
+format = "[$indicator](bold)"
+bash_indicator = "[](green)"        # Bash (green)
+zsh_indicator = "[󰰶](yellow)"        # Zsh (yellow) - official logo
+fish_indicator = "[](cyan)"         # Fish (cyan)
+nu_indicator = "[>](purple)"        # Nushell (purple)
+powershell_indicator = "[](blue)" # PowerShell (blue)
+unknown_indicator = "[](white)"   # Generic terminal (white)
+
+# Catppuccin Mocha Palette
+# https://github.com/catppuccin/catppuccin
+[palettes.catppuccin_mocha]
+rosewater = "#f5e0dc"
+flamingo = "#f2cdcd"
+pink = "#f5c2e7"
+mauve = "#cba6f7"
+red = "#f38ba8"
+maroon = "#eba0ac"
+peach = "#fab387"
+yellow = "#f9e2af"
+green = "#a6e3a1"
+teal = "#94e2d5"
+sky = "#89dceb"
+sapphire = "#74c7ec"
+blue = "#89b4fa"
+lavender = "#b4befe"
+text = "#cdd6f4"
+subtext1 = "#bac2de"
+subtext0 = "#a6adc8"
+overlay2 = "#9399b2"
+overlay1 = "#7f849c"
+overlay0 = "#6c7086"
+surface2 = "#585b70"
+surface1 = "#45475a"
+surface0 = "#313244"
+base = "#1e1e2e"
+mantle = "#181825"
+crust = "#11111b"

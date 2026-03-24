@@ -1,0 +1,107 @@
+#!/bin/bash
+# Install Java 21 (OpenJDK) for LTeX-LS grammar checking
+# This runs once per machine and works across all profiles
+
+set -e
+
+echo "Checking Java installation..."
+
+# Check if Java 21 is already installed
+if command -v java >/dev/null 2>&1; then
+    JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+    if [ "$JAVA_VERSION" -ge 21 ]; then
+        echo "✓ Java $JAVA_VERSION is already installed (>= 21)"
+        exit 0
+    else
+        echo "Found Java $JAVA_VERSION, but need Java 21+"
+    fi
+fi
+
+echo "Installing OpenJDK 21..."
+
+{{- if eq .chezmoi.os "darwin" }}
+# macOS - Use Homebrew
+if command -v brew >/dev/null 2>&1; then
+    brew install openjdk@21
+
+    # Link Java for system-wide use
+    sudo ln -sfn $(brew --prefix)/opt/openjdk@21/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-21.jdk || true
+
+    echo "✓ OpenJDK 21 installed via Homebrew"
+else
+    echo "Error: Homebrew not found. Please install Homebrew first."
+    exit 1
+fi
+
+{{- else if eq .chezmoi.os "linux" }}
+{{-   if .isArchBased }}
+# Arch-based Linux (Arch, CachyOS, EndeavourOS, etc.)
+# Sync package databases to avoid 404 errors from stale mirrors
+sudo pacman -Sy --noconfirm
+sudo pacman -S --needed --noconfirm jre-openjdk
+echo "✓ OpenJDK installed via pacman"
+
+# Set Java as default using archlinux-java (if available)
+if command -v archlinux-java >/dev/null 2>&1; then
+    JAVA_ENV=$(archlinux-java status | grep default | awk '{print $3}')
+    if [[ ! "$JAVA_ENV" =~ java-.*-openjdk ]]; then
+        LATEST_JAVA=$(archlinux-java status | grep -v default | grep 'java-' | tail -n1 | awk '{print $2}')
+        if [ -n "$LATEST_JAVA" ]; then
+            sudo archlinux-java set "$LATEST_JAVA"
+            echo "✓ Set $LATEST_JAVA as default"
+        fi
+    fi
+fi
+
+{{-   else if .isDebianBased }}
+# Debian-based (Debian, Ubuntu, Mint, etc.)
+sudo apt update
+sudo apt install -y openjdk-21-jre
+echo "✓ OpenJDK 21 installed via apt"
+
+# Set Java 21 as default using update-alternatives
+JAVA21_PATH=$(update-alternatives --list java 2>/dev/null | grep 'java-21' | head -n1)
+if [ -n "$JAVA21_PATH" ]; then
+    sudo update-alternatives --set java "$JAVA21_PATH"
+    echo "✓ Set Java 21 as default"
+else
+    echo "⚠ Could not auto-set Java 21 as default. Run: sudo update-alternatives --config java"
+fi
+
+{{-   else if .isRHELBased }}
+# RHEL-based (RHEL, CentOS, Fedora, Rocky, Alma, etc.)
+sudo dnf install -y java-21-openjdk
+echo "✓ OpenJDK 21 installed via dnf"
+
+# Set Java 21 as default using alternatives
+JAVA21_PATH=$(alternatives --display java 2>/dev/null | grep 'java-21' | grep '/bin/java' | head -n1 | awk '{print $1}')
+if [ -n "$JAVA21_PATH" ]; then
+    sudo alternatives --set java "$JAVA21_PATH"
+    echo "✓ Set Java 21 as default"
+else
+    echo "⚠ Could not auto-set Java 21 as default. Run: sudo alternatives --config java"
+fi
+
+{{-   else }}
+# Generic Linux fallback
+echo "Warning: Unsupported Linux distribution. Please install OpenJDK 21 manually."
+echo "Run: sudo apt install openjdk-21-jre  (or equivalent for your distro)"
+exit 1
+{{-   end }}
+
+{{- else }}
+echo "Error: Unsupported operating system: {{ .chezmoi.os }}"
+exit 1
+{{- end }}
+
+# Verify installation
+if command -v java >/dev/null 2>&1; then
+    echo ""
+    echo "Java version:"
+    java -version
+    echo ""
+    echo "✓ Java installation complete!"
+else
+    echo "Error: Java installation failed"
+    exit 1
+fi

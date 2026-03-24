@@ -1,0 +1,55 @@
+#!/bin/bash
+# Set KDE Plasma digital clock to ISO 8601 date format (yyyy-MM-dd) on mimir
+
+{{- if and (eq .chezmoi.os "linux") (eq .chezmoi.hostname "mimir") (not .isHeadless) }}
+
+set -e
+
+APPLETS_RC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+
+if [ ! -f "$APPLETS_RC" ]; then
+    echo "KDE panel config not found, skipping (Plasma may not have run yet)"
+    exit 0
+fi
+
+# Find the digital clock applet section
+CLOCK_ID=$(grep -B2 "plugin=org.kde.plasma.digitalclock" "$APPLETS_RC" | grep -oP '(?<=\[Applets\]\[)\d+(?=\])' | tail -1)
+
+if [ -z "$CLOCK_ID" ]; then
+    echo "No digital clock applet found in KDE config, skipping"
+    exit 0
+fi
+
+# Check if Appearance section already has isoDate
+if grep -A1 "\[Applets\]\[$CLOCK_ID\]\[Configuration\]\[Appearance\]" "$APPLETS_RC" 2>/dev/null | grep -q "dateFormat=isoDate"; then
+    echo "KDE clock already set to ISO 8601 date format"
+    exit 0
+fi
+
+echo "Setting KDE digital clock to ISO 8601 date format..."
+
+# Check if the Appearance section exists
+if grep -q "\[Applets\]\[$CLOCK_ID\]\[Configuration\]\[Appearance\]" "$APPLETS_RC"; then
+    # Section exists, update or add dateFormat
+    if grep -A5 "\[Applets\]\[$CLOCK_ID\]\[Configuration\]\[Appearance\]" "$APPLETS_RC" | grep -q "dateFormat="; then
+        # dateFormat exists but wrong value, replace it
+        sed -i "/\[Applets\]\[$CLOCK_ID\]\[Configuration\]\[Appearance\]/,/^\[/{
+            s/dateFormat=.*/dateFormat=isoDate/
+        }" "$APPLETS_RC"
+    else
+        # Section exists but no dateFormat, add it
+        sed -i "/\[Applets\]\[$CLOCK_ID\]\[Configuration\]\[Appearance\]/a dateFormat=isoDate" "$APPLETS_RC"
+    fi
+else
+    # No Appearance section, add it after the Configuration section
+    sed -i "/\[Applets\]\[$CLOCK_ID\]\[Configuration\]$/,/^\[/{
+        /^\[/i\\\\[Containments][23][Applets][$CLOCK_ID][Configuration][Appearance]\ndateFormat=isoDate\n
+    }" "$APPLETS_RC"
+fi
+
+echo "KDE clock date format set to ISO 8601 (yyyy-MM-dd)"
+echo "Change will take effect on next Plasma restart or login"
+
+{{- else }}
+echo "Skipping KDE clock configuration (not applicable on this system)"
+{{- end }}

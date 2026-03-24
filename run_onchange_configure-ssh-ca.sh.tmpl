@@ -1,0 +1,59 @@
+#!/bin/bash
+{{- if and (eq .chezmoi.os "linux") (not .isWSL) (not .isHexOS) (eq .profile "personal") }}
+# Configure sshd to trust SSH certificates signed by the OpenBao CA
+# This allows any user certificate signed by the CA to authenticate
+# without adding individual public keys to authorized_keys.
+#
+# CA public key fetched from: {{ .openbao.ssh_ca_url }}
+# hash: {{ .openbao.ssh_ca_url }}
+
+set -e
+
+SSH_CA_URL="{{ .openbao.ssh_ca_url }}"
+CA_FILE="/etc/ssh/trusted-user-ca-keys.pem"
+SSHD_CONFIG="/etc/ssh/sshd_config"
+
+echo "Fetching SSH CA public key from OpenBao..."
+CA_KEY=$(curl -sf --max-time 5 "$SSH_CA_URL" 2>/dev/null) || {
+    echo "WARNING: Could not reach OpenBao at ${SSH_CA_URL}"
+    echo "  Ensure vault.internal.kirby.network resolves and OpenBao is running."
+    echo "  Skipping SSH CA configuration."
+    exit 0
+}
+
+if [ -z "$CA_KEY" ]; then
+    echo "WARNING: Empty response from SSH CA endpoint. Skipping."
+    exit 0
+fi
+
+# Write the CA public key
+echo "Installing SSH CA public key to ${CA_FILE}..."
+echo "$CA_KEY" | sudo tee "$CA_FILE" > /dev/null
+sudo chmod 644 "$CA_FILE"
+
+# Add TrustedUserCAKeys directive if not already present
+if ! grep -q "^TrustedUserCAKeys" "$SSHD_CONFIG"; then
+    echo "Adding TrustedUserCAKeys to sshd_config..."
+    echo "" | sudo tee -a "$SSHD_CONFIG" > /dev/null
+    echo "# Trust SSH certificates signed by OpenBao CA" | sudo tee -a "$SSHD_CONFIG" > /dev/null
+    echo "TrustedUserCAKeys ${CA_FILE}" | sudo tee -a "$SSHD_CONFIG" > /dev/null
+else
+    echo "TrustedUserCAKeys already configured in sshd_config"
+fi
+
+# Restart sshd to pick up changes
+echo "Restarting sshd..."
+if systemctl is-active --quiet sshd; then
+    sudo systemctl restart sshd
+elif systemctl is-active --quiet ssh; then
+    sudo systemctl restart ssh
+else
+    echo "WARNING: Could not find sshd or ssh service to restart"
+fi
+
+echo "✓ SSH CA trust configured — certificates signed by OpenBao are now accepted"
+
+{{- else }}
+echo "Skipping SSH CA configuration (not applicable on this system)"
+exit 0
+{{- end }}

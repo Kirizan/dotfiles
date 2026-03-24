@@ -1,0 +1,65 @@
+#!/bin/bash
+# Install fprintd and configure PAM for fingerprint authentication
+# Only runs on non-headless, non-WSL Linux systems with a fingerprint reader
+
+{{- if and (eq .chezmoi.os "linux") (not .isHeadless) (not .isWSL) }}
+
+set -e
+
+# Check for USB fingerprint reader hardware
+if ! lsusb 2>/dev/null | grep -qi "fingerprint"; then
+    echo "No USB fingerprint reader detected, skipping fprintd setup"
+    exit 0
+fi
+
+# Check for conflicting packages
+if command -v fingerprint-gui &> /dev/null || pacman -Qi fingerprint-gui &> /dev/null 2>&1; then
+    echo "WARNING: fingerprint-gui is installed and conflicts with fprintd."
+    echo "Please remove fingerprint-gui first: sudo pacman -R fingerprint-gui"
+    exit 1
+fi
+
+echo "Fingerprint reader detected, setting up fprintd..."
+
+# Install fprintd if not already installed
+if ! command -v fprintd-enroll &> /dev/null; then
+    echo "Installing fprintd..."
+{{- if .isArchBased }}
+    # Sync package databases to avoid 404 errors from stale mirrors
+    sudo pacman -Sy --noconfirm
+    sudo pacman -S --needed --noconfirm fprintd
+{{- else if .isDebianBased }}
+    sudo apt-get install -y fprintd
+{{- else if .isRHELBased }}
+    sudo dnf install -y fprintd fprintd-pam
+{{- else }}
+    echo "Unsupported distro for automatic fprintd install. Install fprintd manually."
+    exit 1
+{{- end }}
+else
+    echo "fprintd is already installed"
+fi
+
+# Configure PAM: add pam_fprintd.so as first auth line in system-auth
+PAM_FILE="/etc/pam.d/system-auth"
+if [ -f "$PAM_FILE" ]; then
+    if ! grep -q "pam_fprintd.so" "$PAM_FILE"; then
+        echo "Configuring PAM for fingerprint authentication..."
+        sudo sed -i '1a auth       sufficient                  pam_fprintd.so' "$PAM_FILE"
+        echo "PAM configured: fingerprint auth added to system-auth"
+    else
+        echo "PAM already configured for fingerprint authentication"
+    fi
+else
+    echo "WARNING: $PAM_FILE not found, skipping PAM configuration"
+fi
+
+echo ""
+echo "fprintd setup complete!"
+echo "To enroll your fingerprint, run: fprintd-enroll"
+echo "Or use KDE System Settings > Users > Fingerprint Authentication"
+
+{{- else }}
+# Not a graphical Linux system, skip
+echo "Skipping fprintd setup (not applicable on this system)"
+{{- end }}

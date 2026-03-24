@@ -1,0 +1,43 @@
+#!/bin/bash
+# Personal profile only — CLI coding tools (works on headless systems too)
+
+{{- if eq .profile "personal" }}
+
+echo "Installing personal CLI tools..."
+
+# Install Claude Code (Anthropic's agentic coding CLI)
+if ! command -v claude &> /dev/null; then
+    echo "Installing Claude Code..."
+    curl -fsSL https://claude.ai/install.sh | bash
+else
+    echo "Claude Code already installed"
+fi
+
+# Install OpenCode (open-source AI coding agent)
+if ! command -v opencode &> /dev/null; then
+    echo "Installing OpenCode..."
+{{- if .isArchBased }}
+    # Prefer AUR package on Arch-based systems
+    if command -v paru &> /dev/null; then
+        paru -S --needed --noconfirm opencode-bin
+    elif command -v yay &> /dev/null; then
+        yay -S --needed --noconfirm opencode-bin
+    else
+        echo "No AUR helper found, falling back to npm..."
+        npm install -g opencode-ai@latest
+    fi
+{{- else if eq .chezmoi.os "darwin" }}
+    brew install anomalyco/tap/opencode
+{{- else }}
+    # Debian, RHEL, and other Linux — use npm
+    npm install -g opencode-ai@latest
+{{- end }}
+else
+    echo "OpenCode already installed"
+fi
+
+echo "Personal CLI tools installation complete!"
+
+{{- else }}
+echo "Skipping personal CLI tools (not on personal profile)"
+{{- end }}

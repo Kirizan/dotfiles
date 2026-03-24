@@ -1,0 +1,88 @@
+#!/bin/bash
+# Show all keybindings in a searchable rofi popup (or fzf fallback)
+
+BINDINGS=$(cat <<'EOF'
+== App Launchers ==
+Super+Space         Application Launcher (KRunner)
+Super+Return        Launch Terminal (WezTerm)
+Super+Escape        Power Menu (Logout/Shutdown/Restart)
+
+== App Shortcuts ==
+Super+Shift+F       File Manager (Dolphin)
+Super+Shift+B       Browser (default)
+Super+Shift+N       Editor (Neovim in WezTerm)
+Super+Shift+T       System Monitor (btop)
+Super+Shift+D       Docker Manager (lazydocker)
+Super+Shift+M       Music (Deezer)
+Super+Shift+/       1Password
+Super+K             Keybinding Viewer (this menu)
+
+== Tab/Window Management ==
+Super+W             Close Tab (sends Ctrl+W)
+Super+T             New Tab (sends Ctrl+T)
+Super+F             Toggle Fullscreen
+Alt+F4              Close Window
+Alt+Tab             Switch Windows
+Alt+Shift+Tab       Switch Windows (Reverse)
+
+== Window Tiling ==
+Super+Left          Tile Window Left
+Super+Right         Tile Window Right
+Super+Up            Maximize Window
+Super+Down          Minimize Window
+Super+PgUp          Tile Window Upper Half
+Super+PgDown        Tile Window Lower Half
+
+== Workspace Management ==
+Super+1-9           Switch to Desktop 1-9
+Super+0             Switch to Desktop 10
+Super+Tab           Next Desktop
+Super+Shift+Tab     Previous Desktop
+Super+Shift+1-9     Move Window to Desktop 1-9
+Super+Shift+0       Move Window to Desktop 10
+
+== System Controls ==
+Print               Screenshot Region to Clipboard
+Super+Print         Screenshot Region with Editor
+Super+Ctrl+L        Lock Screen
+Super+Ctrl+N        Toggle Night Color
+Super+Ctrl+V        Clipboard History
+Super+,             Toggle Do Not Disturb
+Media Keys          Play/Pause, Next, Previous, Volume
+
+== Tmux (Prefix = Ctrl+a) ==
+Prefix+|            Split Pane Horizontal
+Prefix+-            Split Pane Vertical
+Prefix+h/j/k/l     Resize Pane
+Alt+Arrow Keys      Switch Panes (no prefix)
+Prefix+c            New Window
+Prefix+n/p          Next/Previous Window
+Prefix+0-9          Switch to Window N
+Prefix+&            Kill Window
+Prefix+x            Kill Pane
+Prefix+z            Toggle Pane Zoom
+Prefix+o            SessionX (fuzzy session finder)
+Alt+p               Quick Project Switch
+Prefix+d            Detach Session
+Prefix+$            Rename Session
+Prefix+s            List Sessions
+Prefix+[            Enter Copy Mode
+v (copy mode)       Begin Selection
+y (copy mode)       Copy Selection
+Prefix+]            Paste Buffer
+Prefix+r            Reload Config
+Prefix+?            Show All Tmux Bindings
+EOF
+)
+
+if command -v rofi >/dev/null 2>&1; then
+    echo "$BINDINGS" | rofi -dmenu -i -p "Keybindings" -theme-str 'window {width: 60%;} listview {lines: 25;}'
+else
+    # Fallback: open in WezTerm with fzf
+    if command -v fzf >/dev/null 2>&1; then
+        echo "$BINDINGS" | fzf --header="Keybindings (ESC to close)"
+    else
+        # Last resort: notify
+        notify-send "Keybinding Viewer" "Install rofi or fzf to use the keybinding viewer"
+    fi
+fi

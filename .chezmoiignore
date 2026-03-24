@@ -1,0 +1,151 @@
+# Repository management files
+README.md
+scripts/
+LICENSE
+Makefile
+PROFILES.md
+.gitignore
+.git/
+# Claude Code runtime data (machine-specific, not managed)
+.claude/cache
+.claude/.credentials.json
+.claude/debug
+.claude/downloads
+.claude/file-history
+.claude/history.jsonl
+.claude/plans
+.claude/plugins
+.claude/projects
+.claude/session-env
+.claude/shell-snapshots
+.claude/tasks
+.claude/todos
+templates/
+
+# Claude Code user config (contains machine-specific data: MCP servers, projects, caches)
+.claude.json
+
+# Documentation files
+CLAUDE.md
+HOTKEYS.md
+KNOWN_BUGS.md
+*.org
+system.org
+
+# Temporary files
+pbcopy
+temp/
+
+# Neovim plugin lockfile (machine-specific, changes frequently)
+.config/nvim/lazy-lock.json
+
+# macOS-specific files (ignore on Linux)
+{{- if ne .chezmoi.os "darwin" }}
+.Brewfile
+Library/
+.zshrc
+.zprofile
+{{- end }}
+
+# Linux-specific files (ignore on macOS)
+{{- if ne .chezmoi.os "linux" }}
+.bashrc
+.bash_profile
+{{- end }}
+
+# Desktop environment configs — only deploy if the tool is installed
+{{- if not (lookPath "Hyprland") }}
+.config/hypr/
+{{- end }}
+{{- if not (lookPath "waybar") }}
+.config/waybar/
+{{- end }}
+{{- if not (lookPath "makoctl") }}
+.config/mako/
+{{- end }}
+{{- if not (stat (joinPath .chezmoi.homeDir ".local/share/omarchy")) }}
+.config/omarchy/
+{{- end }}
+{{- if not (lookPath "fish") }}
+.config/fish/
+{{- end }}
+{{- if not (lookPath "mpv") }}
+.config/mpv/
+{{- end }}
+{{- if not .isDesktop }}
+.config/kscreenlockerrc
+run_once_after_disable-sleep.sh.tmpl
+{{- end }}
+{{- if or (ne .chezmoi.os "linux") .isHeadless }}
+.config/plasma-localerc
+{{- end }}
+{{- if not (stat "/opt/NVIDIA Sync/nvidia-sync") }}
+.local/bin/nvidia-sync-fix-position
+.local/bin/nvidia-sync-wrapper
+.local/share/applications/nvidia-sync.desktop
+{{- end }}
+{{- if not .hasNvidiaPassthrough }}
+.config/libvirt/
+{{- end }}
+
+# Gaming scripts — only deploy on Arch-based systems
+{{- if not .isArchBased }}
+run_once_install-gaming-packages.sh.tmpl
+run_once_after_install-battlenet.sh.tmpl
+{{- end }}
+
+# Headless systems (SSH-only servers, WSL without WSLg, etc.)
+# Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages
+{{- if .isHeadless }}
+.config/alacritty/
+.config/wezterm/
+.config/autostart/
+.config/vim/gvimrc
+.config/obsidian-config/
+run_onchange_set-default-browser.sh.tmpl
+run_once_install-personal-packages.sh.tmpl
+run_once_before_install-vm-packages.sh
+run_once_after_configure-iommu-mimir.sh
+{{- end }}
+
+# HexOS / TrueNAS Scale — minimal NAS deployment
+# Skip dev tools, AI tooling, and non-essential system scripts
+{{- if .isHexOS }}
+run_once_install-tmux.sh.tmpl
+run_once_install-java.sh.tmpl
+run_once_install-personal-cli-tools.sh.tmpl
+run_once_before_fix-etc-hosts.sh.tmpl
+run_onchange_before_configure-passwordless-sudo.sh.tmpl
+run_once_before_configure-1password-noauth.sh.tmpl
+run_after_fetch-obsidian-skills.sh.tmpl
+run_once_before_disable-desktop-sleep.sh.tmpl
+run_onchange_configure-dns-adguard.sh.tmpl
+run_onchange_configure-ssh-ca.sh.tmpl
+.config/devon/
+.ssh/config
+run_once_before_install-vm-packages.sh
+run_once_after_configure-iommu-mimir.sh
+{{- end }}
+
+# Scripts and bin directories are handled separately
+# (they're managed but not as dotfiles in home directory)
+
+# Personal-only files (Claude Code, projects workspace)
+{{- if ne .profile "personal" }}
+projects/
+{{- end }}
+
+# Skills: Obsidian is single source of truth
+# GUI: symlinked from local vault; Headless: fetched via REST API
+# Non-personal: Claude not deployed, skills not needed
+.claude/skills/
+
+# Profile-specific ignores
+# Files ending in _work.* are only for work profile
+{{- if ne .profile "work" }}
+*_work
+*_work.*
+.profile_corp
+.config/work
+{{- end }}
+

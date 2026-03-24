@@ -1,0 +1,7 @@
+# External repositories managed by chezmoi
+# These will be cloned/updated when running 'chezmoi apply'
+
+[".config/omarchy/themes/catppuccin-dark"]
+    type = "git-repo"
+    url = "https://github.com/Luquatic/omarchy-catppuccin-dark.git"
+    refreshPeriod = "168h" # Update weekly

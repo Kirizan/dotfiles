@@ -1,0 +1,56 @@
+#!/bin/bash
+{{- if and (eq .chezmoi.os "linux") (not .isHeadless) (not .isHexOS) (eq .profile "personal") }}
+# Configure NetworkManager to use AdGuard Home as DNS server
+# with routing domain for *.{{ .network.dns_routing_domain }}
+#
+# hash: {{ .network.dns_server }}-{{ .network.dns_routing_domain }}
+
+set -e
+
+DNS_SERVER="{{ .network.dns_server }}"
+ROUTING_DOMAIN="~{{ .network.dns_routing_domain }}"
+
+# Find the active NetworkManager connection (wired or wifi)
+ACTIVE_CONN=$(nmcli -t -f NAME,TYPE,STATE connection show --active | grep -E ':(802-3-ethernet|ethernet|wifi|802-11-wireless):activated' | head -1 | cut -d: -f1)
+
+if [ -z "$ACTIVE_CONN" ]; then
+    echo "WARNING: No active NetworkManager connection found. Skipping DNS configuration."
+    exit 0
+fi
+
+echo "Configuring DNS for connection: ${ACTIVE_CONN}"
+
+NEEDS_CHANGE=false
+
+# Check current values
+CURRENT_IGNORE_DNS=$(nmcli -g ipv4.ignore-auto-dns connection show "$ACTIVE_CONN")
+CURRENT_DNS=$(nmcli -g ipv4.dns connection show "$ACTIVE_CONN")
+CURRENT_SEARCH=$(nmcli -g ipv4.dns-search connection show "$ACTIVE_CONN")
+
+if [ "$CURRENT_IGNORE_DNS" != "yes" ]; then
+    NEEDS_CHANGE=true
+fi
+if [ "$CURRENT_DNS" != "$DNS_SERVER" ]; then
+    NEEDS_CHANGE=true
+fi
+if [ "$CURRENT_SEARCH" != "$ROUTING_DOMAIN" ]; then
+    NEEDS_CHANGE=true
+fi
+
+if [ "$NEEDS_CHANGE" = true ]; then
+    echo "Updating DNS settings..."
+    nmcli connection modify "$ACTIVE_CONN" ipv4.ignore-auto-dns yes
+    nmcli connection modify "$ACTIVE_CONN" ipv4.dns "$DNS_SERVER"
+    nmcli connection modify "$ACTIVE_CONN" ipv4.dns-search "$ROUTING_DOMAIN"
+
+    echo "Reactivating connection to apply changes..."
+    nmcli connection up "$ACTIVE_CONN" > /dev/null 2>&1
+    echo "✓ DNS configured: server=${DNS_SERVER}, routing=${ROUTING_DOMAIN}"
+else
+    echo "✓ DNS already configured correctly"
+fi
+
+{{- else }}
+echo "Skipping AdGuard DNS configuration (not applicable on this system)"
+exit 0
+{{- end }}

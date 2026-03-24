@@ -1,0 +1,9 @@
+{{- if and (not .isHeadless) (not .isWSL) .isArchBased -}}
+[Desktop Entry]
+Name=Close Tab
+Exec=ydotool key 29:1 17:1 17:0 29:0
+Terminal=false
+Type=Application
+NoDisplay=true
+X-KDE-GlobalAccel-CommandShortcut=true
+{{- end }}

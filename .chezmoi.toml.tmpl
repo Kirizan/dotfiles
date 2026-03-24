@@ -1,0 +1,239 @@
+{{- /* Detect WSL (Windows Subsystem for Linux) */ -}}
+{{- $isWSL := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if or (contains "microsoft" (.chezmoi.kernel.osrelease | lower)) (contains "wsl" (.chezmoi.kernel.osrelease | lower)) -}}
+{{-     $isWSL = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Architecture detection */ -}}
+{{- $arch := .chezmoi.arch -}}
+
+{{- /* Detect Arch-based distros (Arch, CachyOS, EndeavourOS, Manjaro, etc.) */ -}}
+{{- $isArchBased := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if eq .chezmoi.osRelease.id "arch" -}}
+{{-     $isArchBased = true -}}
+{{-   else if and (hasKey .chezmoi.osRelease "idLike") (contains "arch" .chezmoi.osRelease.idLike) -}}
+{{-     $isArchBased = true -}}
+{{-   else if stat "/usr/bin/pacman" -}}
+{{-     $isArchBased = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Detect Debian-based distros (Debian, Ubuntu, Mint, Pop!_OS, etc.) */ -}}
+{{- $isDebianBased := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if or (eq .chezmoi.osRelease.id "debian") (eq .chezmoi.osRelease.id "ubuntu") -}}
+{{-     $isDebianBased = true -}}
+{{-   else if and (hasKey .chezmoi.osRelease "idLike") (or (contains "debian" .chezmoi.osRelease.idLike) (contains "ubuntu" .chezmoi.osRelease.idLike)) -}}
+{{-     $isDebianBased = true -}}
+{{-   else if stat "/usr/bin/apt-get" -}}
+{{-     $isDebianBased = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Detect RHEL-based distros (RHEL, CentOS, Fedora, Rocky, Alma, etc.) */ -}}
+{{- $isRHELBased := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if or (eq .chezmoi.osRelease.id "rhel") (eq .chezmoi.osRelease.id "centos") (eq .chezmoi.osRelease.id "fedora") (eq .chezmoi.osRelease.id "rocky") (eq .chezmoi.osRelease.id "almalinux") -}}
+{{-     $isRHELBased = true -}}
+{{-   else if and (hasKey .chezmoi.osRelease "idLike") (or (contains "rhel" .chezmoi.osRelease.idLike) (contains "fedora" .chezmoi.osRelease.idLike) (contains "centos" .chezmoi.osRelease.idLike)) -}}
+{{-     $isRHELBased = true -}}
+{{-   else if stat "/usr/bin/dnf" -}}
+{{-     $isRHELBased = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Detect Omarchy (Arch-based Linux with Hyprland desktop) */ -}}
+{{- $isOmarchy := false -}}
+{{- if and (eq .chezmoi.os "linux") $isArchBased -}}
+{{-   $isOmarchy = true -}}
+{{- end -}}
+
+{{- /* Detect NVIDIA DGX Spark (ARM64 + Blackwell GPU, ships with CUDA 13.0+) */ -}}
+{{- $isDGXSpark := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if stat "/etc/dgx-release" -}}
+{{-     $isDGXSpark = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Detect HexOS / TrueNAS Scale (Debian-based NAS appliance) */ -}}
+{{- $isHexOS := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if stat "/usr/bin/midclt" -}}
+{{-     $isHexOS = true -}}
+{{-   end -}}
+{{- end -}}
+{{- /* Allow override via environment variable */ -}}
+{{- if eq (env "CHEZMOI_HEXOS") "true" -}}
+{{-   $isHexOS = true -}}
+{{- else if eq (env "CHEZMOI_HEXOS") "false" -}}
+{{-   $isHexOS = false -}}
+{{- end -}}
+
+{{- /* Detect desktop systems (no battery = desktop, has battery = laptop) */ -}}
+{{- $isDesktop := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if not (glob "/sys/class/power_supply/BAT*") -}}
+{{-     $isDesktop = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Detect headless systems (no GUI — SSH-only servers, WSL without WSLg, etc.) */ -}}
+{{- $isHeadless := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if $isWSL -}}
+{{-     $isHeadless = true -}}
+{{-   else if $isDGXSpark -}}
+{{-     $isHeadless = false -}}
+{{-   else if not (or (env "DISPLAY") (env "WAYLAND_DISPLAY") (env "MIR_SOCKET")) -}}
+{{-     $isHeadless = true -}}
+{{-   end -}}
+{{- end -}}
+{{- /* Allow override via environment variable */ -}}
+{{- if eq (env "CHEZMOI_HEADLESS") "true" -}}
+{{-   $isHeadless = true -}}
+{{- else if eq (env "CHEZMOI_HEADLESS") "false" -}}
+{{-   $isHeadless = false -}}
+{{- end -}}
+
+{{- /* Detect NVIDIA GPU passthrough systems (RTX 5090 on mimir for AI Workbench VM) */ -}}
+{{- $hasNvidiaPassthrough := false -}}
+{{- if and (eq .chezmoi.os "linux") $isDesktop (not $isHeadless) -}}
+{{-   if eq .chezmoi.hostname "mimir" -}}
+{{-     $hasNvidiaPassthrough = true -}}
+{{-   end -}}
+{{- end -}}
+
+{{- /* Determine whether to use Homebrew for package management */ -}}
+{{- /* true on macOS only — Linux uses native package managers (pacman, apt, dnf) */ -}}
+{{- $useHomebrew := false -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{-   $useHomebrew = true -}}
+{{- end -}}
+{{- /* Allow override via environment variable */ -}}
+{{- if eq (env "CHEZMOI_USE_HOMEBREW") "true" -}}
+{{-   $useHomebrew = true -}}
+{{- else if eq (env "CHEZMOI_USE_HOMEBREW") "false" -}}
+{{-   $useHomebrew = false -}}
+{{- end -}}
+
+{{- /* Determine profile: "work" or "personal" */ -}}
+{{- $profile := "personal" -}}
+
+{{- /* Check for CHEZMOI_PROFILE environment variable first */ -}}
+{{- if env "CHEZMOI_PROFILE" -}}
+{{-   $profile = env "CHEZMOI_PROFILE" -}}
+{{- /* Auto-detect based on hostname patterns */ -}}
+{{- else if contains "work" .chezmoi.hostname -}}
+{{-   $profile = "work" -}}
+{{- else if contains "corp" .chezmoi.hostname -}}
+{{-   $profile = "work" -}}
+{{- else if contains "company" .chezmoi.hostname -}}
+{{-   $profile = "work" -}}
+{{- end -}}
+
+{{- /* Profile-specific settings */ -}}
+{{- /* GitHub identity - stays the same across all systems */ -}}
+{{- $email := "33106137+Kirizan@users.noreply.github.com" -}}
+{{- $name := "Kirizan" -}}
+
+{{- /* Override for work profile if needed */ -}}
+{{- if eq $profile "work" -}}
+{{-   $email = "33106137+Kirizan@users.noreply.github.com" -}}
+{{-   $name = "Kirizan" -}}
+{{- end -}}
+
+[data]
+    profile = {{ $profile | quote }}
+    email = {{ $email | quote }}
+    name = {{ $name | quote }}
+    isWSL = {{ $isWSL }}
+    arch = {{ $arch | quote }}
+    isArchBased = {{ $isArchBased }}
+    isDebianBased = {{ $isDebianBased }}
+    isRHELBased = {{ $isRHELBased }}
+    isOmarchy = {{ $isOmarchy }}
+    useHomebrew = {{ $useHomebrew }}
+    isHeadless = {{ $isHeadless }}
+    isDesktop = {{ $isDesktop }}
+    isDGXSpark = {{ $isDGXSpark }}
+    isHexOS = {{ $isHexOS }}
+    hasNvidiaPassthrough = {{ $hasNvidiaPassthrough }}
+
+{{- if eq .chezmoi.os "darwin" }}
+[data.packages]
+    manager = "brew"
+    install_cmd = "brew install"
+    update_cmd = "brew update && brew upgrade"
+    search_cmd = "brew search"
+{{- else if $isArchBased }}
+[data.packages]
+    manager = "pacman"
+    install_cmd = "sudo pacman -S"
+    update_cmd = "sudo pacman -Syu"
+    search_cmd = "pacman -Ss"
+{{- else if $isRHELBased }}
+[data.packages]
+    manager = "dnf"
+    install_cmd = "sudo dnf install"
+    update_cmd = "sudo dnf update"
+    search_cmd = "dnf search"
+{{- else if $isDebianBased }}
+[data.packages]
+    manager = "apt"
+    install_cmd = "sudo apt install"
+    update_cmd = "sudo apt update && sudo apt upgrade"
+    search_cmd = "apt search"
+{{- else if eq .chezmoi.os "windows" }}
+[data.packages]
+    manager = "winget"
+    install_cmd = "winget install"
+    update_cmd = "winget upgrade --all"
+    search_cmd = "winget search"
+{{- else }}
+[data.packages]
+    manager = "unknown"
+{{- end }}
+
+{{- if eq .chezmoi.os "darwin" }}
+
+[data.paths]
+    homebrew = "/opt/homebrew"
+{{- end }}
+
+[data.network]
+    dns_server = "192.168.1.223"
+    dns_routing_domain = "internal.kirby.network"
+
+[data.openbao]
+    addr = "https://vault.internal.kirby.network"
+    ssh_ca_url = "https://vault.internal.kirby.network/v1/ssh/public_key"
+
+[data.obsidian]
+    primary_vault = "Primary"
+    work_vault = "Work"
+    sandbox_vault = "Sandbox"
+    vault_root = "{{ .chezmoi.homeDir }}/Obsidian"
+    rest_api_host = "192.168.1.81"
+    rest_api_port = "27124"
+
+{{- /* Theme configuration for Omarchy (Arch-based Linux with Hyprland) */ -}}
+{{- if and (eq .chezmoi.os "linux") $isArchBased }}
+
+[data.theme]
+    # Current Omarchy theme name
+    # Available: osaka-jade, catppuccin, everforest, gruvbox, kanagawa, nord, rose-pine, tokyo-night, etc.
+    name = "catppuccin-dark"
+{{- end }}
+
+{{- if $hasNvidiaPassthrough }}
+
+[data.gpu]
+    nvidia_pci_id = "10de:2b85"
+    nvidia_audio_pci_id = "10de:22e8"
+    nvidia_pci_slot = "0000:01:00.0"
+    nvidia_audio_pci_slot = "0000:01:00.1"
+{{- end }}

@@ -1,0 +1,135 @@
+#!/bin/bash
+# Install Battle.net via umu-run with Proton on Arch-based personal desktops
+
+{{ if and (eq .profile "personal") (not .isWSL) (not .isHeadless) .isArchBased -}}
+
+WINEPREFIX="{{ .chezmoi.homeDir }}/Games/battlenet"
+BATTLENET_EXE="$WINEPREFIX/drive_c/Program Files (x86)/Battle.net/Battle.net.exe"
+PROTONPATH="/usr/share/steam/compatibilitytools.d/proton-cachyos-slr"
+GAMEID="umu-battlenet"
+
+# Idempotent: skip if already installed
+if [ -f "$BATTLENET_EXE" ]; then
+    echo "Battle.net is already installed at $BATTLENET_EXE, skipping."
+    exit 0
+fi
+
+# Check prerequisites
+if ! command -v umu-run &> /dev/null; then
+    echo "Error: umu-run not found. Ensure gaming packages are installed first."
+    exit 1
+fi
+
+if [ ! -d "$PROTONPATH" ]; then
+    echo "Error: proton-cachyos-slr not found at $PROTONPATH."
+    exit 1
+fi
+
+# Download Battle.net installer
+INSTALLER="$(mktemp --suffix=.exe)"
+echo "Downloading Battle.net installer..."
+curl -fSL -o "$INSTALLER" "https://downloader.battle.net/download/getInstaller?os=win&installer=Battle.net-Setup.exe"
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to download Battle.net installer."
+    rm -f "$INSTALLER"
+    exit 1
+fi
+
+# Run installer via umu-run
+# The installer opens a GUI -- user completes the install and closes Battle.net.
+# Non-zero exit is expected when the user closes the launcher after install.
+echo "Launching Battle.net installer..."
+echo "Complete the install in the GUI, log in, then close Battle.net to continue."
+WINEPREFIX="$WINEPREFIX" GAMEID="$GAMEID" PROTONPATH="$PROTONPATH" \
+    umu-run "$INSTALLER" || true
+
+rm -f "$INSTALLER"
+
+# Verify installation
+if [ ! -f "$BATTLENET_EXE" ]; then
+    echo "Error: Battle.net.exe not found after install. Installation may have failed."
+    exit 1
+fi
+
+echo "Battle.net installed successfully."
+
+# Deploy Battle.net.config with sound/streaming disabled
+# Proton uses "steamuser" as the Windows username, not the system user
+BNET_CONFIG_DIR="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Battle.net"
+mkdir -p "$BNET_CONFIG_DIR"
+cat > "$BNET_CONFIG_DIR/Battle.net.config" << 'BNET_EOF'
+{
+    "Client": {
+        "Version": {
+            "FirstRun": "false",
+            "Release": {
+                "FirstRun": "false"
+            }
+        },
+        "Toasts": {
+            "ScreenPosition": "BottomRight",
+            "Monitor": "0"
+        },
+        "Install": {
+            "DefaultInstallPath": "C:\/Program Files (x86)"
+        },
+        "MatureLanguageFilter": "false",
+        "Sound": {
+            "Enabled": "false"
+        }
+    },
+    "Games": {
+        "battle_net": {
+            "ServerUid": "battle.net"
+        }
+    }
+}
+BNET_EOF
+echo "Battle.net config deployed (sound disabled, no streaming)."
+
+# Create Lutris game YAML
+LUTRIS_GAMES_DIR="{{ .chezmoi.homeDir }}/.local/share/lutris/games"
+mkdir -p "$LUTRIS_GAMES_DIR"
+cat > "$LUTRIS_GAMES_DIR/battlenet-chezmoi.yml" << LUTRIS_EOF
+game:
+  exe: {{ .chezmoi.homeDir }}/Games/battlenet/drive_c/Program Files (x86)/Battle.net/Battle.net.exe
+  prefix: {{ .chezmoi.homeDir }}/Games/battlenet
+system:
+  env:
+    WINE_SIMULATE_WRITECOPY: '1'
+wine:
+  version: proton-cachyos-slr
+LUTRIS_EOF
+echo "Lutris game config created."
+
+# Register in Lutris SQLite database
+LUTRIS_DB="{{ .chezmoi.homeDir }}/.local/share/lutris/pga.db"
+if [ -f "$LUTRIS_DB" ]; then
+    # Check if entry already exists
+    EXISTING=$(sqlite3 "$LUTRIS_DB" "SELECT id FROM games WHERE configpath='battlenet-chezmoi' LIMIT 1;" 2>/dev/null)
+    if [ -n "$EXISTING" ]; then
+        sqlite3 "$LUTRIS_DB" "UPDATE games SET
+            name='Battle.net',
+            slug='battlenet',
+            platform='linux',
+            runner='wine',
+            directory='{{ .chezmoi.homeDir }}/Games/battlenet',
+            installed=1,
+            installed_at=$(date +%s),
+            updated=datetime('now')
+            WHERE configpath='battlenet-chezmoi';"
+        echo "Updated existing Lutris DB entry."
+    else
+        sqlite3 "$LUTRIS_DB" "INSERT INTO games (name, slug, platform, runner, directory, installed, installed_at, configpath, updated)
+            VALUES ('Battle.net', 'battlenet', 'linux', 'wine', '{{ .chezmoi.homeDir }}/Games/battlenet', 1, $(date +%s), 'battlenet-chezmoi', datetime('now'));"
+        echo "Registered Battle.net in Lutris DB."
+    fi
+else
+    echo "Warning: Lutris database not found at $LUTRIS_DB. Open Lutris once to create it, then re-run."
+fi
+
+echo "Battle.net setup complete! Launch from Lutris."
+
+{{ else -}}
+echo "Skipping Battle.net install (not a personal Arch-based desktop)"
+{{ end -}}

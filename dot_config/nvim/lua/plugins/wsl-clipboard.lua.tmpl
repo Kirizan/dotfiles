@@ -1,0 +1,67 @@
+{{- if .isWSL }}
+-- WSL Clipboard Integration
+-- Allows sharing clipboard between WSL and Windows via the + register
+
+return {
+  {
+    "LazyVim/LazyVim",
+    opts = function()
+      -- Configure clipboard to use Windows clipboard tools
+      vim.g.clipboard = {
+        name = "WslClipboard",
+        copy = {
+          ["+"] = "/mnt/c/Windows/System32/clip.exe",
+          ["*"] = "/mnt/c/Windows/System32/clip.exe",
+        },
+        paste = {
+          ["+"] = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+          ["*"] = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+        },
+        cache_enabled = 0,
+      }
+
+      -- Use system clipboard as default register
+      -- This makes y/p operations use Windows clipboard automatically
+      vim.opt.clipboard = "unnamedplus"
+
+      -- Optional: Add convenient keybindings for clipboard operations
+      -- These make it easier to work with the Windows clipboard
+
+      -- Visual mode: Copy to Windows clipboard
+      vim.keymap.set("v", "<leader>y", '"+y', { desc = "Yank to Windows clipboard" })
+
+      -- Normal mode: Copy line to Windows clipboard
+      vim.keymap.set("n", "<leader>y", '"+yy', { desc = "Yank line to Windows clipboard" })
+
+      -- Normal mode: Paste from Windows clipboard
+      vim.keymap.set("n", "<leader>p", '"+p', { desc = "Paste from Windows clipboard" })
+      vim.keymap.set("n", "<leader>P", '"+P', { desc = "Paste before from Windows clipboard" })
+
+      -- Visual mode: Paste from Windows clipboard (replaces selection)
+      vim.keymap.set("v", "<leader>p", '"+p', { desc = "Paste from Windows clipboard" })
+
+      -- Add which-key descriptions
+      local wk = require("which-key")
+      wk.add({
+        { "<leader>y", desc = "Yank to Windows clipboard" },
+        { "<leader>p", desc = "Paste from Windows clipboard" },
+        { "<leader>P", desc = "Paste before from Windows clipboard" },
+      })
+
+      -- Optional: Show notification when copying to Windows clipboard
+      -- Uncomment if you want visual feedback
+      -- vim.api.nvim_create_autocmd("TextYankPost", {
+      --   pattern = "*",
+      --   callback = function()
+      --     if vim.v.event.regname == "+" then
+      --       vim.notify("Copied to Windows clipboard", vim.log.levels.INFO, { timeout = 500 })
+      --     end
+      --   end,
+      -- })
+    end,
+  },
+}
+{{- else }}
+-- Not WSL, return empty config
+return {}
+{{- end }}

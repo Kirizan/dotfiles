@@ -1,0 +1,276 @@
+# Fish Shell Configuration
+# Cross-platform config managed by chezmoi
+
+# Use ISO 8601 timestamps (YYYY-MM-DD format)
+set -gx LC_TIME en_DK.UTF-8
+
+{{- if eq .chezmoi.os "linux" }}
+
+# CUDA toolkit environment
+if test -d /usr/local/cuda
+    set -gx CUDA_HOME /usr/local/cuda
+    fish_add_path $CUDA_HOME/bin
+    set -gx LD_LIBRARY_PATH "$CUDA_HOME/lib64" $LD_LIBRARY_PATH
+end
+{{- end }}
+
+{{- if eq .chezmoi.os "darwin" }}
+
+# Homebrew
+if test -d /opt/homebrew
+    eval (/opt/homebrew/bin/brew shellenv)
+end
+
+# macOS-specific PATH configurations
+fish_add_path /usr/local/opt/curl-openssl/bin
+fish_add_path /usr/local/sbin
+
+# Add fzf to path
+fish_add_path /opt/homebrew/opt/fzf/bin
+
+# JetBrains Toolbox
+fish_add_path {{ .chezmoi.homeDir }}/Library/Application\ Support/JetBrains/Toolbox/scripts
+
+# Add GNU versions of tools to path
+if test -d /opt/homebrew/opt/grep/libexec/gnubin
+    fish_add_path /opt/homebrew/opt/grep/libexec/gnubin
+end
+
+# macOS locale sorting
+set -gx LC_COLLATE cs_CZ.ISO8859-2
+{{- end }}
+
+# Add custom bin directories
+fish_add_path {{ .chezmoi.homeDir }}/.dotfiles/bin
+fish_add_path {{ .chezmoi.homeDir }}/.local/bin
+fish_add_path {{ .chezmoi.homeDir }}/.dotfiles/local/bin
+
+{{- if eq .chezmoi.os "linux" }}
+{{- if .isWSL }}
+
+# WSL-specific configuration
+# Clipboard integration with Windows
+if type -q clip.exe
+    alias pbcopy clip.exe
+end
+{{- end }}
+
+# Configure sudo askpass helper for non-interactive sudo prompts
+if test -f /usr/bin/lxqt-openssh-askpass
+    set -gx SUDO_ASKPASS /usr/bin/lxqt-openssh-askpass
+end
+{{- end }}
+
+# Aliases
+# eza/ls with git status
+if type -q eza
+    alias lsa 'eza -lahF --group-directories-first --git --icons'
+else
+{{- if eq .chezmoi.os "darwin" }}
+    alias lsa 'gls -liahF --group-directories-first --color=auto --time-style=iso'
+{{- else }}
+    alias lsa 'ls -liahF --group-directories-first --color=auto --time-style=iso'
+{{- end }}
+end
+
+# Terraform
+alias tf terraform
+alias tfaa 'terraform apply -auto-approve'
+
+# Neovim
+alias vim nvim
+alias vi nvim
+set -gx EDITOR nvim
+set -gx VISUAL nvim
+
+# AWS CDK with profile
+alias cdkp 'cdk --profile $AWS_PROFILE'
+
+# pipx local run
+alias pipxr 'pipx run --spec .'
+
+# Poetry environment activation
+alias activate_poetry 'eval (poetry env activate)'
+
+# Go proxy — bypass Google managed proxies
+if type -q go
+    go env -w GOPROXY=direct
+end
+
+# pyenv
+if type -q pyenv
+    set -gx PYENV_ROOT $HOME/.pyenv
+    fish_add_path $PYENV_ROOT/bin
+    pyenv init --path | source
+    pyenv init - | source
+end
+
+# direnv
+if type -q direnv
+    direnv hook fish | source
+end
+
+# fzf integration
+if type -q fzf
+    # Catppuccin Mocha theme
+    set -gx FZF_DEFAULT_OPTS "\
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
+
+    # fzf key bindings and completion
+    fzf --fish 2>/dev/null | source
+end
+
+# Starship prompt
+if type -q starship
+    starship init fish | source
+end
+
+# Work profile configuration
+{{- if eq .profile "work" }}
+if test -f {{ .chezmoi.homeDir }}/.profile_work.fish
+    source {{ .chezmoi.homeDir }}/.profile_work.fish
+end
+if test -f {{ .chezmoi.homeDir }}/.profile_corp.fish
+    source {{ .chezmoi.homeDir }}/.profile_corp.fish
+end
+{{- end }}
+
+{{- if .hasNvidiaPassthrough }}
+
+# Libvirt: use system connection by default (user is in libvirt group)
+set -gx LIBVIRT_DEFAULT_URI "qemu:///system"
+
+# GPU passthrough functions for RTX 5090 / AI Workbench VM
+# PCI slots: GPU={{ .gpu.nvidia_pci_slot }}, Audio={{ .gpu.nvidia_audio_pci_slot }}
+
+function gpu-status --description "Show current driver binding for RTX 5090"
+    echo "RTX 5090 GPU ({{ .gpu.nvidia_pci_slot }}):"
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver
+        echo "  Driver: "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver))
+    else
+        echo "  Driver: (none)"
+    end
+    echo "RTX 5090 HDMI Audio ({{ .gpu.nvidia_audio_pci_slot }}):"
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver
+        echo "  Driver: "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver))
+    else
+        echo "  Driver: (none)"
+    end
+end
+
+function gpu-vfio --description "Unbind RTX 5090 from nvidia and bind to vfio-pci"
+    # Check for active GPU processes
+    if type -q nvidia-smi
+        set -l gpu_procs (nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | string trim)
+        if test -n "$gpu_procs"
+            echo "Error: GPU has active processes. Stop them first:"
+            nvidia-smi
+            return 1
+        end
+    end
+
+    # Load vfio-pci module if needed
+    if not lsmod | grep -q vfio_pci
+        echo "Loading vfio-pci module..."
+        sudo modprobe vfio-pci
+    end
+
+    # Unbind GPU from nvidia
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver
+        echo "Unbinding GPU from "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver))"..."
+        echo "{{ .gpu.nvidia_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver/unbind > /dev/null
+    end
+
+    # Unbind audio from snd_hda_intel
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver
+        echo "Unbinding HDMI audio from "(basename (readlink /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver))"..."
+        echo "{{ .gpu.nvidia_audio_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver/unbind > /dev/null
+    end
+
+    # Bind to vfio-pci
+    echo "Binding GPU to vfio-pci..."
+    echo "{{ .gpu.nvidia_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id > /dev/null 2>&1
+    echo "{{ .gpu.nvidia_audio_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id > /dev/null 2>&1
+
+    echo "Done. GPU bound to vfio-pci."
+    gpu-status
+end
+
+function gpu-nvidia --description "Unbind RTX 5090 from vfio-pci and return to nvidia driver"
+    echo "WARNING: RTX 5090 (Blackwell) has a known FLR reset bug."
+    echo "The GPU may become unresponsive after unbinding from vfio-pci."
+    echo "If this happens, a host reboot will be required."
+    echo ""
+    read -P "Continue? [y/N] " confirm
+    if test "$confirm" != "y" -a "$confirm" != "Y"
+        echo "Aborted."
+        return 1
+    end
+
+    # Unbind from vfio-pci
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver
+        echo "Unbinding GPU from vfio-pci..."
+        echo "{{ .gpu.nvidia_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_pci_slot }}/driver/unbind > /dev/null
+    end
+    if test -e /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver
+        echo "Unbinding HDMI audio from vfio-pci..."
+        echo "{{ .gpu.nvidia_audio_pci_slot }}" | sudo tee /sys/bus/pci/devices/{{ .gpu.nvidia_audio_pci_slot }}/driver/unbind > /dev/null
+    end
+
+    # Remove vfio-pci device IDs
+    echo "{{ .gpu.nvidia_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/remove_id > /dev/null 2>&1
+    echo "{{ .gpu.nvidia_audio_pci_id }}" | sudo tee /sys/bus/pci/drivers/vfio-pci/remove_id > /dev/null 2>&1
+
+    # Trigger PCI rescan to let nvidia reclaim
+    echo "Rescanning PCI bus..."
+    echo 1 | sudo tee /sys/bus/pci/rescan > /dev/null
+
+    echo "Done. nvidia driver should reclaim the GPU."
+    gpu-status
+end
+
+function gpu-vm-start --description "Start ai-workbench VM (no GPU attached)"
+    echo "Starting ai-workbench VM..."
+    virsh start ai-workbench
+end
+
+function gpu-vm-stop --description "Gracefully shutdown ai-workbench VM"
+    echo "Shutting down ai-workbench VM..."
+    virsh shutdown ai-workbench
+end
+
+function gpu-vm-attach --description "Bind GPU to vfio-pci and attach to running VM"
+    gpu-vfio
+    if test $status -ne 0
+        return 1
+    end
+    echo "Attaching RTX 5090 GPU to VM..."
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x0"/></source>
+</hostdev>' | virsh attach-device ai-workbench /dev/stdin
+    echo "Attaching RTX 5090 HDMI Audio to VM..."
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x1"/></source>
+</hostdev>' | virsh attach-device ai-workbench /dev/stdin
+    echo "GPU attached to VM."
+end
+
+function gpu-vm-detach --description "Detach GPU from VM and return to nvidia driver"
+    echo "Detaching RTX 5090 GPU from VM..."
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x0"/></source>
+</hostdev>' | virsh detach-device ai-workbench /dev/stdin 2>/dev/null
+    echo '<hostdev mode="subsystem" type="pci" managed="yes">
+  <source><address domain="0x0000" bus="0x01" slot="0x00" function="0x1"/></source>
+</hostdev>' | virsh detach-device ai-workbench /dev/stdin 2>/dev/null
+    echo "Returning GPU to host..."
+    gpu-nvidia
+end
+{{- end }}
+
+# Local overrides (not synced to git)
+if test -f {{ .chezmoi.homeDir }}/.config/fish/local.fish
+    source {{ .chezmoi.homeDir }}/.config/fish/local.fish
+end

@@ -1,0 +1,122 @@
+{{- if and (eq .profile "personal") .isHeadless -}}
+#!/bin/bash
+# Fetch Claude Code skills from Obsidian vault via Local REST API
+# Used on headless systems where Obsidian can't run locally
+# Skills are fetched from Mimir's (desktop) Obsidian REST API over LAN
+
+API_HOST="{{ .obsidian.rest_api_host }}"
+API_PORT="{{ .obsidian.rest_api_port }}"
+API_BASE="https://${API_HOST}:${API_PORT}"
+API_KEY_FILE="$HOME/.config/obsidian-api-key"
+SKILLS_DIR="Claude-Skills"
+SKILLS_TARGET="$HOME/.claude/skills"
+
+# Read API key — skip silently if not configured
+if [ ! -f "$API_KEY_FILE" ]; then
+    exit 0
+fi
+API_KEY="$(cat "$API_KEY_FILE")"
+if [ -z "$API_KEY" ]; then
+    exit 0
+fi
+
+# Test API connectivity — skip silently if unreachable
+response=$(curl -sk --connect-timeout 5 -o /dev/null -w "%{http_code}" \
+    -H "Authorization: Bearer ${API_KEY}" \
+    "${API_BASE}/vault/" 2>/dev/null) || exit 0
+if [ "$response" != "200" ]; then
+    exit 0
+fi
+
+# Fetch a directory listing from the API, returning entries one per line
+# Directories have trailing /, files do not
+api_list() {
+    local path="$1"
+    local result
+    result=$(curl -sk --connect-timeout 5 \
+        -H "Authorization: Bearer ${API_KEY}" \
+        -H "Accept: application/json" \
+        "${API_BASE}/vault/${path}" 2>/dev/null) || return 1
+    echo "$result" | grep -o '"[^"]*"' | sed 's/"//g' | grep -v '^files$'
+}
+
+# Recursively fetch all files under a vault path into a local directory
+# Usage: fetch_dir <vault_path> <local_dir>
+fetch_dir() {
+    local vault_path="$1"
+    local local_dir="$2"
+    local entries entry
+
+    entries=$(api_list "$vault_path") || return 1
+
+    for entry in $entries; do
+        if [ "${entry%/}" != "$entry" ]; then
+            # Directory — recurse
+            mkdir -p "$local_dir/${entry%/}"
+            fetch_dir "${vault_path}${entry}" "$local_dir/${entry%/}"
+        else
+            # File — download
+            local content
+            content=$(curl -sk --connect-timeout 5 \
+                -H "Authorization: Bearer ${API_KEY}" \
+                "${API_BASE}/vault/${vault_path}${entry}" 2>/dev/null) || continue
+
+            local target_file="$local_dir/$entry"
+            if [ -f "$target_file" ]; then
+                local existing
+                existing=$(cat "$target_file")
+                if [ "$content" = "$existing" ]; then
+                    continue
+                fi
+            fi
+
+            printf '%s' "$content" > "$target_file"
+            fetched=$((fetched + 1))
+        fi
+    done
+}
+
+# List skill directories under Claude-Skills/
+skill_dirs=$(api_list "${SKILLS_DIR}/") || exit 0
+
+if [ -z "$skill_dirs" ]; then
+    exit 0
+fi
+
+mkdir -p "$SKILLS_TARGET"
+
+# Track which skills we find in the vault for cleanup later
+found_skills=""
+fetched=0
+
+for entry in $skill_dirs; do
+    # Only process directories (trailing /)
+    [ "${entry%/}" != "$entry" ] || continue
+    skill_name="${entry%/}"
+
+    found_skills="${found_skills}|${skill_name}|"
+
+    # Fetch entire skill directory tree
+    mkdir -p "$SKILLS_TARGET/$skill_name"
+    fetch_dir "${SKILLS_DIR}/${entry}" "$SKILLS_TARGET/$skill_name"
+done
+
+# Clean up stale skills no longer in the vault
+if [ -d "$SKILLS_TARGET" ] && [ -n "$found_skills" ]; then
+    for existing_skill in "$SKILLS_TARGET"/*/; do
+        [ -d "$existing_skill" ] || continue
+        name="$(basename "$existing_skill")"
+        case "$found_skills" in
+            *"|${name}|"*) ;;
+            *)
+                rm -rf "$existing_skill"
+                echo "  Removed stale skill: $name"
+                ;;
+        esac
+    done
+fi
+
+if [ "$fetched" -gt 0 ]; then
+    echo "Fetched $fetched file(s) from Obsidian vault REST API"
+fi
+{{- end }}

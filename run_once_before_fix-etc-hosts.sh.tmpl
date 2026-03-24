@@ -1,0 +1,29 @@
+#!/bin/bash
+# Ensure the system hostname is mapped in /etc/hosts
+# Wine/Battle.net and other apps can hang or be slow if the hostname
+# doesn't resolve via /etc/hosts (they do a DNS lookup that times out)
+
+{{- if eq .chezmoi.os "linux" }}
+
+set -e
+
+HOSTNAME=$(hostname)
+
+if grep -qE "^127\.0\.0\.1\s+.*\b${HOSTNAME}\b" /etc/hosts 2>/dev/null; then
+    echo "✓ /etc/hosts already maps 127.0.0.1 to ${HOSTNAME}"
+else
+    echo "Adding ${HOSTNAME} to /etc/hosts..."
+    sudo sed -i "s/^127\.0\.0\.1\s\+localhost/127.0.0.1  localhost ${HOSTNAME}/" /etc/hosts
+    # Verify the change took effect
+    if grep -qE "^127\.0\.0\.1\s+.*\b${HOSTNAME}\b" /etc/hosts; then
+        echo "✓ ${HOSTNAME} added to /etc/hosts"
+    else
+        # Fallback: append a new line if sed didn't match
+        echo "127.0.0.1  ${HOSTNAME}" | sudo tee -a /etc/hosts > /dev/null
+        echo "✓ ${HOSTNAME} appended to /etc/hosts"
+    fi
+fi
+
+{{- else }}
+echo "Skipping /etc/hosts fix (not Linux)"
+{{- end }}

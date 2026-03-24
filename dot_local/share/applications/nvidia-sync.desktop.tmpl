@@ -1,0 +1,12 @@
+{{- if and (not .isHeadless) (not .isWSL) .isArchBased -}}
+[Desktop Entry]
+Name=NVIDIA Sync
+Exec={{ .chezmoi.homeDir }}/.local/bin/nvidia-sync-wrapper %U
+Terminal=false
+Type=Application
+Icon=nvidia-sync
+StartupWMClass=NVIDIA Sync
+Comment=NVIDIA Sync is a simple utility that provides automatic SSH tunneling
+MimeType=x-scheme-handler/nvsync;
+Categories=Utility;
+{{- end }}

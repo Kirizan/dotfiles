@@ -1,0 +1,25 @@
+{{- if and (eq .profile "personal") (not .isHeadless) -}}
+#!/bin/bash
+# Link Claude Code skills directory from Obsidian vault to ~/.claude/skills
+# Uses a single directory symlink rather than per-skill symlinks
+# Runs after every chezmoi apply to ensure the link is correct
+
+VAULT_ROOT="{{ .obsidian.vault_root }}"
+SKILLS_SOURCE="$VAULT_ROOT/{{ .obsidian.primary_vault }}/Claude-Skills"
+SKILLS_TARGET="$HOME/.claude/skills"
+
+# Skip if vault or skills directory doesn't exist yet
+if [ ! -d "$SKILLS_SOURCE" ]; then
+    exit 0
+fi
+
+# Already correctly linked — nothing to do
+if [ -L "$SKILLS_TARGET" ] && [ "$(readlink "$SKILLS_TARGET")" = "$SKILLS_SOURCE" ]; then
+    exit 0
+fi
+
+# Remove existing (stale symlink, directory of old per-skill symlinks, etc.)
+rm -rf "$SKILLS_TARGET"
+ln -s "$SKILLS_SOURCE" "$SKILLS_TARGET"
+echo "Linked ~/.claude/skills -> $SKILLS_SOURCE"
+{{- end }}

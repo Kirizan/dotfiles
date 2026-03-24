@@ -1,0 +1,91 @@
+#!/bin/bash
+# Configure IOMMU and libvirt for GPU passthrough on mimir
+# - Enables and starts libvirtd
+# - Configures default NAT network
+# - Adds user to libvirt group
+# - Creates vfio.conf with Blackwell reset bug mitigation
+# - Checks for iommu=pt kernel parameter
+
+{{- if and (eq .chezmoi.hostname "mimir") .hasNvidiaPassthrough }}
+
+set -e
+
+echo "Configuring IOMMU and libvirt for GPU passthrough on mimir..."
+
+# --- Enable and start libvirtd ---
+if systemctl is-active --quiet libvirtd; then
+    echo "libvirtd is already running"
+else
+    echo "Enabling and starting libvirtd..."
+    sudo systemctl enable --now libvirtd
+    echo "libvirtd enabled and started"
+fi
+
+# --- Configure default NAT network ---
+if sudo virsh net-info default &> /dev/null; then
+    echo "Default network already exists"
+    if ! sudo virsh net-list --name | grep -q "^default$"; then
+        echo "Starting default network..."
+        sudo virsh net-start default
+        sudo virsh net-autostart default
+    fi
+else
+    echo "Defining default network..."
+    sudo virsh net-define /usr/share/libvirt/networks/default.xml
+    sudo virsh net-start default
+    sudo virsh net-autostart default
+    echo "Default network configured"
+fi
+
+# --- Add user to libvirt group ---
+if groups {{ .chezmoi.username }} | grep -q libvirt; then
+    echo "User {{ .chezmoi.username }} already in libvirt group"
+else
+    echo "Adding {{ .chezmoi.username }} to libvirt group..."
+    sudo usermod -aG libvirt {{ .chezmoi.username }}
+    echo "Added to libvirt group (log out and back in to take effect)"
+fi
+
+# --- Create vfio.conf with Blackwell reset bug mitigation ---
+VFIO_CONF="/etc/modprobe.d/vfio.conf"
+
+if [ -f "$VFIO_CONF" ] && grep -q "disable_idle_d3=1" "$VFIO_CONF"; then
+    echo "vfio.conf already configured"
+else
+    echo "Creating $VFIO_CONF with Blackwell reset bug mitigation..."
+    sudo tee "$VFIO_CONF" > /dev/null << 'EOF'
+# VFIO configuration for RTX 5090 GPU passthrough
+# disable_idle_d3=1 mitigates RTX 5090 (Blackwell) FLR reset bug
+# where GPU may become unresponsive after VM shutdown
+options vfio-pci disable_idle_d3=1
+EOF
+    echo "vfio.conf created"
+fi
+
+# --- Check for iommu=pt kernel parameter ---
+if grep -q "iommu=pt" /proc/cmdline; then
+    echo "IOMMU passthrough mode is enabled in kernel parameters"
+else
+    echo ""
+    echo "=========================================="
+    echo "  MANUAL STEP REQUIRED: Enable IOMMU"
+    echo "=========================================="
+    echo ""
+    echo "IOMMU passthrough mode is NOT enabled in kernel parameters."
+    echo "Add 'iommu=pt' to your kernel command line:"
+    echo ""
+    echo "  1. Edit /etc/default/limine"
+    echo "  2. Add 'iommu=pt' to the KERNEL_CMDLINE line"
+    echo "  3. Run: sudo limine-update"
+    echo "  4. Reboot"
+    echo ""
+    echo "Example KERNEL_CMDLINE line:"
+    echo '  KERNEL_CMDLINE[default]+="... iommu=pt"'
+    echo ""
+fi
+
+echo "IOMMU and libvirt configuration complete."
+
+{{- else }}
+echo "Skipping IOMMU configuration (not applicable on this system)"
+{{- end }}

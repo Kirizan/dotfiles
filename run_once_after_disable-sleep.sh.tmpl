@@ -1,0 +1,32 @@
+#!/bin/bash
+{{- if and (eq .chezmoi.os "linux") (not .isHeadless) .isDesktop }}
+# Disable all sleep/hibernate/suspend on desktop Linux systems
+# This script runs once via chezmoi apply
+
+set -euo pipefail
+
+echo "Disabling sleep/hibernate/suspend..."
+
+# Mask all systemd sleep targets so nothing can trigger them
+sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+# Create sleep.conf override to explicitly disallow all sleep states
+sudo mkdir -p /etc/systemd/sleep.conf.d
+sudo tee /etc/systemd/sleep.conf.d/nosleep.conf > /dev/null <<'EOF'
+[Sleep]
+AllowSuspend=no
+AllowHibernation=no
+AllowSuspendThenHibernate=no
+AllowHybridSleep=no
+EOF
+
+# Disable NVIDIA suspend/hibernate helper services if they exist
+if systemctl list-unit-files nvidia-suspend.service &>/dev/null; then
+    sudo systemctl disable nvidia-hibernate.service nvidia-suspend.service nvidia-suspend-then-hibernate.service 2>/dev/null || true
+fi
+
+echo "Sleep/hibernate/suspend disabled successfully."
+{{- else }}
+# Not a desktop Linux system, nothing to do
+exit 0
+{{- end }}

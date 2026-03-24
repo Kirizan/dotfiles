@@ -1,0 +1,231 @@
+{{- if eq .chezmoi.os "linux" }}
+# If not running interactively, don't do anything (leave this at the top of this file)
+[[ $- != *i* ]] && return
+
+# CUDA toolkit environment
+if [ -d "/usr/local/cuda" ]; then
+  export CUDA_HOME="/usr/local/cuda"
+  export PATH="$CUDA_HOME/bin:$PATH"
+  export LD_LIBRARY_PATH="$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
+{{- if .isArchBased }}
+# All the default Omarchy aliases and functions
+# (don't mess with these directly, just overwrite them here!)
+if [ -f ~/.local/share/omarchy/default/bash/rc ]; then
+  source ~/.local/share/omarchy/default/bash/rc
+fi
+{{- end }}
+
+{{- if .isWSL }}
+# WSL-specific configuration
+# Clipboard integration with Windows
+if command -v clip.exe &> /dev/null; then
+  alias pbcopy='clip.exe'
+fi
+
+# Windows PATH integration (optional, can slow down shell startup)
+# Uncomment if you need Windows commands in WSL
+# export PATH="$PATH:/mnt/c/Windows/System32"
+{{- end }}
+
+# Use ISO 8601 timestamps (YYYY-MM-DD format)
+export LC_TIME=en_DK.UTF-8
+
+# Configure sudo askpass helper for non-interactive sudo prompts
+if [ -f "/usr/bin/lxqt-openssh-askpass" ]; then
+  export SUDO_ASKPASS="/usr/bin/lxqt-openssh-askpass"
+fi
+
+{{- if not .isHexOS }}
+# OpenBao CLI
+export BAO_ADDR="{{ .openbao.addr }}"
+{{- end }}
+
+# Add custom bin directory
+export PATH="$PATH:$HOME/.dotfiles/bin"
+
+# Add pipx bin to PATH
+if [ -d "$HOME/.local/bin" ]; then
+  export PATH="$PATH:$HOME/.local/bin"
+fi
+
+#Check if local/bin exists and add to path if it does
+if [ -d "$HOME/.dotfiles/local/bin" ]; then
+    export PATH="$PATH:$HOME/.dotfiles/local/bin"
+fi
+
+#Create alias for ls with git status (using eza on Linux)
+if command -v eza &> /dev/null; then
+  alias lsa='eza -lahF --group-directories-first --git --icons'
+else
+  alias lsa='ls -liahF --group-directories-first --color=auto --time-style=iso'
+fi
+
+# Changes terraform to tf
+alias tf='terraform'
+
+# Adds a Terraform auto approve alias
+alias tfaa='tf apply -auto-approve'
+
+# using neovim instead of vim
+alias vim="nvim"
+alias vi="nvim"
+export EDITOR="nvim"
+export VISUAL="nvim"
+
+# Force the CDK to use the AWS_PROFILE variable
+alias cdkp='cdk --profile $AWS_PROFILE'
+
+# Create alias for pipx local run
+alias pipxr='pipx run --spec .'
+
+# Alias to activate poetry environment
+alias activate_poetry='eval $(poetry env activate)'
+
+{{- if .isDGXSpark }}
+# Start NemoClaw sandbox with port forwarding and model warmup
+start_nemoclaw() {
+  openshell forward start 18789 nemoclaw-spark-prod --background 2>/dev/null
+  echo "Warming up Nemotron 3 Super (loading ~86 GB into memory)..."
+  curl -s http://127.0.0.1:11434/api/generate \
+    -d '{"model":"nemotron-3-super:120b","prompt":"hello","stream":false}' \
+    --max-time 180 > /dev/null 2>&1 &
+  echo "Model loading in background. Dashboard: http://127.0.0.1:18789/"
+}
+
+# Allowlist a domain for OpenClaw sandbox egress
+# Usage: nemoclaw_allow <domain> [label]
+#   nemoclaw_allow api.openai.com openai
+#   nemoclaw_allow docs.example.com example-docs
+nemoclaw_allow() {
+  local domain="${1:?Usage: nemoclaw_allow <domain> [label]}"
+  local label="${2:-$(echo "$domain" | tr '.' '_' | tr -d '*')}"
+  local sandbox="nemoclaw-spark-prod"
+  local policy_file="$HOME/.nemoclaw/sandbox-policy.yaml"
+
+  if [ ! -f "$policy_file" ]; then
+    echo "Error: policy file not found at $policy_file"
+    echo "Run the install script first, or copy your policy YAML there."
+    return 1
+  fi
+
+  # Check if domain is already allowlisted
+  if grep -q "host: ${domain}$" "$policy_file" 2>/dev/null; then
+    echo "Domain '$domain' is already allowlisted."
+    return 0
+  fi
+
+  # Add new network policy entry
+  python3 - "$policy_file" "$domain" "$label" <<'PYPOLICY'
+import sys, yaml
+
+policy_file, domain, label = sys.argv[1], sys.argv[2], sys.argv[3]
+
+with open(policy_file) as f:
+    policy = yaml.safe_load(f)
+
+policy.setdefault("network_policies", {})[label] = {
+    "name": label,
+    "endpoints": [{
+        "host": domain,
+        "port": 443,
+        "protocol": "rest",
+        "enforcement": "enforce",
+        "tls": "terminate",
+        "rules": [
+            {"allow": {"method": "GET", "path": "/**"}},
+            {"allow": {"method": "POST", "path": "/**"}},
+        ],
+    }],
+}
+
+with open(policy_file, "w") as f:
+    yaml.dump(policy, f, default_flow_style=False, sort_keys=False)
+PYPOLICY
+
+  if [ $? -ne 0 ]; then
+    echo "Error: failed to update policy YAML"
+    return 1
+  fi
+
+  if openshell policy set "$sandbox" --policy "$policy_file" --wait 2>/dev/null; then
+    echo "✓ Allowlisted '$domain' (label: $label) for sandbox '$sandbox'"
+  else
+    echo "Error: failed to apply policy. Check: $policy_file"
+    return 1
+  fi
+}
+
+# Sync OpenClaw workspace persona files from Obsidian to sandbox
+# Usage: nemoclaw_sync [file...]  (no args = sync all)
+nemoclaw_sync() {
+    ~/.dotfiles/scripts/sync-nemoclaw-workspace.sh "$@"
+}
+{{- end }}
+
+# pipx autocompletion
+if command -v register-python-argcomplete &> /dev/null; then
+  eval "$(register-python-argcomplete pipx)"
+fi
+
+# enable AWS cli completion
+if command -v aws_completer &> /dev/null; then
+  complete -C aws_completer aws
+fi
+
+######################## enable pyenv shims and autocomplete #########
+if command -v pyenv 1>/dev/null 2>&1; then
+  eval "$(pyenv init --path)"
+  export PYENV_ROOT="$HOME/.pyenv"
+  export PATH="$PYENV_ROOT/bin:$PATH"
+  eval "$(pyenv init -)"
+fi
+
+######################## enable direnv ################################
+if command -v direnv 1>/dev/null 2>&1; then
+  eval "$(direnv hook bash)"
+fi
+
+# Bash history options
+HISTSIZE=1000000
+HISTFILESIZE=$HISTSIZE
+
+# Stops go lang from using Google managed proxies
+if command -v go &> /dev/null; then
+  go env -w GOPROXY=direct
+fi
+
+# fzf integration for bash
+if command -v fzf &> /dev/null; then
+  # Auto-completion
+  [[ $- == *i* ]] && source /usr/share/fzf/completion.bash 2> /dev/null || \
+    source ~/.fzf/shell/completion.bash 2> /dev/null
+  # Key bindings
+  source /usr/share/fzf/key-bindings.bash 2> /dev/null || \
+    source ~/.fzf/shell/key-bindings.bash 2> /dev/null
+
+  # Catppuccin Mocha theme for fzf
+  export FZF_DEFAULT_OPTS=" \
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
+fi
+
+# Initialize Starship prompt (similar to Powerlevel10k on macOS)
+if command -v starship &> /dev/null; then
+  eval "$(starship init bash)"
+fi
+
+# Work profile configuration
+{{- if eq .profile "work" }}
+if [ -f ~/.profile_work ]; then
+  source ~/.profile_work
+fi
+{{- end }}
+
+# NVIDIA AI Workbench
+if [ -f "$HOME/.local/share/nvwb/nvwb-wrapper.sh" ]; then
+  source "$HOME/.local/share/nvwb/nvwb-wrapper.sh"
+fi
+{{- end }}

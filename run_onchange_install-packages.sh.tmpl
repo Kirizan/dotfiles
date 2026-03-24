@@ -1,0 +1,567 @@
+#!/bin/bash
+# This script installs essential packages on the system
+{{- if eq .chezmoi.os "darwin" }}
+# Brewfile hash: {{ include "dot_Brewfile.tmpl" | sha256sum }}
+{{- end }}
+
+# Set askpass for sudo if available
+{{- if eq .chezmoi.os "linux" }}
+if [ -f "/usr/bin/lxqt-openssh-askpass" ]; then
+  export SUDO_ASKPASS="/usr/bin/lxqt-openssh-askpass"
+fi
+{{- end }}
+
+{{- if eq .chezmoi.os "linux" }}
+# Linux: Install system dependencies, then packages via native package manager
+
+# Install minimal system dependencies based on distro
+{{- if .isArchBased }}
+echo "Installing base dependencies on Arch-based Linux..."
+# Sync package databases to avoid 404 errors from stale mirrors
+sudo pacman -Sy --noconfirm
+sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
+
+# Install Liberation Fonts for Typst and other document rendering
+echo "Installing Liberation Fonts..."
+sudo pacman -S --needed --noconfirm ttf-liberation
+
+{{- else if and .isDebianBased .isHexOS }}
+echo "Installing base dependencies on HexOS..."
+sudo apt-get update
+sudo apt-get install -y git curl procps file
+
+{{- else if .isDebianBased }}
+echo "Installing base dependencies on Debian-based Linux..."
+sudo apt-get update
+sudo apt-get install -y build-essential git curl procps file
+
+# Install Liberation Fonts for Typst and other document rendering
+echo "Installing Liberation Fonts..."
+sudo apt-get install -y fonts-liberation
+
+{{- else if .isRHELBased }}
+echo "Installing base dependencies on RHEL-based Linux..."
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y git curl procps-ng file
+
+# Install Liberation Fonts for Typst and other document rendering
+echo "Installing Liberation Fonts..."
+sudo dnf install -y liberation-fonts
+
+{{- else }}
+echo "Installing base dependencies on generic Linux..."
+# Try to install basic tools - commands may vary by distro
+if command -v apt-get &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y build-essential git curl procps file
+    echo "Installing Liberation Fonts..."
+    sudo apt-get install -y fonts-liberation
+elif command -v dnf &> /dev/null; then
+    sudo dnf groupinstall -y "Development Tools" && sudo dnf install -y git curl procps-ng file
+    echo "Installing Liberation Fonts..."
+    sudo dnf install -y liberation-fonts
+elif command -v pacman &> /dev/null; then
+    sudo pacman -S --needed --noconfirm base-devel git curl procps-ng
+    echo "Installing Liberation Fonts..."
+    sudo pacman -S --needed --noconfirm ttf-liberation
+fi
+{{- end }}
+
+# Install packages via native package manager
+echo "Installing packages via native package manager..."
+
+{{- if .isArchBased }}
+# Core dev tools and CLI utilities via pacman
+echo "Installing core packages via pacman..."
+sudo pacman -S --needed --noconfirm \
+    neovim \
+    ripgrep \
+    fzf \
+    fd \
+    jq \
+    tree \
+    wget \
+    direnv \
+    shellcheck \
+    pandoc-cli \
+    cmake \
+    go \
+    nodejs \
+    npm \
+    python-pip \
+    python-pipx \
+    tmux \
+    zsh \
+    zsh-completions \
+    p7zip \
+    subversion \
+    aria2 \
+    curl \
+    expect \
+    bash-completion \
+    stow \
+    github-cli \
+    nushell \
+    starship \
+    eza \
+    typst \
+    wl-clipboard \
+    ttf-cascadia-mono-nerd
+
+{{- if not .isHeadless }}
+
+# Install PipeWire camera support (needed for webcams on Wayland)
+echo "Installing PipeWire camera support..."
+sudo pacman -S --needed --noconfirm \
+    pipewire-v4l2 \
+    libcamera \
+    libcamera-ipa
+
+# Install wezterm (GUI terminal emulator)
+if ! command -v wezterm &> /dev/null; then
+    echo "Installing wezterm..."
+    sudo pacman -S --needed --noconfirm wezterm
+fi
+
+# Install mpv (video player)
+echo "Installing mpv..."
+sudo pacman -S --needed --noconfirm mpv
+{{- end }}
+
+# Install awscli via pipx
+if ! command -v aws &> /dev/null; then
+    echo "Installing AWS CLI via pipx..."
+    pipx install awscli 2>/dev/null || {
+        echo "Warning: awscli install via pipx failed, trying pip..."
+        pip install --user awscli 2>/dev/null || echo "Warning: awscli installation failed"
+    }
+fi
+
+# Install Poetry via pipx
+if ! command -v poetry &> /dev/null; then
+    echo "Installing Poetry..."
+    pipx install poetry
+fi
+
+# Install terraform
+if ! command -v terraform &> /dev/null; then
+    echo "Installing Terraform..."
+    # Try AUR helper first, fall back to manual install
+    if command -v yay &> /dev/null; then
+        yay -S --needed --noconfirm terraform
+    elif command -v paru &> /dev/null; then
+        paru -S --needed --noconfirm terraform
+    else
+        echo "Warning: No AUR helper found. Install terraform manually or install yay/paru first."
+    fi
+fi
+
+# Install OpenBao CLI (official Arch package from GitHub releases)
+if ! command -v bao &> /dev/null; then
+    echo "Installing OpenBao CLI..."
+    BAO_VERSION="2.5.0"
+    BAO_PKG="/tmp/openbao_${BAO_VERSION}_linux_amd64.pkg.tar.zst"
+    if [ ! -f "$BAO_PKG" ]; then
+        curl -sL "https://github.com/openbao/openbao/releases/download/v${BAO_VERSION}/openbao_${BAO_VERSION}_linux_amd64.pkg.tar.zst" -o "$BAO_PKG"
+    fi
+    sudo pacman -U --noconfirm "$BAO_PKG"
+fi
+
+{{- else if and .isDebianBased .isHexOS }}
+# Minimal NAS packages — no dev toolchains
+echo "Installing minimal packages on HexOS..."
+sudo apt-get update
+sudo apt-get install -y \
+    git \
+    curl \
+    wget \
+    ripgrep \
+    fzf \
+    fd-find \
+    jq \
+    tree \
+    bash-completion
+
+# Install neovim from GitHub releases (apt repos ship outdated versions that break LazyVim)
+NVIM_REQUIRED="0.10.0"
+NVIM_CURRENT="$(nvim --version 2>/dev/null | head -1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")"
+if [ "$(printf '%s\n' "$NVIM_REQUIRED" "$NVIM_CURRENT" | sort -V | head -1)" != "$NVIM_REQUIRED" ]; then
+    echo "Installing neovim from GitHub releases (need >= $NVIM_REQUIRED, have $NVIM_CURRENT)..."
+    NVIM_VERSION="$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name"' | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')"
+    NVIM_ARCH="$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/')"
+    curl -sL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}.tar.gz" -o /tmp/nvim.tar.gz
+    sudo rm -rf /usr/local/nvim
+    sudo mkdir -p /usr/local/nvim
+    sudo tar -xzf /tmp/nvim.tar.gz -C /usr/local/nvim --strip-components=1
+    sudo ln -sf /usr/local/nvim/bin/nvim /usr/local/bin/nvim
+    rm -f /tmp/nvim.tar.gz
+    # Remove apt neovim if present to avoid confusion
+    sudo apt-get remove -y neovim neovim-runtime 2>/dev/null || true
+fi
+
+# Install starship prompt
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+{{- else if .isDebianBased }}
+# Core dev tools and CLI utilities via apt
+echo "Installing core packages via apt..."
+sudo apt-get update
+sudo apt-get install -y \
+    ripgrep \
+    fzf \
+    fd-find \
+    jq \
+    tree \
+    wget \
+    direnv \
+    shellcheck \
+    pandoc \
+    cmake \
+    golang \
+    nodejs \
+    npm \
+    python3-pip \
+    python3-venv \
+    pipx \
+    tmux \
+    zsh \
+    zsh-common \
+    p7zip-full \
+    subversion \
+    aria2
+
+# Install neovim from GitHub releases (apt repos ship outdated versions that break LazyVim)
+NVIM_REQUIRED="0.10.0"
+NVIM_CURRENT="$(nvim --version 2>/dev/null | head -1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")"
+if [ "$(printf '%s\n' "$NVIM_REQUIRED" "$NVIM_CURRENT" | sort -V | head -1)" != "$NVIM_REQUIRED" ]; then
+    echo "Installing neovim from GitHub releases (need >= $NVIM_REQUIRED, have $NVIM_CURRENT)..."
+    NVIM_VERSION="$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name"' | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')"
+    NVIM_ARCH="$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/')"
+    curl -sL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}.tar.gz" -o /tmp/nvim.tar.gz
+    sudo rm -rf /usr/local/nvim
+    sudo mkdir -p /usr/local/nvim
+    sudo tar -xzf /tmp/nvim.tar.gz -C /usr/local/nvim --strip-components=1
+    sudo ln -sf /usr/local/nvim/bin/nvim /usr/local/bin/nvim
+    rm -f /tmp/nvim.tar.gz
+    # Remove apt neovim if present to avoid confusion
+    sudo apt-get remove -y neovim neovim-runtime 2>/dev/null || true
+fi
+
+# Install eza (modern ls replacement)
+if ! command -v eza &> /dev/null; then
+    echo "Installing eza..."
+    sudo apt-get install -y eza 2>/dev/null || {
+        # eza may not be in default repos on older Ubuntu — install via cargo
+        if command -v cargo &> /dev/null; then
+            cargo install eza
+        else
+            echo "Warning: eza not available via apt and cargo not found, skipping"
+        fi
+    }
+fi
+
+# Install starship prompt
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+# Install GitHub CLI (gh)
+if ! command -v gh &> /dev/null; then
+    echo "Installing GitHub CLI..."
+    (type -p wget >/dev/null || sudo apt-get install -y wget) \
+    && sudo mkdir -p -m 755 /etc/apt/keyrings \
+    && out=$(mktemp) && wget -nv -O "$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+    && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && sudo apt-get update \
+    && sudo apt-get install -y gh
+    rm -f "$out"
+fi
+
+{{- if not .isHeadless }}
+# Ensure D-Bus Secret Service is available (needed by NVIDIA Workbench, etc.)
+echo "Installing gnome-keyring and libsecret-tools..."
+sudo apt-get install -y gnome-keyring libsecret-tools
+
+# Install wezterm (GUI terminal emulator)
+if ! command -v wezterm &> /dev/null; then
+    echo "Installing wezterm..."
+    # Try apt first, fall back to flatpak
+    sudo apt-get install -y wezterm 2>/dev/null || {
+        echo "wezterm not in apt repos, trying flatpak..."
+        if command -v flatpak &> /dev/null; then
+            flatpak install -y flathub org.wezfurlong.wezterm
+        else
+            echo "Warning: wezterm not available via apt or flatpak, skipping"
+        fi
+    }
+fi
+
+# Install mpv (video player)
+echo "Installing mpv..."
+sudo apt-get install -y mpv
+{{- end }}
+
+# Install awscli via pipx
+if ! command -v aws &> /dev/null; then
+    echo "Installing AWS CLI via pipx..."
+    pipx install awscli 2>/dev/null || {
+        echo "Warning: awscli install via pipx failed, trying pip..."
+        pip3 install --user awscli 2>/dev/null || echo "Warning: awscli installation failed"
+    }
+fi
+
+# Install Poetry via pipx
+if ! command -v poetry &> /dev/null; then
+    echo "Installing Poetry..."
+    pipx install poetry
+fi
+
+# Install terraform via HashiCorp apt repo
+if ! command -v terraform &> /dev/null; then
+    echo "Installing Terraform..."
+    wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg 2>/dev/null || true
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
+    sudo apt-get update && sudo apt-get install -y terraform
+fi
+
+{{- else if .isRHELBased }}
+# Core dev tools and CLI utilities via dnf
+echo "Installing core packages via dnf..."
+sudo dnf install -y \
+    ripgrep \
+    fzf \
+    fd-find \
+    jq \
+    tree \
+    wget \
+    direnv \
+    ShellCheck \
+    pandoc \
+    cmake \
+    golang \
+    nodejs \
+    npm \
+    python3-pip \
+    python3-pipx \
+    tmux \
+    zsh \
+    p7zip \
+    subversion \
+    aria2 \
+    curl \
+    expect \
+    bash-completion \
+    gh
+
+# Install neovim from GitHub releases (dnf repos may ship outdated versions that break LazyVim)
+NVIM_REQUIRED="0.10.0"
+NVIM_CURRENT="$(nvim --version 2>/dev/null | head -1 | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")"
+if [ "$(printf '%s\n' "$NVIM_REQUIRED" "$NVIM_CURRENT" | sort -V | head -1)" != "$NVIM_REQUIRED" ]; then
+    echo "Installing neovim from GitHub releases (need >= $NVIM_REQUIRED, have $NVIM_CURRENT)..."
+    NVIM_VERSION="$(curl -sL https://api.github.com/repos/neovim/neovim/releases/latest | grep '"tag_name"' | grep -oP 'v\K[0-9]+\.[0-9]+\.[0-9]+')"
+    NVIM_ARCH="$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/')"
+    curl -sL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}.tar.gz" -o /tmp/nvim.tar.gz
+    sudo rm -rf /usr/local/nvim
+    sudo mkdir -p /usr/local/nvim
+    sudo tar -xzf /tmp/nvim.tar.gz -C /usr/local/nvim --strip-components=1
+    sudo ln -sf /usr/local/nvim/bin/nvim /usr/local/bin/nvim
+    rm -f /tmp/nvim.tar.gz
+    # Remove dnf neovim if present to avoid confusion
+    sudo dnf remove -y neovim 2>/dev/null || true
+fi
+
+# Install eza (modern ls replacement)
+if ! command -v eza &> /dev/null; then
+    echo "Installing eza..."
+    sudo dnf install -y eza 2>/dev/null || {
+        echo "eza not in dnf repos, installing via cargo..."
+        if command -v cargo &> /dev/null; then
+            cargo install eza
+        else
+            echo "Warning: eza not available via dnf and cargo not found, skipping"
+        fi
+    }
+fi
+
+# Install starship prompt
+if ! command -v starship &> /dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+# Install nushell
+if ! command -v nu &> /dev/null; then
+    echo "Installing nushell..."
+    sudo dnf install -y nushell 2>/dev/null || {
+        echo "nushell not in dnf repos, trying cargo..."
+        if command -v cargo &> /dev/null; then
+            cargo install nu
+        else
+            echo "Warning: nushell not available, skipping"
+        fi
+    }
+fi
+
+{{- if not .isHeadless }}
+# Install wezterm (GUI terminal emulator)
+if ! command -v wezterm &> /dev/null; then
+    echo "Installing wezterm..."
+    sudo dnf install -y wezterm 2>/dev/null || {
+        echo "wezterm not in dnf repos, trying COPR..."
+        sudo dnf copr enable -y wezfurlong/wezterm-nightly 2>/dev/null && \
+            sudo dnf install -y wezterm 2>/dev/null || {
+            echo "Warning: wezterm installation failed, skipping"
+        }
+    }
+fi
+
+# Install mpv (video player)
+echo "Installing mpv..."
+sudo dnf install -y mpv
+{{- end }}
+
+# Install awscli via pipx
+if ! command -v aws &> /dev/null; then
+    echo "Installing AWS CLI via pipx..."
+    pipx install awscli 2>/dev/null || {
+        echo "Warning: awscli install via pipx failed, trying pip..."
+        pip3 install --user awscli 2>/dev/null || echo "Warning: awscli installation failed"
+    }
+fi
+
+# Install Poetry via pipx
+if ! command -v poetry &> /dev/null; then
+    echo "Installing Poetry..."
+    pipx install poetry
+fi
+
+# Install terraform via HashiCorp dnf repo
+if ! command -v terraform &> /dev/null; then
+    echo "Installing Terraform..."
+    sudo dnf install -y dnf-plugins-core 2>/dev/null
+    sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo 2>/dev/null
+    sudo dnf install -y terraform 2>/dev/null || echo "Warning: terraform installation failed"
+fi
+
+{{- else }}
+# Generic Linux fallback
+echo "Warning: Native package installation only has full support for Arch, Debian, and RHEL-based distros."
+echo "Please install packages manually for your distribution."
+{{- end }}
+
+{{- if .isWSL }}
+# WSL-specific packages
+echo "Installing WSL utilities..."
+
+# Install wslu (provides wslview for opening Windows browser from WSL)
+if ! command -v wslview &> /dev/null; then
+    echo "Installing wslu..."
+    WSLU_INSTALLED=false
+
+    {{- if .isArchBased }}
+    if sudo pacman -S --needed --noconfirm wslu 2>/dev/null; then
+        WSLU_INSTALLED=true
+    fi
+    {{- else if .isDebianBased }}
+    sudo apt-get update
+    if sudo apt-get install -y wslu 2>/dev/null; then
+        WSLU_INSTALLED=true
+    fi
+    {{- else if .isRHELBased }}
+    if sudo dnf install -y wslu 2>/dev/null; then
+        WSLU_INSTALLED=true
+    fi
+    {{- end }}
+
+    # Fallback: Build from source if package manager installation failed
+    if [ "$WSLU_INSTALLED" = "false" ]; then
+        echo "wslu not available in package manager, building from source..."
+
+        # Clone and build wslu
+        TEMP_DIR=$(mktemp -d)
+        cd "$TEMP_DIR"
+
+        if git clone https://github.com/wslutilities/wslu.git; then
+            cd wslu
+            if make; then
+                echo "Installing wslu..."
+                sudo make install
+                echo "wslu installed successfully from source"
+            else
+                echo "Error: Failed to build wslu"
+            fi
+        else
+            echo "Error: Failed to clone wslu repository"
+        fi
+
+        # Cleanup
+        cd ~
+        rm -rf "$TEMP_DIR"
+    fi
+else
+    echo "wslu already installed"
+fi
+{{- end }}
+
+{{- else if eq .chezmoi.os "darwin" }}
+# macOS: Use Homebrew bundle to install from Brewfile
+if ! command -v brew &> /dev/null; then
+    echo "Homebrew not found. Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+echo "Installing packages from Brewfile..."
+brew bundle --file="$HOME/.Brewfile"
+
+# Install eza (modern ls with git support)
+echo "Installing eza..."
+brew install eza
+
+{{- else if eq .chezmoi.os "windows" }}
+# Windows: Use winget package manager
+echo "Installing essential packages on Windows..."
+
+# Core development tools and utilities
+winget install --id Git.Git -e --source winget
+winget install --id Neovim.Neovim -e --source winget
+winget install --id JanDeDobbeleer.OhMyPosh -e --source winget  # Alternative to starship
+winget install --id Microsoft.PowerShell -e --source winget
+winget install --id Nushell.Nushell -e --source winget
+winget install --id wez.wezterm -e --source winget
+winget install --id Microsoft.VisualStudioCode -e --source winget
+winget install --id OpenJS.NodeJS -e --source winget
+winget install --id Python.Python.3.12 -e --source winget
+winget install --id Python.Poetry -e --source winget
+winget install --id GoLang.Go -e --source winget
+winget install --id BurntSushi.ripgrep.MSVC -e --source winget
+winget install --id sharkdp.fd -e --source winget
+winget install --id junegunn.fzf -e --source winget
+winget install --id jqlang.jq -e --source winget
+winget install --id HashiCorp.Terraform -e --source winget
+
+# Install typst (modern typesetting system)
+echo "Installing typst..."
+winget install --id typst.typst -e --source winget
+
+# Install starship prompt
+echo "Installing starship..."
+winget install --id Starship.Starship -e --source winget
+
+# Install eza (modern ls) via cargo if available
+if (Get-Command cargo -ErrorAction SilentlyContinue) {
+    echo "Installing eza..."
+    cargo install eza
+}
+
+echo "Package installation complete!"
+echo "Note: You may need to restart your terminal for changes to take effect."
+
+{{- else }}
+echo "Unsupported operating system. Please install packages manually."
+exit 1
+{{- end }}

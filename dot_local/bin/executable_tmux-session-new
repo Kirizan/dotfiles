@@ -1,0 +1,68 @@
+#!/bin/bash
+# Create new tmux session for a project
+# Usage: tmux-session-new PROJECT_NAME [PROJECT_PATH]
+
+set -e
+
+PROJECT_NAME="$1"
+PROJECT_PATH="${2:-$HOME/projects/$PROJECT_NAME}"
+
+if [ -z "$PROJECT_NAME" ]; then
+    echo "Usage: tmux-session-new PROJECT_NAME [PROJECT_PATH]"
+    exit 1
+fi
+
+if [ ! -d "$PROJECT_PATH" ]; then
+    echo "Error: Project directory does not exist: $PROJECT_PATH"
+    exit 1
+fi
+
+# Check if session already exists
+if tmux has-session -t "$PROJECT_NAME" 2>/dev/null; then
+    echo "Session '$PROJECT_NAME' already exists"
+    if [ -n "$TMUX" ]; then
+        tmux switch-client -t "$PROJECT_NAME"
+    else
+        tmux attach-session -t "$PROJECT_NAME"
+    fi
+    exit 0
+fi
+
+# Create new session (detached if inside tmux)
+if [ -n "$TMUX" ]; then
+    tmux new-session -d -s "$PROJECT_NAME" -c "$PROJECT_PATH"
+else
+    tmux new-session -s "$PROJECT_NAME" -c "$PROJECT_PATH"
+fi
+
+# Get project type if .project file exists
+PROJECT_TYPE="default"
+if [ -f "$PROJECT_PATH/.project-type" ]; then
+    PROJECT_TYPE=$(cat "$PROJECT_PATH/.project-type")
+fi
+
+# Apply layout based on project type
+case "$PROJECT_TYPE" in
+    "python"|"typescript"|"development")
+        # Layout: Editor (top 70%) | Terminal (bottom 30%)
+        tmux split-window -t "$PROJECT_NAME:1" -v -p 30 -c "$PROJECT_PATH"
+        tmux select-pane -t "$PROJECT_NAME:1.1"
+        ;;
+    "typst"|"documentation")
+        # Layout: Editor only (will open preview separately)
+        # No split needed
+        ;;
+    *)
+        # Default: Single pane
+        ;;
+esac
+
+# Send command to open nvim in first pane
+tmux send-keys -t "$PROJECT_NAME:1.1" "nvim ." Enter
+
+# If not already in tmux, attach
+if [ -z "$TMUX" ]; then
+    tmux attach-session -t "$PROJECT_NAME"
+else
+    tmux switch-client -t "$PROJECT_NAME"
+fi

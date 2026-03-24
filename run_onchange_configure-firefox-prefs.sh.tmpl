@@ -1,0 +1,44 @@
+{{- if and (not .isHeadless) (not .isWSL) -}}
+#!/bin/bash
+# Deploy Firefox user.js to all profile directories
+# Re-runs when user.js content changes
+# hash: {{ include "dot_config/firefox/user.js" | sha256sum }}
+
+set -e
+
+USER_JS="$HOME/.config/firefox/user.js"
+
+if [ ! -f "$USER_JS" ]; then
+    echo "Firefox user.js not found at $USER_JS — skipping"
+    exit 0
+fi
+
+DEPLOYED=0
+
+{{- if eq .chezmoi.os "darwin" }}
+PROFILE_BASES=("$HOME/Library/Application Support/Firefox/Profiles")
+{{- else }}
+# Firefox may use either ~/.mozilla/firefox or ~/.config/mozilla/firefox
+PROFILE_BASES=("$HOME/.mozilla/firefox" "$HOME/.config/mozilla/firefox")
+{{- end }}
+
+for PROFILE_BASE in "${PROFILE_BASES[@]}"; do
+    if [ ! -d "$PROFILE_BASE" ]; then
+        continue
+    fi
+
+    for PROFILE_DIR in "$PROFILE_BASE"/*.default-release "$PROFILE_BASE"/*.default; do
+        if [ -d "$PROFILE_DIR" ]; then
+            cp "$USER_JS" "$PROFILE_DIR/user.js"
+            echo "Deployed user.js to $PROFILE_DIR"
+            DEPLOYED=$((DEPLOYED + 1))
+        fi
+    done
+done
+
+if [ "$DEPLOYED" -eq 0 ]; then
+    echo "No Firefox profiles found — run Firefox at least once, then re-run: chezmoi apply"
+else
+    echo "Firefox user.js deployed to $DEPLOYED profile(s)"
+fi
+{{- end }}

@@ -1,0 +1,9 @@
+{{- if and (not .isHeadless) (not .isWSL) .isArchBased -}}
+[Desktop Entry]
+Name=Power Menu
+Exec=qdbus6 org.kde.LogoutPrompt /LogoutPrompt promptAll
+Terminal=false
+Type=Application
+NoDisplay=true
+X-KDE-GlobalAccel-CommandShortcut=true
+{{- end }}
