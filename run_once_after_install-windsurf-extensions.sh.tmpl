@@ -65,10 +65,33 @@ EXTENSIONS=(
     "bmalehorn.vscode-fish"
 )
 
+FAILED=()
+
 for ext in "${EXTENSIONS[@]}"; do
+    # Skip if already installed
+    if windsurf --list-extensions 2>/dev/null | grep -qi "^${ext}$"; then
+        echo "$ext is already installed"
+        continue
+    fi
+
     echo "Installing $ext..."
-    windsurf --install-extension "$ext" --force 2>/dev/null || echo "Warning: Failed to install $ext"
+    if ! windsurf --install-extension "$ext" 2>&1 | grep -v "^Warning:"; then
+        FAILED+=("$ext")
+    fi
 done
+
+if [ ${#FAILED[@]} -gt 0 ]; then
+    echo ""
+    echo "============================================"
+    echo "The following extensions failed to install via CLI."
+    echo "Install them from the Windsurf Extensions sidebar (Ctrl+Shift+X):"
+    echo "============================================"
+    for ext in "${FAILED[@]}"; do
+        echo "  - $ext"
+    done
+    echo ""
+    echo "This is typically caused by Open VSX CDN issues, not a Windsurf problem."
+fi
 
 echo "Windsurf extension installation complete!"
 
