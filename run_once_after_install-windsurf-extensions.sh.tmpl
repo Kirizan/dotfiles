@@ -1,0 +1,77 @@
+#!/bin/bash
+# Install Windsurf extensions to replicate LazyVim functionality
+# Only runs on personal profile with GUI and Windsurf installed
+
+{{- if and (eq .profile "personal") (not .isHeadless) }}
+
+if ! command -v windsurf &> /dev/null; then
+    echo "Windsurf not installed, skipping extension installation"
+    exit 0
+fi
+
+echo "Installing Windsurf extensions..."
+
+EXTENSIONS=(
+    # Theme & Icons (Catppuccin Mocha)
+    "Catppuccin.catppuccin-vsc"
+    "Catppuccin.catppuccin-vsc-icons"
+
+    # Vim Keybindings (replaces: flash.nvim, which-key, all vim motions)
+    "vscodevim.vim"
+
+    # Git Integration (replaces: neogit, gitsigns, diffview)
+    "eamodio.gitlens"
+
+    # Diagnostics & Errors (replaces: trouble.nvim, todo-comments)
+    "usernamehw.errorlens"
+    "Gruntfuggly.todo-tree"
+
+    # Project Management (replaces: project.nvim, auto-session)
+    "alefragnani.project-manager"
+
+    # Markdown (replaces: render-markdown, markdown-preview, vim-table-mode, img-clip, markdown-toc)
+    "yzhang.markdown-all-in-one"
+    "shd101wyy.markdown-preview-enhanced"
+    "darkriszty.markdown-table-prettify"
+
+    # Obsidian / PKM (replaces: obsidian.nvim, markdown-oxide)
+    "foam.foam-vscode"
+
+    # Typst (replaces: tinymist, typst-preview)
+    "myriad-dreamin.tinymist"
+
+    # Formatters & Linters (replaces: conform.nvim, nvim-lint)
+    "esbenp.prettier-vscode"
+    "dbaeumer.vscode-eslint"
+
+    # Language Support (replaces: mason + lspconfig servers)
+    "golang.go"
+    "ms-python.python"
+    "rust-lang.rust-analyzer"
+    "tamasfe.even-better-toml"
+    "redhat.vscode-yaml"
+
+    # Docker & Infrastructure
+    "ms-azuretools.vscode-docker"
+
+    # Remote Development
+    "ms-vscode-remote.remote-ssh"
+
+    # Editor Enhancements
+    "EditorConfig.EditorConfig"
+    "oderwat.indent-rainbow"
+
+    # Shell Support (replaces: treesitter fish parser)
+    "bmalehorn.vscode-fish"
+)
+
+for ext in "${EXTENSIONS[@]}"; do
+    echo "Installing $ext..."
+    windsurf --install-extension "$ext" --force 2>/dev/null || echo "Warning: Failed to install $ext"
+done
+
+echo "Windsurf extension installation complete!"
+
+{{- else }}
+echo "Skipping Windsurf extensions (not applicable on this system)"
+{{- end }}

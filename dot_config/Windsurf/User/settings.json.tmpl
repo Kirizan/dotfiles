@@ -1,0 +1,197 @@
+{
+  // ===========================================
+  // Theme & Appearance
+  // ===========================================
+  "workbench.colorTheme": "Catppuccin Mocha",
+  "workbench.iconTheme": "catppuccin-mocha",
+  "workbench.productIconTheme": "Default",
+
+  // ===========================================
+  // Editor Settings (matching Neovim options)
+  // ===========================================
+  "editor.fontSize": 14,
+  "editor.fontFamily": "'JetBrainsMono Nerd Font', 'Menlo', 'Cascadia Code', monospace",
+  "editor.fontLigatures": true,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": true,
+  "editor.wordWrap": "on",
+  "editor.lineNumbers": "relative",
+  "editor.cursorBlinking": "solid",
+  "editor.cursorStyle": "block",
+  "editor.renderWhitespace": "trailing",
+  "editor.minimap.enabled": false,
+  "editor.scrollBeyondLastLine": false,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.linkedEditing": true,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.smoothScrolling": true,
+
+  // ===========================================
+  // Terminal
+  // ===========================================
+{{- if eq .chezmoi.os "linux" }}
+  "terminal.integrated.defaultProfile.linux": "fish",
+{{- else if eq .chezmoi.os "darwin" }}
+  "terminal.integrated.defaultProfile.osx": "zsh",
+{{- end }}
+  "terminal.integrated.fontSize": 13,
+  "terminal.integrated.fontFamily": "'JetBrainsMono Nerd Font', monospace",
+
+  // ===========================================
+  // Vim Extension (replaces: flash.nvim, which-key, motions)
+  // ===========================================
+  "vim.enable": true,
+  "vim.leader": "<space>",
+  "vim.hlsearch": true,
+  "vim.incsearch": true,
+  "vim.useSystemClipboard": true,
+  "vim.easymotion": true,
+  "vim.surround": true,
+  "vim.sneak": false,
+  "vim.useCtrlKeys": true,
+  "vim.handleKeys": {
+    "<C-a>": false,
+    "<C-f>": false,
+    "<C-c>": false,
+    "<C-v>": false,
+    "<C-x>": false,
+    "<C-z>": false
+  },
+  // Navigate visual lines (matching Neovim j/k → gj/gk)
+  "vim.normalModeKeyBindingsNonRecursive": [
+    { "before": ["j"], "after": ["g", "j"] },
+    { "before": ["k"], "after": ["g", "k"] },
+    // Tab for indenting
+    { "before": ["<tab>"], "commands": ["editor.action.indentLines"] },
+    { "before": ["<S-tab>"], "commands": ["editor.action.outdentLines"] },
+    // Leader mappings (mirror LazyVim patterns)
+    { "before": ["<leader>", "e"], "commands": ["workbench.action.toggleSidebarVisibility"] },
+    { "before": ["<leader>", "f", "f"], "commands": ["workbench.action.quickOpen"] },
+    { "before": ["<leader>", "f", "g"], "commands": ["workbench.action.findInFiles"] },
+    { "before": ["<leader>", "b", "d"], "commands": ["workbench.action.closeActiveEditor"] },
+    { "before": ["<leader>", "b", "n"], "commands": ["workbench.action.nextEditor"] },
+    { "before": ["<leader>", "b", "p"], "commands": ["workbench.action.previousEditor"] },
+    { "before": ["<leader>", "w"], "commands": ["workbench.action.files.save"] },
+    { "before": ["<leader>", "q"], "commands": ["workbench.action.closeActiveEditor"] },
+    { "before": ["<leader>", "/"], "commands": ["editor.action.commentLine"] },
+    { "before": ["<leader>", "x", "x"], "commands": ["workbench.actions.view.problems"] },
+    { "before": ["<leader>", "x", "t"], "commands": ["todo-tree-view.focus"] },
+    // Git (replaces neogit <leader>kg mappings)
+    { "before": ["<leader>", "g", "g"], "commands": ["workbench.view.scm"] },
+    { "before": ["<leader>", "g", "d"], "commands": ["gitlens.diffWithPrevious"] },
+    { "before": ["<leader>", "g", "b"], "commands": ["gitlens.toggleFileBlame"] },
+    { "before": ["<leader>", "g", "l"], "commands": ["gitlens.showGraph"] },
+    // Terminal (replaces toggleterm <leader>kt mappings)
+    { "before": ["<leader>", "t", "t"], "commands": ["workbench.action.terminal.toggleTerminal"] },
+    { "before": ["<leader>", "t", "n"], "commands": ["workbench.action.terminal.new"] }
+  ],
+  "vim.visualModeKeyBindingsNonRecursive": [
+    { "before": ["<tab>"], "commands": ["editor.action.indentLines"] },
+    { "before": ["<S-tab>"], "commands": ["editor.action.outdentLines"] },
+    { "before": ["<leader>", "/"], "commands": ["editor.action.commentLine"] },
+    // Stay in visual mode after indenting
+    { "before": [">"], "commands": ["editor.action.indentLines"] },
+    { "before": ["<"], "commands": ["editor.action.outdentLines"] }
+  ],
+
+  // ===========================================
+  // GitLens (replaces: neogit, gitsigns, diffview)
+  // ===========================================
+  "gitlens.currentLine.enabled": true,
+  "gitlens.codeLens.enabled": true,
+  "gitlens.hovers.currentLine.over": "line",
+
+  // ===========================================
+  // Error Lens (replaces: trouble.nvim inline diagnostics)
+  // ===========================================
+  "errorLens.enabledDiagnosticLevels": ["error", "warning", "info"],
+  "errorLens.excludeBySource": ["eslint(prettier/prettier)"],
+
+  // ===========================================
+  // Todo Tree (replaces: todo-comments.nvim)
+  // ===========================================
+  "todo-tree.general.tags": ["TODO", "FIXME", "HACK", "NOTE", "BUG", "PERF"],
+  "todo-tree.highlights.defaultHighlight": {
+    "gutterIcon": true
+  },
+
+  // ===========================================
+  // Markdown (replaces: render-markdown, markdown-preview, vim-table-mode)
+  // ===========================================
+  "markdown.preview.fontSize": 14,
+  "[markdown]": {
+    "editor.defaultFormatter": "yzhang.markdown-all-in-one",
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": false
+    }
+  },
+
+  // ===========================================
+  // Typst (replaces: tinymist, typst-preview)
+  // ===========================================
+  "[typst]": {
+    "editor.defaultFormatter": "myriad-dreamin.tinymist",
+    "editor.wordWrap": "on"
+  },
+
+  // ===========================================
+  // Language-Specific Formatters
+  // ===========================================
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "[json][jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // ===========================================
+  // File Associations & Exclusions
+  // ===========================================
+  "files.associations": {
+    "*.tmpl": "go-template"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // ===========================================
+  // Explorer & Workbench
+  // ===========================================
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "workbench.startupEditor": "none",
+  "workbench.editor.enablePreview": true,
+  "workbench.sideBar.location": "left",
+
+  // ===========================================
+  // Remote SSH
+  // ===========================================
+  "remote.SSH.defaultExtensions": [
+    "vscodevim.vim",
+    "Catppuccin.catppuccin-vsc",
+    "eamodio.gitlens",
+    "usernamehw.errorlens"
+  ]
+}
