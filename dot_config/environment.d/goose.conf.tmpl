@@ -1,0 +1,9 @@
+# Goose stream-stall timeout. Default is 30s, which fires during long
+# silent thinking phases of reasoning models (qwen3.5, nemotron, etc.)
+# when paired with large tool payloads. Raised to 5 minutes so models
+# can spend extended time in <thinking> before producing tokens.
+#
+# Undocumented but real env var (see github.com/block/goose/issues/8437).
+# Loaded by systemd user sessions, so applies to both goose-desktop
+# (launched from the DE) and goose CLI in new login shells.
+GOOSE_STREAM_TIMEOUT=300
