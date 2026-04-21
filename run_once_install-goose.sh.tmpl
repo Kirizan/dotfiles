@@ -1,0 +1,27 @@
+#!/bin/bash
+# Personal profile only — Block's Goose AI agent (CLI + Desktop)
+# Reachable backend: Ollama on DGX Spark via Traefik at {{ .spark.ollama_endpoint }}
+
+{{- if and (eq .profile "personal") .isArchBased }}
+
+echo "Installing Goose (AI agent)..."
+
+if command -v goose &> /dev/null && command -v goose-desktop &> /dev/null; then
+    echo "Goose already installed"
+    exit 0
+fi
+
+if ! command -v paru &> /dev/null; then
+    echo "paru not found; cannot install Goose AUR packages. Install paru first."
+    exit 1
+fi
+
+paru -S --needed --noconfirm codename-goose-bin goose-desktop-bin
+
+echo "Goose installation complete."
+
+{{- else if eq .profile "personal" }}
+echo "Skipping Goose install (not an Arch-based system)"
+{{- else }}
+echo "Skipping Goose install (not on personal profile)"
+{{- end }}
