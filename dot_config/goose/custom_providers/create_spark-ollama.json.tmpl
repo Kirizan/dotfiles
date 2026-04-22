@@ -1,0 +1,19 @@
+{
+  "name": "spark_ollama",
+  "engine": "openai",
+  "display_name": "Spark Ollama (OpenAI-compatible)",
+  "description": "Ollama on the DGX Spark via /v1/chat/completions. Routes through openai_compatible.rs instead of ollama.rs to bypass Goose v1.31.1's hardcoded 30s stream-stall watchdog. Use this for thinking models (qwen3.5, nemotron) where the silent <thinking> phase exceeds 30s.",
+  "base_url": "{{ .spark.ollama_endpoint }}/v1",
+  "api_key_env": "SPARK_OLLAMA_API_KEY",
+  "requires_auth": false,
+  "supports_streaming": true,
+  "models": [
+    "qwen3.5:27b",
+    "qwen3-coder:30b",
+    "gemma3:27b",
+    "mistral-small:24b",
+    "nemotron-3-super:120b",
+    "nomic-embed-text",
+    "qwen2.5:0.5b"
+  ]
+}
