@@ -1,9 +1,12 @@
-# Goose stream-stall timeout. Default is 30s, which fires during long
-# silent thinking phases of reasoning models (qwen3.5, nemotron, etc.)
-# when paired with large tool payloads. Raised to 5 minutes so models
-# can spend extended time in <thinking> before producing tokens.
+# Goose's Ollama stream-stall timeout fires after 30s of no SSE data,
+# which kills requests during long silent <thinking> phases of reasoning
+# models (qwen3.5, nemotron) with large tool payloads.
 #
-# Undocumented but real env var (see github.com/block/goose/issues/8437).
-# Loaded by systemd user sessions, so applies to both goose-desktop
-# (launched from the DE) and goose CLI in new login shells.
-GOOSE_STREAM_TIMEOUT=300
+# In Goose v1.31.1 the only present timeout env var is OLLAMA_TIMEOUT;
+# newer versions split it into OLLAMA_STREAM_TIMEOUT / GOOSE_STREAM_TIMEOUT
+# (see github.com/block/goose/issues/8437). 300s = 5 min ceiling for
+# silent thinking before declaring the model stuck.
+#
+# Loaded by systemd user sessions — applies to goose-desktop launched
+# from the DE and goose CLI in new login shells.
+OLLAMA_TIMEOUT=300
