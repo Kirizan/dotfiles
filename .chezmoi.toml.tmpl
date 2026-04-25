@@ -126,6 +126,11 @@
 {{-   $installCurseforge = true -}}
 {{- end -}}
 
+{{- $installMinecraft := false -}}
+{{- if eq (env "CHEZMOI_INSTALL_MINECRAFT") "true" -}}
+{{-   $installMinecraft = true -}}
+{{- end -}}
+
 {{- /* Determine profile: "work" or "personal" */ -}}
 {{- $profile := "personal" -}}
 
@@ -169,6 +174,7 @@
     isHexOS = {{ $isHexOS }}
     hasNvidiaPassthrough = {{ $hasNvidiaPassthrough }}
     installCurseforge = {{ $installCurseforge }}
+    installMinecraft = {{ $installMinecraft }}
 
 {{- if eq .chezmoi.os "darwin" }}
 [data.packages]

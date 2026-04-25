@@ -102,6 +102,9 @@ run_once_after_install-battlenet.sh.tmpl
 {{- if not .installCurseforge }}
 install-curseforge.sh
 {{- end }}
+{{- if not .installMinecraft }}
+install-minecraft.sh
+{{- end }}
 
 # Headless systems (SSH-only servers, WSL without WSLg, etc.)
 # Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages

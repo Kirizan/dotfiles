@@ -1,0 +1,36 @@
+#!/bin/bash
+# Optional install — official Minecraft Launcher (Java Edition, AUR)
+# Opt in by setting CHEZMOI_INSTALL_MINECRAFT=true before `chezmoi init`/`apply`.
+# Gated to personal Arch-based desktops (no WSL, no headless).
+
+{{- if and .installMinecraft (eq .profile "personal") (not .isWSL) (not .isHeadless) .isArchBased }}
+
+echo "Installing Minecraft Launcher..."
+
+if command -v minecraft-launcher &> /dev/null; then
+    echo "Minecraft Launcher already installed"
+    exit 0
+fi
+
+if ! command -v paru &> /dev/null && ! command -v yay &> /dev/null; then
+    echo "Error: no AUR helper found (paru/yay). Install one before retrying."
+    exit 1
+fi
+
+if command -v paru &> /dev/null; then
+    paru -S --needed --noconfirm minecraft-launcher
+else
+    yay -S --needed --noconfirm minecraft-launcher
+fi
+
+echo "Minecraft Launcher installation complete. Launch from your application menu."
+
+{{- else if not .installMinecraft }}
+echo "Skipping Minecraft install (opt in with CHEZMOI_INSTALL_MINECRAFT=true)"
+{{- else if or .isWSL .isHeadless }}
+echo "Skipping Minecraft install (no GUI on this system)"
+{{- else if not .isArchBased }}
+echo "Skipping Minecraft install (only supported on Arch-based systems)"
+{{- else }}
+echo "Skipping Minecraft install (not on personal profile)"
+{{- end }}
