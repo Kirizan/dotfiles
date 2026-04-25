@@ -1,0 +1,36 @@
+#!/bin/bash
+# Optional install — CurseForge desktop client (Linux native, AUR)
+# Opt in by setting CHEZMOI_INSTALL_CURSEFORGE=true before `chezmoi init`/`apply`.
+# Gated to personal Arch-based desktops (no WSL, no headless).
+
+{{- if and .installCurseforge (eq .profile "personal") (not .isWSL) (not .isHeadless) .isArchBased }}
+
+echo "Installing CurseForge desktop client..."
+
+if command -v curseforge &> /dev/null; then
+    echo "CurseForge already installed"
+    exit 0
+fi
+
+if ! command -v paru &> /dev/null && ! command -v yay &> /dev/null; then
+    echo "Error: no AUR helper found (paru/yay). Install one before retrying."
+    exit 1
+fi
+
+if command -v paru &> /dev/null; then
+    paru -S --needed --noconfirm curseforge
+else
+    yay -S --needed --noconfirm curseforge
+fi
+
+echo "CurseForge installation complete. Launch from your application menu."
+
+{{- else if not .installCurseforge }}
+echo "Skipping CurseForge install (opt in with CHEZMOI_INSTALL_CURSEFORGE=true)"
+{{- else if or .isWSL .isHeadless }}
+echo "Skipping CurseForge install (no GUI on this system)"
+{{- else if not .isArchBased }}
+echo "Skipping CurseForge install (only supported on Arch-based systems)"
+{{- else }}
+echo "Skipping CurseForge install (not on personal profile)"
+{{- end }}

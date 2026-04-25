@@ -120,6 +120,12 @@
 {{-   $useHomebrew = false -}}
 {{- end -}}
 
+{{- /* Optional gaming tools — opt-in via env var, default off */ -}}
+{{- $installCurseforge := false -}}
+{{- if eq (env "CHEZMOI_INSTALL_CURSEFORGE") "true" -}}
+{{-   $installCurseforge = true -}}
+{{- end -}}
+
 {{- /* Determine profile: "work" or "personal" */ -}}
 {{- $profile := "personal" -}}
 
@@ -162,6 +168,7 @@
     isDGXSpark = {{ $isDGXSpark }}
     isHexOS = {{ $isHexOS }}
     hasNvidiaPassthrough = {{ $hasNvidiaPassthrough }}
+    installCurseforge = {{ $installCurseforge }}
 
 {{- if eq .chezmoi.os "darwin" }}
 [data.packages]

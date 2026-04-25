@@ -8,8 +8,10 @@ temp/
 # Ignore editor swap files
 *.swp
 
-# Claude Code local settings (contains session-specific command approvals)
-.claude/settings.local.json
+# Claude Code local working state (settings.local.json, scheduled_tasks.lock, etc.)
+# This directory is created in any cwd where `claude` is invoked.
+# The chezmoi-managed copy lives under dot_claude/.
+.claude/
 
 # System-specific temporary files
 *.swo

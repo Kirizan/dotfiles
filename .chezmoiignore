@@ -98,6 +98,11 @@ run_once_install-gaming-packages.sh.tmpl
 run_once_after_install-battlenet.sh.tmpl
 {{- end }}
 
+# Optional gaming tools — opt-in only
+{{- if not .installCurseforge }}
+install-curseforge.sh
+{{- end }}
+
 # Headless systems (SSH-only servers, WSL without WSLg, etc.)
 # Skip all GUI configs: terminal emulators, autostart, browser setup, GUI packages
 {{- if .isHeadless }}
