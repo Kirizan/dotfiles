@@ -105,7 +105,12 @@ sudo pacman -S --needed --noconfirm \
     eza \
     typst \
     wl-clipboard \
-    ttf-cascadia-mono-nerd
+    ttf-cascadia-mono-nerd \
+    tailscale
+
+# Tailscale daemon — control plane is our self-hosted Headscale (kv/games/minecraft).
+# Auth key is per-machine and short-lived; do NOT auto-`tailscale up` here.
+sudo systemctl enable --now tailscaled
 
 {{- if not .isHeadless }}
 
@@ -203,6 +208,13 @@ if ! command -v starship &> /dev/null; then
     echo "Installing starship..."
     curl -sS https://starship.rs/install.sh | sh -s -- -y
 fi
+
+# Tailscale (upstream installer — apt repos lag). Daemon only; auth done manually.
+if ! command -v tailscale &> /dev/null; then
+    echo "Installing Tailscale..."
+    curl -fsSL https://tailscale.com/install.sh | sh
+fi
+sudo systemctl enable --now tailscaled
 
 {{- else if .isDebianBased }}
 # Core dev tools and CLI utilities via apt
@@ -329,6 +341,13 @@ if ! command -v terraform &> /dev/null; then
     sudo apt-get update && sudo apt-get install -y terraform
 fi
 
+# Tailscale (upstream installer — the apt repo via the script handles distro detection).
+if ! command -v tailscale &> /dev/null; then
+    echo "Installing Tailscale..."
+    curl -fsSL https://tailscale.com/install.sh | sh
+fi
+sudo systemctl enable --now tailscaled
+
 {{- else if .isRHELBased }}
 # Core dev tools and CLI utilities via dnf
 echo "Installing core packages via dnf..."
@@ -448,11 +467,39 @@ if ! command -v terraform &> /dev/null; then
     sudo dnf install -y terraform 2>/dev/null || echo "Warning: terraform installation failed"
 fi
 
+# Tailscale (upstream installer adds the official RPM repo and installs).
+if ! command -v tailscale &> /dev/null; then
+    echo "Installing Tailscale..."
+    curl -fsSL https://tailscale.com/install.sh | sh
+fi
+sudo systemctl enable --now tailscaled
+
 {{- else }}
 # Generic Linux fallback
 echo "Warning: Native package installation only has full support for Arch, Debian, and RHEL-based distros."
 echo "Please install packages manually for your distribution."
 {{- end }}
+
+# Tailscale post-install reminder. Auth is per-machine, key from OpenBao.
+# Skipped on the generic fallback branch (where we didn't install tailscale at all).
+if command -v tailscale &> /dev/null && ! tailscale status >/dev/null 2>&1; then
+    cat <<'TAILSCALE_INSTRUCTIONS'
+
+==============================================================
+Tailscale installed but not yet connected. To join the kirby.network tailnet:
+
+  set -x BAO_ADDR https://vault.internal.kirby.network
+  set KEY (bao kv get -field=admin_enrollment_key kv/games/minecraft)
+  sudo tailscale up --login-server=https://headscale.internal.kirby.network --auth-key=$KEY
+  set -e KEY
+
+The admin_enrollment_key is single-use, 24h expiration. Regenerate via:
+  sudo docker exec headscale headscale preauthkeys create --user 1 --expiration 24h
+(then bao kv patch into kv/games/minecraft as admin_enrollment_key).
+==============================================================
+
+TAILSCALE_INSTRUCTIONS
+fi
 
 {{- if .isWSL }}
 # WSL-specific packages

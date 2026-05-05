@@ -95,6 +95,11 @@ cask "brave-browser"
 cask "firefox"
 cask "obsidian"
 
+# Tailscale — vanilla client, points at our self-hosted Headscale via
+# `tailscale up --login-server=https://headscale.internal.kirby.network ...`.
+# Cask installs both the menubar GUI and the CLI; daemon auto-starts via launchd.
+cask "tailscale"
+
 # Liberation Fonts (for Typst and cross-platform document compatibility)
 cask "font-liberation"
 
