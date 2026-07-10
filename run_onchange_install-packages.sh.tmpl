@@ -130,6 +130,21 @@ fi
 # Install mpv (video player)
 echo "Installing mpv..."
 sudo pacman -S --needed --noconfirm mpv
+
+# Install Claude Desktop (official Anthropic app; in the cachyos repo,
+# otherwise available in the AUR as claude-desktop)
+if ! command -v claude-desktop &> /dev/null; then
+    echo "Installing Claude Desktop..."
+    sudo pacman -S --needed --noconfirm claude-desktop 2>/dev/null || {
+        if command -v paru &> /dev/null; then
+            paru -S --needed --noconfirm claude-desktop
+        elif command -v yay &> /dev/null; then
+            yay -S --needed --noconfirm claude-desktop
+        else
+            echo "Warning: claude-desktop not in repos and no AUR helper found, skipping"
+        fi
+    }
+fi
 {{- end }}
 
 # Install awscli via pipx
@@ -316,6 +331,16 @@ fi
 # Install mpv (video player)
 echo "Installing mpv..."
 sudo apt-get install -y mpv
+
+# Install Claude Desktop (official Anthropic apt repo — updates arrive via apt upgrade)
+if ! command -v claude-desktop &> /dev/null; then
+    echo "Installing Claude Desktop..."
+    sudo curl -fsSLo /usr/share/keyrings/claude-desktop-archive-keyring.asc https://downloads.claude.ai/claude-desktop/key.asc \
+    && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main" | sudo tee /etc/apt/sources.list.d/claude-desktop.list > /dev/null \
+    && sudo apt-get update \
+    && sudo apt-get install -y claude-desktop \
+    || echo "Warning: Claude Desktop installation failed (requires Ubuntu 22.04+/Debian 12+), skipping"
+fi
 {{- end }}
 
 # Install awscli via pipx
