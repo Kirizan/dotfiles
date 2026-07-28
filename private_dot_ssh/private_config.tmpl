@@ -2,8 +2,21 @@
 Include "{{ .chezmoi.homeDir }}/.config/NVIDIA/Sync/config/ssh_config"
 
 {{ end -}}
+# Do not route SSH through the 1Password agent.
+#
+# The agent holds no identities, so it added nothing -- but because the Cowork
+# VM runs virtiofsd with "--shared-dir /", the guest can see
+# ~/.1password/agent.sock. Requests arriving from inside the VM cannot be
+# attributed to a host executable, so 1Password logs
+# "executable path is missing for caller process; Aborting request" and the
+# caller retries, producing a stream of auth prompts roughly every 45s.
+#
+# IdentityAgent none also overrides an inherited $SSH_AUTH_SOCK, which the
+# 1Password desktop app exports into the Plasma session.
+# If keys are ever added to 1Password, re-enable it per-host rather than on "Host *".
 Host *
-	IdentityAgent ~/.1password/agent.sock
+	IdentityAgent none
+	IdentityFile ~/.ssh/id_ed25519
 
 Host avalon
 	HostName {{ .network.dns_server }}
