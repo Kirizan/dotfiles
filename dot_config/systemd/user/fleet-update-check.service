@@ -1,0 +1,17 @@
+[Unit]
+Description=Weekly fleet update check (mimir, avalon, UniFi)
+Documentation=https://grafana.internal.kirby.network/d/fleet-updates
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/fleet-update-check
+# The claude analysis step can legitimately take several minutes; the script
+# already caps it internally at 900s.
+TimeoutStartSec=30min
+Environment=BAO_ADDR=https://vault.internal.kirby.network
+# systemd user units get a minimal PATH; claude and paru live in these dirs.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Nice=10
+IOSchedulingClass=idle

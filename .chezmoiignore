@@ -98,6 +98,16 @@ run_once_install-gaming-packages.sh.tmpl
 run_once_after_install-battlenet.sh.tmpl
 {{- end }}
 
+# Fleet update check — needs pacman/checkupdates for the local half, a desktop
+# session for notify-send, and the personal homelab (OpenBao, VictoriaMetrics,
+# the Obsidian vault). Anything else has nothing for it to talk to.
+{{- if or (not .isArchBased) .isHeadless (ne .profile "personal") }}
+.local/bin/fleet-update-check
+.config/systemd/user/fleet-update-check.service
+.config/systemd/user/fleet-update-check.timer
+run_onchange_after_enable-fleet-update-timer.sh.tmpl
+{{- end }}
+
 # Optional gaming tools — opt-in only
 {{- if not .installCurseforge }}
 install-curseforge.sh

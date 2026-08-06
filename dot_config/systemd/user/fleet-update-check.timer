@@ -1,0 +1,16 @@
+[Unit]
+Description=Weekly fleet update check
+Documentation=https://grafana.internal.kirby.network/d/fleet-updates
+
+[Timer]
+# Sunday mid-morning. Deliberately an odd minute rather than :00 so it does not
+# pile onto every other scheduled job on the hour.
+OnCalendar=Sun 10:17
+# Catch up if the desktop was asleep or powered off at the scheduled time —
+# without this, a machine that is off on Sundays would silently never check.
+Persistent=true
+RandomizedDelaySec=10m
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target

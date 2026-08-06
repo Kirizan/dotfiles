@@ -1,0 +1,303 @@
+#!/bin/bash
+# Weekly fleet update check.
+#
+# Two halves, deliberately separated so a failure in one still leaves the other
+# useful:
+#
+#   1. Deterministic gathering (shell)  — pacman/AUR counts, days since the last
+#      full upgrade, TrueNAS train state, UniFi firmware, and a pull of the
+#      container metrics already in VictoriaMetrics. Host-level numbers are
+#      pushed BACK into VictoriaMetrics so mimir/avalon/UniFi appear on the same
+#      Grafana dashboard as the containers.
+#
+#   2. Narrative (claude -p)            — reads the gathered state, checks Arch
+#      news for manual interventions, and writes a prioritised summary. If this
+#      fails the report still contains the full metrics table.
+#
+# Output goes to the Obsidian vault (report + activity note entry) and a desktop
+# notification. Managed by chezmoi; triggered by fleet-update-check.timer.
+
+set -uo pipefail
+
+VAULT="$HOME/Obsidian/Primary"
+REPORT_DIR="$VAULT/2-Areas/Home-Network/Update-Reports"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fleet-update-check"
+LOG="$STATE_DIR/check.log"
+
+VM="https://victoria.internal.kirby.network"
+GRAFANA="https://grafana.internal.kirby.network"
+export BAO_ADDR="${BAO_ADDR:-https://vault.internal.kirby.network}"
+
+TODAY="$(date +%Y-%m-%d)"
+YEAR="$(date +%Y)"
+REPORT="$REPORT_DIR/$TODAY-fleet-updates.md"
+ACTIVITY="$VAULT/daily/$YEAR/$TODAY-activity.md"
+
+STALE_DAYS=30
+
+mkdir -p "$STATE_DIR" "$REPORT_DIR" "$VAULT/daily/$YEAR"
+log() { printf '%s %s\n' "$(date -Is)" "$*" >>"$LOG"; }
+
+vmq() {  # instant query -> scalar (empty on failure)
+  curl -sk --max-time 20 --data-urlencode "query=$1" "$VM/api/v1/query" 2>/dev/null \
+    | python3 -c '
+import json,sys
+try:
+    r=json.load(sys.stdin)["data"]["result"]
+    print(r[0]["value"][1] if r else "")
+except Exception:
+    print("")' 2>/dev/null
+}
+
+log "=== run start ==="
+
+# ── 1. mimir (local) ─────────────────────────────────────────────────────
+repo_count="$(checkupdates 2>/dev/null | grep -c . )"
+aur_count="$(timeout 120 paru -Qua 2>/dev/null | grep -c . )"
+
+last_upgrade="$(grep -F 'starting full system upgrade' /var/log/pacman.log 2>/dev/null \
+  | tail -1 | sed -n 's/^\[\([^]]*\)\].*/\1/p')"
+if [[ -n "$last_upgrade" ]]; then
+  days_since=$(( ( $(date +%s) - $(date -d "$last_upgrade" +%s) ) / 86400 ))
+else
+  days_since=-1
+fi
+
+# ── 2. avalon / TrueNAS ──────────────────────────────────────────────────
+truenas_update="$(timeout 90 ssh -o BatchMode=yes -o ConnectTimeout=10 avalon \
+  'midclt call update.check_available 2>/dev/null' 2>/dev/null \
+  | grep -o '"status": *"[A-Z]*"' | cut -d'"' -f4)"
+truenas_update="${truenas_update:-UNKNOWN}"
+truenas_version="$(timeout 60 ssh -o BatchMode=yes -o ConnectTimeout=10 avalon \
+  'midclt call system.version 2>/dev/null' 2>/dev/null | tr -d '"')"
+
+# ── 3. containers (already in VictoriaMetrics) ───────────────────────────
+ctr_total="$(vmq 'fleet_exporter_containers_total')"
+ctr_stale="$(vmq 'count(fleet_container_image_age_days > 180) or vector(0)')"
+ctr_oldest="$(vmq 'max(fleet_container_image_age_days)')"
+ctr_restarting="$(vmq 'count(rate(fleet_container_restarts_total[1h]) > 0) or vector(0)')"
+ctr_unhealthy="$(vmq 'count(fleet_container_health == 0) or vector(0)')"
+diun_updates="$(vmq 'sum(diun_image_update_available) or vector(0)')"
+
+oldest_list="$(curl -sk --max-time 20 \
+  --data-urlencode 'query=topk(10, fleet_container_image_age_days)' \
+  "$VM/api/v1/query" 2>/dev/null | python3 -c '
+import json,sys
+try:
+    for m in json.load(sys.stdin)["data"]["result"]:
+        lb=m["metric"]
+        print("| %s | %s | %d |" % (lb.get("container","?"), lb.get("stack","-"),
+                                    float(m["value"][1])))
+except Exception:
+    pass' 2>/dev/null)"
+
+# ── 4. firing Grafana alerts ─────────────────────────────────────────────
+gpw="$(timeout 20 bao kv get -field=admin_password kv/infra/grafana 2>/dev/null)"
+firing=""
+if [[ -n "$gpw" ]]; then
+  firing="$(curl -sk --max-time 20 -u "admin:$gpw" \
+    "$GRAFANA/api/prometheus/grafana/api/v1/rules" 2>/dev/null | python3 -c '
+import json,sys
+try:
+    out=[]
+    for g in json.load(sys.stdin)["data"]["groups"]:
+        for r in g.get("rules",[]):
+            if r.get("state") in ("firing","pending"):
+                out.append("- **%s** — %s" % (r.get("name"), r.get("state")))
+    print("\n".join(out))
+except Exception:
+    pass' 2>/dev/null)"
+fi
+unset gpw
+
+# ── 5. UniFi firmware ────────────────────────────────────────────────────
+unifi="$(timeout 60 python3 - <<'PY' 2>/dev/null
+import subprocess, urllib3, requests
+urllib3.disable_warnings()
+def bao(f):
+    return subprocess.run(["bao","kv","get","-field="+f,"kv/infra/unifi"],
+        capture_output=True,text=True).stdout.strip()
+u,p = bao("username"), bao("password")
+if not u or not p: raise SystemExit
+s = requests.Session(); s.verify=False
+r = s.post("https://192.168.1.1/api/auth/login", json={"username":u,"password":p}, timeout=15)
+if r.status_code != 200: raise SystemExit
+h = {"x-csrf-token": r.headers.get("x-csrf-token","")}
+d = s.get("https://192.168.1.1/proxy/network/api/s/default/stat/device",
+          headers=h, timeout=20).json().get("data",[])
+for x in d:
+    print("| %s | %s | %s |" % (x.get("name") or x.get("mac"), x.get("version"),
+                                "YES" if x.get("upgradable") else "no"))
+PY
+)"
+unifi_pending="$(printf '%s' "$unifi" | grep -c 'YES' || true)"
+
+log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update | ctr stale=$ctr_stale restarting=$ctr_restarting"
+
+# ── 6. push host-level metrics into VictoriaMetrics ──────────────────────
+{
+  printf 'fleet_host_pending_updates{host="mimir",source="repo"} %s\n' "${repo_count:-0}"
+  printf 'fleet_host_pending_updates{host="mimir",source="aur"} %s\n' "${aur_count:-0}"
+  printf 'fleet_host_days_since_upgrade{host="mimir"} %s\n' "${days_since:-0}"
+  printf 'fleet_truenas_update_available{host="avalon"} %s\n' \
+    "$([[ "$truenas_update" == "AVAILABLE" ]] && echo 1 || echo 0)"
+  printf 'fleet_unifi_firmware_updates_pending %s\n' "${unifi_pending:-0}"
+} | curl -sk --max-time 20 --data-binary @- "$VM/api/v1/import/prometheus" \
+  && log "pushed host metrics to VictoriaMetrics" \
+  || log "WARN: metric push failed"
+
+# ── 7. deterministic report skeleton ─────────────────────────────────────
+{
+  cat <<EOF
+---
+tags:
+  - type/log
+  - area/homelab
+date: $TODAY
+---
+
+# Fleet Update Report — $TODAY
+
+Automated weekly check across [[mimir]], [[avalon]], and the [[UDM-Pro|UniFi]] fleet.
+Live view: [Fleet Update Status]($GRAFANA/d/fleet-updates)
+
+## Summary
+
+| Target | Metric | Value |
+|--------|--------|-------|
+| [[mimir]] | Pending repo updates | ${repo_count:-?} |
+| [[mimir]] | Pending AUR updates | ${aur_count:-?} |
+| [[mimir]] | Days since full upgrade | ${days_since:-?} |
+| [[avalon]] | TrueNAS version | ${truenas_version:-?} |
+| [[avalon]] | TrueNAS update | ${truenas_update} |
+| Containers | Tracked | ${ctr_total:-?} |
+| Containers | Images > 180 days | ${ctr_stale:-?} |
+| Containers | Oldest image (days) | ${ctr_oldest%%.*} |
+| Containers | Restarting | ${ctr_restarting:-?} |
+| Containers | Unhealthy | ${ctr_unhealthy:-?} |
+| Containers | Upstream updates ([[Diun]]) | ${diun_updates:-?} |
+| UniFi | Firmware updates pending | ${unifi_pending:-0} |
+
+## Oldest Container Images
+
+| Container | Stack | Age (days) |
+|-----------|-------|------------|
+${oldest_list:-| _none_ | | |}
+
+## UniFi Devices
+
+| Device | Firmware | Update |
+|--------|----------|--------|
+${unifi:-| _unavailable_ | | |}
+
+## Firing / Pending Alerts
+
+${firing:-_None._}
+
+EOF
+} >"$REPORT"
+
+# ── 8. Claude narrative ──────────────────────────────────────────────────
+CLAUDE_BIN="$(command -v claude || echo "$HOME/.local/bin/claude")"
+if [[ -x "$CLAUDE_BIN" ]]; then
+  prompt="You are writing the analysis section of an automated weekly update
+report for an Arch/CachyOS desktop (mimir) and a TrueNAS Scale server (avalon)
+running ~54 Docker containers. Be concise and factual. Change nothing.
+
+State:
+- mimir: ${repo_count} repo updates, ${aur_count} AUR updates, ${days_since} days since last full upgrade
+- avalon: TrueNAS ${truenas_version}, update status ${truenas_update}
+- containers: ${ctr_stale} images older than 180 days, oldest ${ctr_oldest%%.*} days, ${ctr_restarting} restarting, ${ctr_unhealthy} unhealthy
+- Diun reports ${diun_updates} images with newer digests upstream
+- UniFi: ${unifi_pending} firmware updates pending
+
+Tasks:
+1. Fetch https://archlinux.org/feeds/news/ and list ONLY news items requiring
+   manual intervention. For each, verify with 'pacman -Q <pkg>' whether the
+   affected package is installed on this machine. Report only ones that apply.
+2. State plainly whether action is needed this week and how urgent.
+3. Call out anything that looks like a real problem rather than routine drift.
+
+Output GitHub-flavored markdown starting at '## Analysis'. Under 50 lines.
+Use Obsidian wiki-links like [[mimir]] and [[avalon]] for hosts."
+
+  # claude prints auth failures to STDOUT and still exits 0, so an exit-code
+  # check alone lets "Not logged in · Please run /login" land in the report.
+  # Capture to a temp file and validate before appending anything.
+  tmp="$(mktemp)"
+  timeout 900 "$CLAUDE_BIN" -p "$prompt" \
+    --permission-mode acceptEdits \
+    --allowedTools "Bash(pacman -Q:*)" "Bash(checkupdates:*)" "WebFetch" \
+    >"$tmp" 2>>"$LOG"
+  rc=$?
+
+  if (( rc != 0 )); then
+    reason="claude exited $rc"
+  elif [[ ! -s "$tmp" ]]; then
+    reason="claude produced no output"
+  elif grep -qiE 'not logged in|please run /login|invalid api key|authentication' "$tmp"; then
+    reason="claude is not authenticated — run 'claude' interactively and /login"
+  elif ! grep -q '^## ' "$tmp"; then
+    reason="claude output was not the expected markdown"
+  else
+    reason=""
+  fi
+
+  if [[ -z "$reason" ]]; then
+    cat "$tmp" >>"$REPORT"
+    log "claude analysis ok ($(wc -l <"$tmp") lines)"
+  else
+    printf '\n## Analysis\n\n> [!warning] Analysis unavailable\n> %s\n>\n> The metrics above are still accurate. See `%s`.\n' \
+      "$reason" "$LOG" >>"$REPORT"
+    log "WARN: $reason"
+  fi
+  rm -f "$tmp"
+else
+  printf '\n## Analysis\n\n> [!warning] Analysis unavailable\n> claude binary not found.\n' >>"$REPORT"
+  log "WARN: claude binary missing"
+fi
+
+# ── 9. activity note entry ───────────────────────────────────────────────
+if [[ ! -f "$ACTIVITY" ]]; then
+  cat >"$ACTIVITY" <<EOF
+---
+tags:
+  - type/log
+  - area/homelab
+date: $TODAY
+---
+
+# $TODAY Activity
+EOF
+fi
+
+if ! grep -q "^## Fleet Update Check" "$ACTIVITY" 2>/dev/null; then
+  cat >>"$ACTIVITY" <<EOF
+
+## Fleet Update Check
+
+- Automated weekly check ran across [[mimir]], [[avalon]], and the UniFi fleet
+- [[mimir]]: ${repo_count} repo + ${aur_count} AUR updates pending, ${days_since} days since last full upgrade
+- Containers: ${ctr_stale} images older than 180 days, ${ctr_restarting} restarting, ${ctr_unhealthy} unhealthy
+- Full report: [[$TODAY-fleet-updates]]
+EOF
+fi
+
+# ── 10. notify ───────────────────────────────────────────────────────────
+urgency=normal
+if (( days_since < 0 || days_since >= STALE_DAYS )) \
+   || [[ "${ctr_restarting:-0}" != "0" ]] || [[ "${ctr_unhealthy:-0}" != "0" ]]; then
+  urgency=critical
+fi
+
+if command -v notify-send >/dev/null; then
+  notify-send --app-name="Fleet Updates" --urgency="$urgency" \
+    --icon=system-software-update \
+    "Fleet update check complete" \
+    "mimir: ${repo_count} repo / ${aur_count} AUR
+containers: ${ctr_stale} stale, ${ctr_restarting} restarting
+Report saved to Obsidian"
+fi
+
+log "=== run complete (urgency=$urgency) ==="
+exit 0

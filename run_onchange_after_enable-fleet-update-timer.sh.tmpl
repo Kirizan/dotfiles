@@ -1,0 +1,32 @@
+#!/bin/bash
+# Enable the weekly fleet update check timer.
+#
+# Re-runs whenever either unit file changes, via the hashes below.
+# unit hash: {{ include "dot_config/systemd/user/fleet-update-check.service" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/fleet-update-check.timer" | sha256sum }}
+
+set -euo pipefail
+
+UNIT="fleet-update-check.timer"
+
+if ! command -v systemctl >/dev/null 2>&1; then
+  echo "systemd not present — skipping $UNIT"
+  exit 0
+fi
+
+# A user timer needs a live user session bus; on a headless box mid-provision
+# there may not be one yet. Skip rather than fail the whole chezmoi apply.
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+  echo "no systemd user session — skipping $UNIT (enable manually later)"
+  exit 0
+fi
+
+echo "Reloading systemd user units..."
+systemctl --user daemon-reload
+
+echo "Enabling $UNIT..."
+systemctl --user enable --now "$UNIT"
+
+systemctl --user list-timers --all "$UNIT" --no-pager | sed 's/^/  /'
+echo "Fleet update check scheduled. Run once now with:"
+echo "  systemctl --user start fleet-update-check.service"
