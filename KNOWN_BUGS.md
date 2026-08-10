@@ -145,6 +145,68 @@ could also resolve it if the issue is in the USB controller firmware.
 
 ---
 
+## BT-001: MT7927 Bluetooth firmware missing from linux-firmware
+
+- **Status:** Active (upstream firmware not redistributable yet)
+- **Affected systems:** mimir
+- **Symptoms:** `bluetooth hci0: Direct firmware load for
+  mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin failed with error -2` repeating
+  roughly 100× per minute — 6,642 entries in a single boot, about 150k/day.
+  `bluetoothctl show` reports "No default controller available".
+- **Upstream reference:**
+  https://gitlab.com/kernel-firmware/linux-firmware/-/merge_requests/946
+- **Date identified:** 2026-08-09
+
+### Cause
+
+mimir's WiFi/BT combo card is a MediaTek MT7927 (Filogic 380, PCI `14c3:7927`;
+the Bluetooth half enumerates as Foxconn `0489:e13a`). The `btmtk` driver
+declares `mediatek/mt7927/BT_RAM_CODE_MT6639_2_1_hdr.bin` as required firmware,
+but the blob is **not shipped in linux-firmware**. It sits in draft merge
+request !946 awaiting MediaTek's redistribution sign-off. The
+`mediatek/mt7927/` directory ships the WiFi firmware only.
+
+Not caused by the 2026-08-09 upgrade — the blob has never been in
+linux-firmware. Whether it was equally noisy beforehand could not be confirmed,
+as no pre-reboot journal survived.
+
+Disabling `bluetooth.service` does **not** stop this. The retry loop is in the
+kernel driver, not `bluetoothd` — measured at 102 failures/60s with the service
+stopped and inactive. Only unloading/blacklisting `btusb` ends it.
+
+### Workaround applied
+
+- **File:** `/etc/modprobe.d/blacklist-mt7927-bluetooth.conf` (`blacklist btusb`)
+- **Managed by:** `run_onchange_before_disable-bluetooth-mimir.sh.tmpl`
+- Also disables `bluetooth.service`, which has nothing to manage once `btusb`
+  is blacklisted.
+- Verified with `modprobe -n -v -b btusb` that udev will not auto-load it at
+  boot; failure rate confirmed at 0.
+
+Safe here because mimir uses neither Bluetooth nor WiFi — it is ethernet-only
+(`enp12s0`), and the mouse and keyboard run on a Logitech PowerPlay USB
+receiver. The MT7927 WiFi side does not present a network interface either, so
+the card appears to be entirely non-functional on Linux (untested and unneeded
+here).
+
+### Check condition
+
+Remove the blacklist once MR !946 merges and `linux-firmware-mediatek` ships
+`BT_RAM_CODE_MT6639_2_1_hdr.bin`. To reverse early (e.g., if a USB Bluetooth
+dongle is added):
+
+```bash
+sudo rm /etc/modprobe.d/blacklist-mt7927-bluetooth.conf
+sudo systemctl enable --now bluetooth
+sudo modprobe btusb
+```
+
+The firmware can also be extracted manually from ASUS's Windows driver package
+(it lives inside the `mtkwlan.dat` container), but that was not pursued since
+the hardware is unused.
+
+---
+
 ## NET-001: SSDP discovery replies flood the kernel log via UFW
 
 - **Status:** Worked around (logging suppressed; upstream behaviour unchanged)
