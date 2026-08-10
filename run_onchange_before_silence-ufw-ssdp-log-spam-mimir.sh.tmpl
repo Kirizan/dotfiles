@@ -1,0 +1,126 @@
+#!/bin/bash
+# Stop SSDP/UPnP discovery-reply log spam from flooding mimir's kernel log.
+#
+# steamwebhelper (the Chromium instance embedded in the Steam client) performs
+# DIAL/Cast device discovery by broadcasting an SSDP M-SEARCH to
+# 239.255.255.250:1900 every two minutes, each time from a fresh ephemeral
+# source port. LAN devices answer by *unicast* back to that ephemeral port —
+# on this network the Philips Hue Bridge (replying from port 1900) and an
+# Android device (replying from a random port).
+#
+# conntrack cannot match those replies to the request, because the request was
+# addressed to a multicast group rather than to the responder. So every reply
+# falls through to the default deny and gets logged. ufw's before.rules already
+# ACCEPTs inbound SSDP to 239.255.255.250:1900, but these replies are addressed
+# to the host's own unicast IP and never match that rule.
+#
+# Measured impact before this fix: 1,206 of 1,315 lines in the kernel ring
+# buffer were [UFW BLOCK] entries — 92% noise, leaving only 109 real kernel
+# messages and roughly 6.6 hours of retained history. That made `dmesg`
+# useless for debugging; a USB enumeration failure had to be diagnosed with a
+# live udev monitor because the boot-time messages had already been evicted.
+#
+# These rules change LOGGING ONLY. The packets were already being dropped by
+# the default deny policy and still are — ufw-skip-to-policy-input jumps
+# straight to a bare DROP with no LOG target. Nothing new is exposed and no
+# traffic that previously reached the host is affected.
+#
+# The second rule is deliberately broad: SSDP responders may answer from any
+# source port, so there is no port signature to match on. It silences all LAN
+# UDP addressed to the ephemeral range. Those packets were already dropped;
+# the only loss is that they no longer appear in the firewall log.
+#
+# TO REVERSE:
+#   sudo sed -i '/BEGIN chezmoi: silence SSDP/,/END chezmoi: silence SSDP/d' /etc/ufw/after.rules
+#   sudo ufw reload
+#
+# See Known Bugs NET-001 in the Obsidian vault.
+
+{{- if and (eq .chezmoi.os "linux") (eq .chezmoi.hostname "mimir") }}
+
+set -e
+
+AFTER_RULES="/etc/ufw/after.rules"
+BEGIN_MARKER="# --- BEGIN chezmoi: silence SSDP/UPnP discovery reply spam ---"
+END_MARKER="# --- END chezmoi: silence SSDP/UPnP discovery reply spam ---"
+
+echo "Applying SSDP log-suppression rules for mimir..."
+
+if ! command -v ufw >/dev/null 2>&1; then
+    echo "  ufw not installed; nothing to do"
+    exit 0
+fi
+
+if [ ! -f "$AFTER_RULES" ]; then
+    echo "  $AFTER_RULES not found; skipping"
+    exit 0
+fi
+
+if sudo grep -qF "$BEGIN_MARKER" "$AFTER_RULES"; then
+    echo "  SSDP log-suppression rules already present"
+    exit 0
+fi
+
+# ufw-after-input runs after the user rules and before ufw-after-logging-input,
+# which is where the [UFW BLOCK] LOG target lives. Appending at the end of the
+# chain is safe: every other rule in it targets unrelated traffic, so none of
+# them can shadow these and these cannot shadow any user ALLOW rule.
+read -r -d '' BLOCK <<EOF || true
+$BEGIN_MARKER
+# Replies to steamwebhelper's SSDP M-SEARCH. Dropped silently rather than
+# logged: conntrack cannot match them because the query went to a multicast
+# address. Logging-only change — these packets were already denied.
+# The dport range matches net.ipv4.ip_local_port_range (32768-60999).
+-A ufw-after-input -p udp --sport 1900 -j ufw-skip-to-policy-input
+-A ufw-after-input -s 192.168.1.0/24 -p udp --dport 32768:60999 -j ufw-skip-to-policy-input
+$END_MARKER
+
+EOF
+
+echo "  Backing up $AFTER_RULES..."
+sudo cp "$AFTER_RULES" "${AFTER_RULES}.bak"
+
+TMP="$(mktemp)"
+# Insert immediately before the single trailing COMMIT so the rules land at the
+# end of ufw-after-input. Anchoring on COMMIT rather than on a comment keeps
+# this working if the distro reworks after.rules' comment text.
+awk -v block="$BLOCK" '
+    /^COMMIT[[:space:]]*$/ && !inserted { print block; inserted = 1 }
+    { print }
+' "$AFTER_RULES" > "$TMP"
+
+if ! grep -qF "$BEGIN_MARKER" "$TMP"; then
+    echo "  ERROR: no COMMIT line found in $AFTER_RULES; leaving it untouched" >&2
+    rm -f "$TMP"
+    exit 1
+fi
+
+sudo cp "$TMP" "$AFTER_RULES"
+sudo chmod 640 "$AFTER_RULES"
+sudo chown root:root "$AFTER_RULES"
+rm -f "$TMP"
+echo "  Rules inserted"
+
+echo "  Reloading ufw..."
+if sudo ufw reload >/dev/null 2>&1; then
+    echo "  ufw reloaded"
+else
+    echo "  ERROR: ufw reload failed; restoring backup" >&2
+    sudo cp "${AFTER_RULES}.bak" "$AFTER_RULES"
+    sudo ufw reload >/dev/null 2>&1 || true
+    exit 1
+fi
+
+# Confirm the rules are actually live, not just written to disk.
+if sudo iptables -S ufw-after-input 2>/dev/null | grep -q -- "--sport 1900"; then
+    echo "  Verified: suppression rules active in ufw-after-input"
+    sudo rm -f "${AFTER_RULES}.bak"
+else
+    echo "  WARNING: rules written but not visible in iptables; backup kept at ${AFTER_RULES}.bak" >&2
+fi
+
+echo "SSDP log-suppression applied."
+
+{{- else }}
+echo "Skipping SSDP log-suppression (not applicable on this system)"
+{{- end }}

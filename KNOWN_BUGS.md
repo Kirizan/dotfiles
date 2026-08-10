@@ -142,3 +142,62 @@ This may be a physical defect on the motherboard's USB 3.0 port. Test with a
 known-good USB 3.0 device directly connected. If it still fails, the port is
 likely defective and the workaround should remain permanent. A BIOS update
 could also resolve it if the issue is in the USB controller firmware.
+
+---
+
+## NET-001: SSDP discovery replies flood the kernel log via UFW
+
+- **Status:** Worked around (logging suppressed; upstream behaviour unchanged)
+- **Affected systems:** mimir
+- **Symptoms:** `[UFW BLOCK] ... SRC=192.168.1.63 ... SPT=1900 DPT=<ephemeral>`
+  logged in bursts every two minutes. 1,206 of 1,315 lines in the kernel ring
+  buffer were UFW entries — 92% noise, leaving only 109 real kernel messages
+  and roughly 6.6 hours of retained history.
+- **Date identified:** 2026-08-10
+
+### Cause
+
+`steamwebhelper` (the Chromium instance embedded in the Steam client) performs
+DIAL/Cast device discovery, broadcasting an SSDP `M-SEARCH` to
+`239.255.255.250:1900` every two minutes from a fresh ephemeral source port.
+LAN devices answer by **unicast** back to that ephemeral port — here the
+Philips Hue Bridge at 192.168.1.63 (replying from port 1900) and an Android
+device at 192.168.1.56 (replying from a random port).
+
+conntrack cannot associate those replies with the request, because the request
+was addressed to a multicast group rather than to the responder. Every reply
+therefore falls through to the default deny and is logged. `before.rules`
+already ACCEPTs inbound SSDP to `239.255.255.250:1900`, but these replies are
+addressed to the host's own unicast IP and never match that rule.
+
+Confirmed by correlation: a transient socket on `192.168.1.81:59526` held by
+`steamwebhelper` (~3s lifetime) matched `DPT=59526` in the blocks logged at
+10:20:41 from both devices.
+
+### Workaround applied
+
+- **File:** `/etc/ufw/after.rules` (two rules appended to `ufw-after-input`)
+- **Managed by:** `run_onchange_before_silence-ufw-ssdp-log-spam-mimir.sh.tmpl`
+- Uses ufw's own `ufw-skip-to-policy-input` target, the same mechanism ufw
+  ships for NetBIOS/DHCP/broadcast noise — it jumps to a bare `DROP` with no
+  `LOG` target.
+
+**This is a logging-only change.** The packets were already denied by the
+default policy and still are; nothing new is exposed and no traffic that
+previously reached the host is affected.
+
+The second rule (`-s 192.168.1.0/24 -p udp --dport 32768:60999`) is
+deliberately broad, because SSDP responders may answer from any source port
+and there is no port signature to match on. It silences all LAN UDP addressed
+to the ephemeral range. Those packets were already dropped; the only loss is
+that they no longer appear in the firewall log.
+
+### Check condition
+
+Revisit if Steam stops performing DIAL/Cast discovery, or if firewall logs for
+LAN UDP to ephemeral ports are ever needed for diagnostics. To reverse:
+
+```bash
+sudo sed -i '/BEGIN chezmoi: silence SSDP/,/END chezmoi: silence SSDP/d' /etc/ufw/after.rules
+sudo ufw reload
+```
