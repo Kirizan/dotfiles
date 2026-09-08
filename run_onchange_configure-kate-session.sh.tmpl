@@ -1,26 +1,32 @@
 {{- if and (not .isHeadless) (not .isWSL) .isDesktop -}}
 #!/bin/bash
-# Configure Kate session restore + scratch-pad stash behavior via kwriteconfig6.
+# Configure Kate session restore + scratch-pad stash behavior.
 #
-# "Startup Session=last" makes Kate reload the previous session every time it
-# launches. Kate persists the full content of modified and untitled (never
-# saved) buffers inside its session data, so this restores unsaved scratch
-# files across quit/reboot — the equivalent of Notepad++ / Sublime "hot exit".
+# GOAL: a Notepad++/Sublime-style scratch pad — closing Kate must NOT prompt to
+# save never-saved "Untitled" buffers (they persist across quit/reboot), while
+# real, named on-disk files with unsaved edits STILL prompt to save.
 #
-# "Stash new unsaved files=true" tells Kate to silently stash never-saved
-# (Untitled) documents into the session on quit instead of prompting to save
-# them — so the scratch pad closes without a dialog and comes back on relaunch.
+# HOW KATE DOES THIS: the silent-stash behavior is hard-gated in Kate's source
+# (KateStashManager::canStash) to NAMED sessions only — it never fires in the
+# default "anonymous" session. So the scratch pad only works if Kate always
+# launches into a named session. This script therefore does three things:
 #
-# "Stash unsaved file changes=false" is left at its default so that real,
-# named on-disk files with unsaved edits STILL prompt to save on close. This
-# is the deliberate split: no prompt for scratch (Untitled), prompt for named.
+#   1. katerc [General] keys:
+#        Startup Session=last          -> reload the last-used session on launch
+#        Last Session=scratch          -> bootstrap that last session to "scratch"
+#        Stash new unsaved files=true  -> silently stash Untitled buffers on quit
+#        Stash unsaved file changes=false -> named files still prompt (deliberate)
+#   2. Seed a minimal named session file "scratch" if one does not exist yet, so
+#      Startup Session=last has a named session to load on a fresh machine.
+#      (Only created when missing — Kate owns/rewrites it at runtime thereafter.)
 #
-# Done via kwriteconfig6 rather than managing dot_config/katerc directly: Kate
-# constantly rewrites katerc with machine-specific runtime state (window
-# geometry, screen dimensions, MDI splitter/sidebar sizes), so templating the
-# whole file would clobber per-machine layout and churn endless diffs. This
-# touches only these keys and leaves everything else alone.
-# config-hash: {{ "Startup Session=last;Stash new unsaved files=true;Stash unsaved file changes=false" | sha256sum }}
+# katerc keys are set via kwriteconfig6 (not by managing dot_config/katerc)
+# because Kate constantly rewrites katerc with machine-specific runtime state
+# (window geometry, screen dimensions, MDI splitter/sidebar sizes); templating
+# the whole file would clobber per-machine layout and churn endless diffs.
+#
+# Key names verified against Kate's kateconfigdialog.cpp / katestashmanager.cpp.
+# config-hash: {{ "Startup Session=last;Last Session=scratch;Stash new unsaved files=true;Stash unsaved file changes=false;seed=scratch" | sha256sum }}
 
 set -e
 
@@ -31,20 +37,44 @@ fi
 
 echo "Configuring Kate session restore + scratch-pad stash behavior..."
 
+# --- katerc [General] keys ---------------------------------------------------
+
 # Load last-used session on launch (values: new | last | manual)
 kwriteconfig6 --file ~/.config/katerc \
     --group "General" \
     --key "Startup Session" "last"
 
-# Silently stash Untitled (never-saved) scratch buffers on quit — no save prompt
+# Bootstrap the last-used session to our named "scratch" session. Kate updates
+# this at runtime; here it just seeds the default so a fresh machine starts in a
+# named (stash-capable) session rather than the anonymous one.
+kwriteconfig6 --file ~/.config/katerc \
+    --group "General" \
+    --key "Last Session" "scratch"
+
+# Silently stash Untitled (never-saved) scratch buffers on quit — no save prompt.
+# NOTE: only effective inside a named session (see canStash gate above).
 kwriteconfig6 --file ~/.config/katerc \
     --group "General" \
     --key "Stash new unsaved files" --type bool "true"
 
-# Keep prompting to save named, on-disk files that have unsaved changes
+# Keep prompting to save named, on-disk files that have unsaved changes.
 kwriteconfig6 --file ~/.config/katerc \
     --group "General" \
     --key "Stash unsaved file changes" --type bool "false"
+
+# --- seed a named "scratch" session on first install -------------------------
+# Kate can only stash in a named session, and Startup Session=last needs one to
+# load. Create a minimal empty session if absent; never overwrite an existing
+# one (Kate maintains its geometry/open-document state at runtime).
+session_dir="${XDG_DATA_HOME:-$HOME/.local/share}/kate/sessions"
+session_file="$session_dir/scratch.katesession"
+if [ ! -f "$session_file" ]; then
+    mkdir -p "$session_dir"
+    printf '[Open Documents]\nCount=0\n\n[Open MainWindows]\nCount=1\n' > "$session_file"
+    echo "Seeded empty named Kate session: $session_file"
+else
+    echo "Named Kate session already present: $session_file (left as-is)"
+fi
 
 echo "Kate session + scratch stash configured (takes effect on next Kate launch)."
 {{- else -}}
