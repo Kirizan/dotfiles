@@ -38,6 +38,11 @@ STALE_DAYS=30
 mkdir -p "$STATE_DIR" "$REPORT_DIR" "$VAULT/daily/$YEAR"
 log() { printf '%s %s\n' "$(date -Is)" "$*" >>"$LOG"; }
 
+# The Claude CLI echoes the rejected bearer token verbatim in auth errors, so
+# nothing derived from its stdout/stderr may reach the log or the Obsidian
+# report unfiltered.
+redact() { sed -E 's/sk-ant-[A-Za-z0-9_-]+/sk-ant-***REDACTED***/g'; }
+
 vmq() {  # instant query -> scalar (empty on failure)
   curl -sk --max-time 20 --data-urlencode "query=$1" "$VM/api/v1/query" 2>/dev/null \
     | python3 -c '
@@ -132,7 +137,29 @@ PY
 )"
 unifi_pending="$(printf '%s' "$unifi" | grep -c 'YES' || true)"
 
-log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update | ctr stale=$ctr_stale restarting=$ctr_restarting"
+# ── 5b. Claude CLI versions ──────────────────────────────────────────────
+# Native install under ~/.local/share/claude — owned by no package manager, so
+# neither checkupdates nor paru sees it. Tracked here or not at all.
+#
+# Compare against the 'latest' channel: that is what `claude update` installs.
+# 'stable' lags it (2.1.236 vs 2.1.263 on 2026-09-08) and would report drift on
+# an up-to-date machine. Plain HTTPS, no auth — so version tracking survives the
+# CLI being unauthenticated, which is exactly when you most want to see it.
+CLAUDE_BIN="$(command -v claude || echo "$HOME/.local/bin/claude")"
+CLAUDE_RELEASES="https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases"
+
+claude_installed="$("$CLAUDE_BIN" --version 2>/dev/null | awk '{print $1}')"
+claude_latest="$(curl -s --max-time 20 "$CLAUDE_RELEASES/latest" 2>/dev/null | tr -d '[:space:]')"
+claude_bundled="$(ls -1 "$HOME/.config/Claude/claude-code" 2>/dev/null | sort -V | tail -1)"
+
+# sort -V, not string equality: being *ahead* of the channel is not drift.
+claude_outdated=0
+if [[ -n "$claude_installed" && -n "$claude_latest" ]]; then
+  newest="$(printf '%s\n%s\n' "$claude_installed" "$claude_latest" | sort -V | tail -1)"
+  [[ "$newest" != "$claude_installed" ]] && claude_outdated=1
+fi
+
+log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update | ctr stale=$ctr_stale restarting=$ctr_restarting | claude cli=${claude_installed:-?} latest=${claude_latest:-?} outdated=$claude_outdated"
 
 # ── 6. push host-level metrics into VictoriaMetrics ──────────────────────
 {
@@ -142,6 +169,7 @@ log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_u
   printf 'fleet_truenas_update_available{host="avalon"} %s\n' \
     "$([[ "$truenas_update" == "AVAILABLE" ]] && echo 1 || echo 0)"
   printf 'fleet_unifi_firmware_updates_pending %s\n' "${unifi_pending:-0}"
+  printf 'fleet_claude_cli_outdated{host="mimir"} %s\n' "${claude_outdated:-0}"
 } | curl -sk --max-time 20 --data-binary @- "$VM/api/v1/import/prometheus" \
   && log "pushed host metrics to VictoriaMetrics" \
   || log "WARN: metric push failed"
@@ -177,6 +205,9 @@ Live view: [Fleet Update Status]($GRAFANA/d/fleet-updates)
 | Containers | Unhealthy | ${ctr_unhealthy:-?} |
 | Containers | Upstream updates ([[Diun]]) | ${diun_updates:-?} |
 | UniFi | Firmware updates pending | ${unifi_pending:-0} |
+| [[Claude Code]] | CLI installed / latest | ${claude_installed:-?} / ${claude_latest:-?} |
+| [[Claude Code]] | CLI update available | $([[ "${claude_outdated:-0}" == "1" ]] && echo "**YES**" || echo "no") |
+| [[Claude Code]] | Desktop-bundled CLI | ${claude_bundled:-n/a} |
 
 ## Oldest Container Images
 
@@ -198,7 +229,6 @@ EOF
 } >"$REPORT"
 
 # ── 8. Claude narrative ──────────────────────────────────────────────────
-CLAUDE_BIN="$(command -v claude || echo "$HOME/.local/bin/claude")"
 if [[ -x "$CLAUDE_BIN" ]]; then
   prompt="You are writing the analysis section of an automated weekly update
 report for an Arch/CachyOS desktop (mimir) and a TrueNAS Scale server (avalon)
@@ -221,22 +251,38 @@ Tasks:
 Output GitHub-flavored markdown starting at '## Analysis'. Under 50 lines.
 Use Obsidian wiki-links like [[mimir]] and [[avalon]] for hosts."
 
-  # claude prints auth failures to STDOUT and still exits 0, so an exit-code
-  # check alone lets "Not logged in · Please run /login" land in the report.
-  # Capture to a temp file and validate before appending anything.
+  # Two failure modes seen in the wild:
+  #   exit 0 + "Not logged in · Please run /login" on stdout      (2026-08)
+  #   exit 1 + "OAuth session expired ..." on stdout               (2026-09-06)
+  # Checking rc first masks the second behind a bare "exited 1" — which is what
+  # left four weekly reports with no analysis and no usable error. Content is
+  # inspected before the exit code, and the exit-code branch now carries the
+  # actual first line so an unrecognised failure is still diagnosable.
   tmp="$(mktemp)"
+  tmperr="$(mktemp)"
+
+  # Long-lived token for headless use; a normal OAuth session expires mid-month
+  # and silently kills this step. Stripped defensively — a stored value with
+  # embedded whitespace yields an invalid Authorization header.
+  CLAUDE_CODE_OAUTH_TOKEN="$(bao kv get -field=cli_oauth_token kv/ai/claude 2>/dev/null | tr -d '[:space:]')"
+  export CLAUDE_CODE_OAUTH_TOKEN
+
   timeout 900 "$CLAUDE_BIN" -p "$prompt" \
     --permission-mode acceptEdits \
     --allowedTools "Bash(pacman -Q:*)" "Bash(checkupdates:*)" "WebFetch" \
-    >"$tmp" 2>>"$LOG"
+    >"$tmp" 2>"$tmperr"
   rc=$?
 
-  if (( rc != 0 )); then
-    reason="claude exited $rc"
+  unset CLAUDE_CODE_OAUTH_TOKEN
+  redact <"$tmperr" >>"$LOG"   # never let a bearer token reach the log
+  rm -f "$tmperr"
+
+  if [[ -s "$tmp" ]] && grep -qiE 'not logged in|please run /login|invalid api key|authenticat|oauth|session expired' "$tmp"; then
+    reason="claude auth failed: $(head -1 "$tmp" | redact) — rotate kv/ai/claude via 'claude setup-token'"
+  elif (( rc != 0 )); then
+    reason="claude exited $rc: $(head -1 "$tmp" 2>/dev/null | redact)"
   elif [[ ! -s "$tmp" ]]; then
     reason="claude produced no output"
-  elif grep -qiE 'not logged in|please run /login|invalid api key|authentication' "$tmp"; then
-    reason="claude is not authenticated — run 'claude' interactively and /login"
   elif ! grep -q '^## ' "$tmp"; then
     reason="claude output was not the expected markdown"
   else
