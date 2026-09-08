@@ -1,18 +1,26 @@
 {{- if and (not .isHeadless) (not .isWSL) .isDesktop -}}
 #!/bin/bash
-# Configure Kate to restore the last session on startup via kwriteconfig6.
+# Configure Kate session restore + scratch-pad stash behavior via kwriteconfig6.
 #
 # "Startup Session=last" makes Kate reload the previous session every time it
 # launches. Kate persists the full content of modified and untitled (never
 # saved) buffers inside its session data, so this restores unsaved scratch
 # files across quit/reboot — the equivalent of Notepad++ / Sublime "hot exit".
 #
+# "Stash new unsaved files=true" tells Kate to silently stash never-saved
+# (Untitled) documents into the session on quit instead of prompting to save
+# them — so the scratch pad closes without a dialog and comes back on relaunch.
+#
+# "Stash unsaved file changes=false" is left at its default so that real,
+# named on-disk files with unsaved edits STILL prompt to save on close. This
+# is the deliberate split: no prompt for scratch (Untitled), prompt for named.
+#
 # Done via kwriteconfig6 rather than managing dot_config/katerc directly: Kate
 # constantly rewrites katerc with machine-specific runtime state (window
 # geometry, screen dimensions, MDI splitter/sidebar sizes), so templating the
 # whole file would clobber per-machine layout and churn endless diffs. This
-# touches only the one key and leaves everything else alone.
-# config-hash: {{ "Startup Session=last" | sha256sum }}
+# touches only these keys and leaves everything else alone.
+# config-hash: {{ "Startup Session=last;Stash new unsaved files=true;Stash unsaved file changes=false" | sha256sum }}
 
 set -e
 
@@ -21,14 +29,24 @@ if ! command -v kwriteconfig6 &> /dev/null; then
     exit 0
 fi
 
-echo "Configuring Kate to restore the last session on startup..."
+echo "Configuring Kate session restore + scratch-pad stash behavior..."
 
 # Load last-used session on launch (values: new | last | manual)
 kwriteconfig6 --file ~/.config/katerc \
     --group "General" \
     --key "Startup Session" "last"
 
-echo "Kate session restore configured (takes effect on next Kate launch)."
+# Silently stash Untitled (never-saved) scratch buffers on quit — no save prompt
+kwriteconfig6 --file ~/.config/katerc \
+    --group "General" \
+    --key "Stash new unsaved files" --type bool "true"
+
+# Keep prompting to save named, on-disk files that have unsaved changes
+kwriteconfig6 --file ~/.config/katerc \
+    --group "General" \
+    --key "Stash unsaved file changes" --type bool "false"
+
+echo "Kate session + scratch stash configured (takes effect on next Kate launch)."
 {{- else -}}
 #!/bin/bash
 exit 0
