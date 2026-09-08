@@ -1,0 +1,35 @@
+{{- if and (not .isHeadless) (not .isWSL) .isDesktop -}}
+#!/bin/bash
+# Configure Kate to restore the last session on startup via kwriteconfig6.
+#
+# "Startup Session=last" makes Kate reload the previous session every time it
+# launches. Kate persists the full content of modified and untitled (never
+# saved) buffers inside its session data, so this restores unsaved scratch
+# files across quit/reboot — the equivalent of Notepad++ / Sublime "hot exit".
+#
+# Done via kwriteconfig6 rather than managing dot_config/katerc directly: Kate
+# constantly rewrites katerc with machine-specific runtime state (window
+# geometry, screen dimensions, MDI splitter/sidebar sizes), so templating the
+# whole file would clobber per-machine layout and churn endless diffs. This
+# touches only the one key and leaves everything else alone.
+# config-hash: {{ "Startup Session=last" | sha256sum }}
+
+set -e
+
+if ! command -v kwriteconfig6 &> /dev/null; then
+    echo "kwriteconfig6 not found — skipping Kate session configuration"
+    exit 0
+fi
+
+echo "Configuring Kate to restore the last session on startup..."
+
+# Load last-used session on launch (values: new | last | manual)
+kwriteconfig6 --file ~/.config/katerc \
+    --group "General" \
+    --key "Startup Session" "last"
+
+echo "Kate session restore configured (takes effect on next Kate launch)."
+{{- else -}}
+#!/bin/bash
+exit 0
+{{- end }}
