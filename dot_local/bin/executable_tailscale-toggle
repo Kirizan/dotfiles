@@ -1,0 +1,105 @@
+#!/bin/bash
+# Start / stop the Tailscale daemon on demand.
+#
+# tailscaled is deliberately NOT enabled on graphical machines. This desktop only
+# needs the tailnet to reach the Minecraft servers on avalon, and a VPN that is up
+# around the clock takes over DNS (see the known systemd-resolved + NetworkManager
+# health warning) for no benefit the rest of the time.
+#
+# No `tailscale up` here: the node's identity and WantRunning=true persist in
+# /var/lib/tailscale/tailscaled.state, so simply starting the daemon reconnects to
+# Headscale on its own. Re-authentication is only needed if the node is logged out.
+
+set -u
+
+UNIT="tailscaled.service"
+ICON="network-vpn"
+WAIT_SECONDS=20
+
+notify() {
+    # -e replaces the previous notification instead of stacking them.
+    notify-send -a "Tailscale" -i "$ICON" -e "$1" "${2:-}" 2>/dev/null || true
+    echo "$1${2:+ — $2}"
+}
+
+# Starting a system unit genuinely needs root. Passwordless sudo is already the
+# posture on personal machines; fall back to polkit where it is not.
+as_root() {
+    if sudo -n true 2>/dev/null; then
+        sudo -n "$@"
+    elif command -v pkexec >/dev/null 2>&1; then
+        pkexec "$@"
+    else
+        echo "No way to escalate privileges (need passwordless sudo or pkexec)" >&2
+        return 1
+    fi
+}
+
+backend_state() {
+    tailscale status --json 2>/dev/null \
+        | grep -m1 '"BackendState"' \
+        | sed -E 's/.*"BackendState": *"([^"]*)".*/\1/'
+}
+
+tailnet_summary() {
+    local ip peers
+    ip="$(tailscale ip -4 2>/dev/null | head -1)"
+    peers="$(tailscale status 2>/dev/null | grep -cE '^[0-9]+\.')"
+    [ -n "$ip" ] && echo "${ip} — ${peers:-0} node(s) on the tailnet"
+}
+
+do_start() {
+    if systemctl is-active --quiet "$UNIT"; then
+        notify "Tailscale already running" "$(tailnet_summary)"
+        return 0
+    fi
+
+    as_root systemctl start "$UNIT" || { notify "Failed to start Tailscale" "See: journalctl -u $UNIT"; return 1; }
+
+    # The daemon answers its socket well before it has finished talking to
+    # Headscale, so wait for the backend rather than the unit.
+    local i state=""
+    for ((i = 0; i < WAIT_SECONDS * 2; i++)); do
+        state="$(backend_state)"
+        [ "$state" = "Running" ] && break
+        sleep 0.5
+    done
+
+    case "$state" in
+        Running)  notify "Tailscale connected" "$(tailnet_summary)" ;;
+        NeedsLogin|NoState)
+                  notify "Tailscale needs to log in again" "Re-enroll with the key in kv/games/minecraft" ;;
+        *)        notify "Tailscale started but not connected" "Backend state: ${state:-unknown}" ;;
+    esac
+}
+
+do_stop() {
+    if ! systemctl is-active --quiet "$UNIT"; then
+        notify "Tailscale already stopped"
+        return 0
+    fi
+
+    as_root systemctl stop "$UNIT" || { notify "Failed to stop Tailscale" "See: journalctl -u $UNIT"; return 1; }
+    notify "Tailscale stopped" "Tailnet addresses are no longer reachable"
+}
+
+do_status() {
+    if systemctl is-active --quiet "$UNIT"; then
+        notify "Tailscale is running" "$(tailnet_summary)"
+    else
+        notify "Tailscale is stopped" "Autostart is disabled — launch it when you need it"
+    fi
+}
+
+case "${1:-toggle}" in
+    start)  do_start ;;
+    stop)   do_stop ;;
+    status) do_status ;;
+    toggle)
+        if systemctl is-active --quiet "$UNIT"; then do_stop; else do_start; fi
+        ;;
+    *)
+        echo "Usage: ${0##*/} [toggle|start|stop|status]" >&2
+        exit 64
+        ;;
+esac

@@ -110,7 +110,14 @@ sudo pacman -S --needed --noconfirm \
 
 # Tailscale daemon — control plane is our self-hosted Headscale (kv/games/minecraft).
 # Auth key is per-machine and short-lived; do NOT auto-`tailscale up` here.
+{{- if .isHeadless }}
 sudo systemctl enable --now tailscaled
+{{- else }}
+# Graphical machines start the daemon on demand from the "Tailscale" launcher
+# (~/.local/bin/tailscale-toggle) — the tailnet is only needed for reaching
+# avalon's Minecraft servers, and an always-on VPN takes over DNS for nothing.
+sudo systemctl disable tailscaled 2>/dev/null || true
+{{- end }}
 
 {{- if not .isHeadless }}
 

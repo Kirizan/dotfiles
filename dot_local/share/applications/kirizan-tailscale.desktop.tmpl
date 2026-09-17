@@ -1,0 +1,29 @@
+{{- if and (not .isHeadless) (not .isWSL) (eq .chezmoi.os "linux") -}}
+[Desktop Entry]
+Name=Tailscale
+GenericName=Mesh VPN
+Comment=Connect to the Headscale tailnet on demand (autostart is disabled)
+Exec={{ .chezmoi.homeDir }}/.local/bin/tailscale-toggle toggle
+Icon=network-vpn
+Terminal=false
+Type=Application
+Categories=Network;Security;
+Keywords=tailscale;tailnet;headscale;vpn;mesh;minecraft;
+StartupNotify=false
+Actions=Start;Stop;Status;
+
+[Desktop Action Start]
+Name=Start Tailscale
+Exec={{ .chezmoi.homeDir }}/.local/bin/tailscale-toggle start
+Icon=network-vpn
+
+[Desktop Action Stop]
+Name=Stop Tailscale
+Exec={{ .chezmoi.homeDir }}/.local/bin/tailscale-toggle stop
+Icon=network-vpn
+
+[Desktop Action Status]
+Name=Show status
+Exec={{ .chezmoi.homeDir }}/.local/bin/tailscale-toggle status
+Icon=network-vpn
+{{- end }}

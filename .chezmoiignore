@@ -108,6 +108,13 @@ run_once_after_install-battlenet.sh.tmpl
 run_onchange_after_enable-fleet-update-timer.sh.tmpl
 {{- end }}
 
+# Tailscale on-demand launcher — needs a graphical session for notify-send and an
+# application menu to launch it from. Headless boxes keep tailscaled enabled instead.
+{{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL }}
+.local/bin/tailscale-toggle
+.local/share/applications/kirizan-tailscale.desktop
+{{- end }}
+
 # Optional gaming tools — opt-in only
 {{- if not .installCurseforge }}
 install-curseforge.sh
