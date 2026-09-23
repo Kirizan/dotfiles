@@ -77,6 +77,74 @@ pacman -Si nvidia-utils | grep Version
 
 ---
 
+## NVIDIA-002: QtWebEngine cannot create an EGL context — Plex HTPC renders a black fullscreen window
+
+- **Status:** Active (no upstream fix)
+- **Affected systems:** mimir (RTX 5090 / GB202, KDE Plasma 6 Wayland)
+- **Driver:** nvidia 610.57.04
+- **Affected software:** `plex-htpc` (any QtWebEngine app; Jellyfin Media Player
+  shares Plex Media Player's codebase and hits the same fault)
+- **Symptoms:** The app launches, takes its assigned display fullscreen, and then
+  renders nothing. The monitor reads as **frozen and unresponsive** rather than as
+  a crashed application — the desktop underneath is completely covered. KWin, the
+  output, and the GPU are all healthy throughout; `kscreen-doctor` shows the output
+  enabled at the correct mode and `nvidia-smi` responds normally. The processes sit
+  in ordinary `S` state, not `D`, so nothing is actually hung.
+- **Date identified:** 2026-09-22
+
+### Cause
+
+QtWebEngine's Chromium GPU process cannot create an EGL context:
+
+```
+eglCreateContext failed with error EGL_BAD_CONTEXT
+ContextResult::kFatalFailure: Failed to create shared context for virtualization
+SharedImageStub: unable to create context
+GpuChannel: Failed to create SharedImageStub
+```
+
+The failure retries in a tight loop — a 15 second run produced **745,132** lines of
+it, which also floods the journal.
+
+This is **not** XWayland-specific. `Plex.sh` sets `DISABLE_WAYLAND=${DISABLE_WAYLAND:-1}`
+so the app runs through XWayland by default, but forcing `DISABLE_WAYLAND=0` reproduces
+the identical failure on the native Wayland path. The problem is QtWebEngine against
+this driver, not the windowing protocol.
+
+Only Chromium's compositor is affected. mpv holds a separate OpenGL context that
+initialises fine in the same log (`libmpv_render: GL_VERSION='4.6.0 NVIDIA 610.57.04'`),
+which is why video playback is unaffected once the UI can draw.
+
+### Workaround applied
+
+`QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu`, which disables only Chromium's GPU
+compositor. The Plex menu UI falls back to software rendering — imperceptible for a
+menu — and mpv continues to decode and present video on the GPU.
+
+- **File:** `~/.local/bin/Plex` (wrapper shadowing `/usr/bin/Plex`)
+- **Managed by:** `dot_local/bin/executable_Plex`
+
+`~/.local/bin` is first in both the interactive PATH and the systemd user
+environment, so the wrapper catches app-menu launches (KDE starts the app as
+`app-tv.plex.PlexHTPC@*.service`, whose `Exec=Plex` resolves through that PATH)
+as well as CLI launches. Result with the wrapper: 0 EGL failures, 63 log lines.
+
+### Diagnostic note
+
+The symptom presents as a dead monitor, so the instinct is to chase the compositor
+or the display. Check for a live fullscreen window first — `pgrep -af /opt/plex-htpc`
+and `kscreen-doctor -o`. An output that is `enabled` at the right mode with a healthy
+`kwin_wayland` means the display is fine and something is covering it.
+
+### Check condition
+
+Re-test on NVIDIA driver upgrades and on `plex-htpc` version bumps. Launch without
+the wrapper (`/opt/plex-htpc/Plex.sh`) and grep stderr for `EGL_BAD_CONTEXT`; if the
+count is zero, the wrapper can be dropped. Related: NVIDIA-001 is a separate
+freeze on the same GPU and is not affected by this workaround.
+
+---
+
 ## USB-001: GenesysLogic USB hub chain resets disconnect all downstream devices
 
 - **Status:** Active (hardware/firmware limitation)

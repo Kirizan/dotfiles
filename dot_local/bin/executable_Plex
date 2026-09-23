@@ -1,0 +1,33 @@
+#!/bin/bash
+# Plex HTPC launch wrapper — see KNOWN_BUGS.md NVIDIA-002
+#
+# Shadows /usr/bin/Plex (symlink to /opt/plex-htpc/Plex.sh). ~/.local/bin is
+# first in both the interactive PATH and the systemd user environment, so this
+# catches app-menu launches (KDE starts it as app-tv.plex.PlexHTPC@*.service,
+# whose Exec=Plex resolves through that PATH) as well as CLI launches.
+#
+# The bug: QtWebEngine's Chromium GPU process cannot create an EGL context on
+# the NVIDIA driver --
+#
+#   eglCreateContext failed with error EGL_BAD_CONTEXT
+#   ContextResult::kFatalFailure: Failed to create shared context for virtualization
+#   GpuChannel: Failed to create SharedImageStub
+#
+# The app still takes its display fullscreen and then renders nothing, so the
+# monitor reads as frozen and unresponsive rather than as a crashed app. The
+# failure also retries in a tight loop — a 15 second run produced 745,132 lines
+# of it, which floods the journal.
+#
+# Not XWayland-specific: reproduced identically with DISABLE_WAYLAND=0, so the
+# native Wayland path is no escape. The same fault hits Jellyfin Media Player,
+# which shares Plex Media Player's codebase.
+#
+# Why --disable-gpu is the right scope: it only disables Chromium's compositor,
+# which draws the menu UI. mpv holds its own OpenGL context and is unaffected,
+# so video playback stays hardware accelerated — verified in the app log, where
+# libmpv_render still reports GL 4.6.0 NVIDIA on the RTX 5090 with this set.
+#
+# Re-test on NVIDIA driver upgrades; drop this wrapper if upstream fixes it.
+export QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu${QTWEBENGINE_CHROMIUM_FLAGS:+ ${QTWEBENGINE_CHROMIUM_FLAGS}}"
+
+exec /opt/plex-htpc/Plex.sh "$@"
