@@ -117,9 +117,18 @@ which is why video playback is unaffected once the UI can draw.
 
 ### Workaround applied
 
-`QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu`, which disables only Chromium's GPU
-compositor. The Plex menu UI falls back to software rendering — imperceptible for a
-menu — and mpv continues to decode and present video on the GPU.
+Two variables, both required:
+
+```sh
+QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu
+QT_QUICK_BACKEND=software
+```
+
+`--disable-gpu` alone is **not** enough. It silences the EGL errors, but the window
+then draws as black/see-through with only the titlebar painted — Chromium is
+software-rasterising while the Qt Quick scene graph is still on OpenGL, so the web
+view texture never composites into it. Both halves must be software before the UI
+draws. Verified by screenshot: with both set, the Plex sign-in screen renders.
 
 - **File:** `~/.local/bin/Plex` (wrapper shadowing `/usr/bin/Plex`)
 - **Managed by:** `dot_local/bin/executable_Plex`
@@ -127,7 +136,32 @@ menu — and mpv continues to decode and present video on the GPU.
 `~/.local/bin` is first in both the interactive PATH and the systemd user
 environment, so the wrapper catches app-menu launches (KDE starts the app as
 `app-tv.plex.PlexHTPC@*.service`, whose `Exec=Plex` resolves through that PATH)
-as well as CLI launches. Result with the wrapper: 0 EGL failures, 63 log lines.
+as well as CLI launches.
+
+### Ruled out by measurement
+
+| Attempt | Result |
+|---------|--------|
+| `DISABLE_WAYLAND=0` (native Wayland instead of XWayland) | still fails |
+| `__EGL_VENDOR_LIBRARY_FILENAMES=.../10_nvidia.json` | 1,057,736 errors |
+| `QTWEBENGINE_DISABLE_SANDBOX=1` | 2,094,720 errors |
+| `--disable-gpu` alone | 0 errors, but black/transparent window |
+
+The machine has both an RTX 5090 and an AMD Granite Ridge iGPU (`renderD128` =
+nvidia, `renderD129` = amdgpu; both displays on `card1`/nvidia), so Chromium
+selecting the wrong GPU was the obvious theory. Pinning EGL to NVIDIA alone
+disproved it.
+
+### Open limitation — video playback unverified
+
+Under a software scene graph, mpv (`vo=libmpv`, which renders *into* that scene
+graph) did not create its GL render context: no `libmpv_render: GL_VERSION` line
+appears, unlike every GPU-path run. **Video playback may not work.** Confirming it
+requires a signed-in Plex session and was not tested.
+
+If video is broken, prefer **`plezy`** (`cachyos-extra`): GTK + mpv with no
+Chromium anywhere, so this entire bug class does not apply, and it exposes an
+aspect-ratio/zoom control in its own player UI.
 
 ### Diagnostic note
 
