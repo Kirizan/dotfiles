@@ -24,6 +24,7 @@ sudo pacman -Sy --noconfirm
 PERSONAL_PACKAGES=(
     discord
     obsidian
+    plezy
 )
 
 for pkg in "${PERSONAL_PACKAGES[@]}"; do
@@ -36,7 +37,8 @@ for pkg in "${PERSONAL_PACKAGES[@]}"; do
 done
 
 # Personal desktop apps only in the AUR (nvidia-sync is the DGX Spark remote
-# access client; plex-htpc is the mpv-backed Plex client, see dot_local/share/plex)
+# access client; plex-htpc is the Plex client whose UI needs the NVIDIA-002
+# workaround in dot_local/bin/executable_Plex — plezy above is the working one)
 AUR_PACKAGES=(
     nvidia-sync
     nvidia-sync-terminal-fix

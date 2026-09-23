@@ -152,16 +152,31 @@ nvidia, `renderD129` = amdgpu; both displays on `card1`/nvidia), so Chromium
 selecting the wrong GPU was the obvious theory. Pinning EGL to NVIDIA alone
 disproved it.
 
-### Open limitation — video playback unverified
+### Confirmed: the UI and video cannot both work
 
-Under a software scene graph, mpv (`vo=libmpv`, which renders *into* that scene
-graph) did not create its GL render context: no `libmpv_render: GL_VERSION` line
-appears, unlike every GPU-path run. **Video playback may not work.** Confirming it
-requires a signed-in Plex session and was not tested.
+Tested 2026-09-22 with a signed-in session. Under the software scene graph the
+menus render and **audio plays, but no video** — mpv uses `vo=libmpv` and renders
+*into* the Qt Quick scene graph, which has no GL context to render into.
 
-If video is broken, prefer **`plezy`** (`cachyos-extra`): GTK + mpv with no
-Chromium anywhere, so this entire bug class does not apply, and it exposes an
-aspect-ratio/zoom control in its own player UI.
+Every configuration trades one half for the other:
+
+| Scene graph | Chromium | UI | Video |
+|-------------|----------|----|-------|
+| OpenGL | GPU (default) | dead (EGL fails) | ok |
+| OpenGL | `--disable-gpu` | black / see-through | ok |
+| OpenGL | `--disable-gpu-compositing` | invisible | ok |
+| software | `--disable-gpu` | **renders** | **dead** |
+
+QtWebEngine cannot produce a composited texture on this driver, so there is no
+configuration where Plex HTPC is actually usable on mimir.
+
+**Use `plezy` instead** (`cachyos-extra`, added to `PERSONAL_PACKAGES`). It is GTK
+plus mpv with no Chromium anywhere, so none of this applies — verified rendering
+correctly on this machine. It also exposes an aspect-ratio/zoom control in its own
+player UI, which was the original reason for wanting HTPC.
+
+The wrapper is kept so the app at least starts with a visible UI, but treat
+plex-htpc as non-functional here until upstream ships a newer QtWebEngine.
 
 ### Diagnostic note
 
