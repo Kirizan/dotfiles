@@ -170,13 +170,17 @@ Every configuration trades one half for the other:
 QtWebEngine cannot produce a composited texture on this driver, so there is no
 configuration where Plex HTPC is actually usable on mimir.
 
-**Use `plezy` instead** (`cachyos-extra`, added to `PERSONAL_PACKAGES`). It is GTK
-plus mpv with no Chromium anywhere, so none of this applies — verified rendering
-correctly on this machine. It also exposes an aspect-ratio/zoom control in its own
-player UI, which was the original reason for wanting HTPC.
+### Resolution: removed, replaced by plezy
 
-The wrapper is kept so the app at least starts with a visible UI, but treat
-plex-htpc as non-functional here until upstream ships a newer QtWebEngine.
+`plex-htpc` was uninstalled on 2026-09-22 and its dotfiles removed (the launch
+wrapper and the `mpv.conf` pan-and-scan tuning). This entry is kept as the record
+of why, and as a warning for any other QtWebEngine app on this machine.
+
+**`plezy`** (`cachyos-extra`, in `PERSONAL_PACKAGES`) replaces it: GTK plus mpv
+with no Chromium anywhere, so none of this applies — verified rendering correctly
+here. Its fit mode is set by `run_onchange_configure-plezy.sh.tmpl`.
+
+Reconsider plex-htpc only if upstream ships a build against a newer QtWebEngine.
 
 ### Diagnostic note
 

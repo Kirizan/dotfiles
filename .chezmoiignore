@@ -116,14 +116,10 @@ run_onchange_after_enable-fleet-update-timer.sh.tmpl
 .local/share/applications/kirizan-tailscale.desktop
 {{- end }}
 
-# Plex HTPC — the client is a Linux-only, personal-profile desktop app (installed
-# from the AUR by run_once_install-personal-packages). Covers the mpv tuning and
-# the launch wrapper that works around NVIDIA-002. No GUI session, no player, so
-# nothing here has anything to act on.
+# Plezy player defaults — Linux-only, personal-profile desktop app. No GUI
+# session means no player whose fit mode there is anything to set.
 {{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL (ne .profile "personal") }}
-.local/bin/Plex
-.local/share/plex
-.local/share/plex/**
+configure-plezy.sh
 {{- end }}
 
 # Optional gaming tools — opt-in only

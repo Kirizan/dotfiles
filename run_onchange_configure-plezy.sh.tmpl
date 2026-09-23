@@ -1,0 +1,71 @@
+#!/bin/bash
+# Set plezy's default video fit mode.
+#
+# plezy keeps its settings in a Flutter shared_preferences JSON blob at
+# ~/.local/share/com.edde746.plezy/shared_preferences.json. That file ALSO holds
+# credentials (credential_vault_key_v1, per-server endpoint tokens, the Plex home
+# user entry), so it must never be committed or managed as a chezmoi file. This
+# script patches the single key we care about and leaves every other key byte for
+# byte alone.
+#
+# default_box_fit_mode, per plezy's lib/services/video_filter_manager.dart:
+#   0 = contain  letterbox/pillarbox — bars, source geometry intact
+#   1 = cover    fill the screen, crop the overflow, aspect ratio preserved
+#   2 = fill     stretch to fill, aspect ratio broken
+#
+# We want 1. mimir drives two 3440x1440 (21:9) panels, so 16:9 content
+# pillarboxes with ~440px of black per side, and films letterboxed inside a 16:9
+# container get bars on all four edges. cover removes both by zooming until the
+# frame fills and cropping what hangs off, without distorting geometry.
+#
+# box_fit_scope defaults to PlayerSettingScope.global upstream, so this is a real
+# persistent default rather than a per-title setting. Left unset here so plezy's
+# own default applies.
+#
+# default_box_fit_mode hash: {{ "1" | sha256sum }}
+
+set -euo pipefail
+
+PREFS="${HOME}/.local/share/com.edde746.plezy/shared_preferences.json"
+WANT=1
+
+if [ ! -f "$PREFS" ]; then
+    echo "plezy: no preferences file yet — run plezy once, then 'chezmoi apply' again"
+    exit 0
+fi
+
+if pgrep -x plezy >/dev/null 2>&1; then
+    echo "plezy: WARNING — plezy is running and rewrites its preferences on exit."
+    echo "plezy: close it and re-run 'chezmoi apply', or set the fit mode in the UI."
+fi
+
+python3 - "$PREFS" "$WANT" <<'PY'
+import json, os, sys, tempfile
+
+path, want = sys.argv[1], int(sys.argv[2])
+
+with open(path, encoding="utf-8") as fh:
+    prefs = json.load(fh)
+
+if prefs.get("default_box_fit_mode") == want:
+    print(f"plezy: default_box_fit_mode already {want} (cover) — nothing to do")
+    sys.exit(0)
+
+before = prefs.get("default_box_fit_mode")
+prefs["default_box_fit_mode"] = want
+
+# Atomic replace in the same directory so we never leave a half-written file
+# holding the user's credentials.
+d = os.path.dirname(path)
+fd, tmp = tempfile.mkstemp(dir=d, prefix=".plezy-prefs-", suffix=".json")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(prefs, fh, indent=2)
+    os.chmod(tmp, os.stat(path).st_mode & 0o777)
+    os.replace(tmp, path)
+except BaseException:
+    os.path.exists(tmp) and os.unlink(tmp)
+    raise
+
+print(f"plezy: default_box_fit_mode {before} -> {want} (cover: fill screen, aspect preserved)")
+PY

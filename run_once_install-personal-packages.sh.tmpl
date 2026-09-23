@@ -37,14 +37,12 @@ for pkg in "${PERSONAL_PACKAGES[@]}"; do
 done
 
 # Personal desktop apps only in the AUR (nvidia-sync is the DGX Spark remote
-# access client; plex-htpc is the Plex client whose UI needs the NVIDIA-002
-# workaround in dot_local/bin/executable_Plex — plezy above is the working one)
+# access client). The Plex client is plezy, above — it ships in cachyos-extra.
 AUR_PACKAGES=(
     nvidia-sync
     nvidia-sync-terminal-fix
     onlyoffice-bin
     windsurf
-    plex-htpc
 )
 
 for pkg in "${AUR_PACKAGES[@]}"; do
