@@ -35,12 +35,14 @@ for pkg in "${PERSONAL_PACKAGES[@]}"; do
     fi
 done
 
-# Install NVIDIA Sync (DGX Spark remote access client) from AUR
+# Personal desktop apps only in the AUR (nvidia-sync is the DGX Spark remote
+# access client; plex-htpc is the mpv-backed Plex client, see dot_local/share/plex)
 AUR_PACKAGES=(
     nvidia-sync
     nvidia-sync-terminal-fix
     onlyoffice-bin
     windsurf
+    plex-htpc
 )
 
 for pkg in "${AUR_PACKAGES[@]}"; do

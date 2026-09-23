@@ -116,6 +116,14 @@ run_onchange_after_enable-fleet-update-timer.sh.tmpl
 .local/share/applications/kirizan-tailscale.desktop
 {{- end }}
 
+# Plex HTPC mpv tuning — the client is a Linux-only, personal-profile desktop app
+# (installed from the AUR by run_once_install-personal-packages). No GUI session,
+# no player, nothing for this config to tune.
+{{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL (ne .profile "personal") }}
+.local/share/plex
+.local/share/plex/**
+{{- end }}
+
 # Optional gaming tools — opt-in only
 {{- if not .installCurseforge }}
 install-curseforge.sh
