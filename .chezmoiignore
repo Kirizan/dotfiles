@@ -116,11 +116,6 @@ run_onchange_after_enable-fleet-update-timer.sh.tmpl
 .local/share/applications/kirizan-tailscale.desktop
 {{- end }}
 
-# Plezy player defaults — Linux-only, personal-profile desktop app. No GUI
-# session means no player whose fit mode there is anything to set.
-{{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL (ne .profile "personal") }}
-configure-plezy.sh
-{{- end }}
 
 # Optional gaming tools — opt-in only
 {{- if not .installCurseforge }}
