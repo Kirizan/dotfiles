@@ -102,6 +102,53 @@ chezmoi add ~/.my-new-config
 
 Dotfiles automatically adapt to the current platform (macOS, Arch Linux, etc.) using chezmoi templates. See `CLAUDE.md` for detailed information on cross-platform configuration.
 
+### SteamOS (Steam Deck / Steam Machine)
+
+SteamOS is detected as `isSteamOS`, and `isArchBased` is then deliberately forced
+**false** — see the comment in `.chezmoi.toml.tmpl`. SteamOS is Arch underneath, but
+`isArchBased` is used throughout this repo to mean *"pacman is a safe way to install
+things here"*, which it is not: the root filesystem is read-only and OS updates are
+atomic A/B image swaps that discard everything under `/usr`. Forcing the flag off
+neutralizes every `.isArchBased`-gated script at once, including ones added later.
+
+What `chezmoi apply` deploys there is deliberately narrow — shell, git, tmux, editor
+and Claude config. No packages, no desktop layer, no Obsidian. Durable software on
+SteamOS belongs in flatpak, `~/.local/bin`, or a distrobox container.
+
+Bootstrap:
+
+```bash
+# At the machine (Desktop Mode -> Konsole) — the only hands-on step
+sudo systemctl enable --now sshd && ip -4 addr show scope global | grep inet
+
+# chezmoi into ~/.local/bin, NOT via pacman (an OS update would wipe it)
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin
+chezmoi init --apply https://github.com/Kirizan/dotfiles.git
+```
+
+### Remote management from mimir
+
+Enabling remote access is an **explicit opt-in**, never a side effect of
+`chezmoi apply`:
+
+```bash
+cd ~/.local/share/chezmoi
+make remote-status    # report current state, change nothing
+make enable-remote    # sshd + mimir's public key + NOPASSWD sudo
+make harden-remote    # disable SSH password auth (only after key auth is verified)
+make disable-remote   # reverse enable-remote entirely
+```
+
+**Re-run `make enable-remote` after every SteamOS update.** An atomic image swap
+discards `/usr` and can revert `/etc`, including the sudoers drop-in. The script is
+idempotent, so every already-correct step reports as a skip.
+
+Nothing secret is committed for this. mimir's SSH **public** key is embedded in
+`scripts/steamos-remote-access.sh` — public keys are publishable by design. The
+OpenBao SSH CA key is fetched at apply time rather than stored, and the machine's
+account password lives only in OpenBao at `kv/infra/steam_machine`. No deploy key or
+token is needed to bootstrap, since this repo is public and clones over HTTPS.
+
 ## Common Tasks
 
 ### View Current Configuration
