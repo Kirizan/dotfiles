@@ -1,4 +1,4 @@
-.PHONY: help setup install-chezmoi install-prereqs init apply update status diff check clean github-ssh work_machine personal_machine show_profile
+.PHONY: help setup install-chezmoi install-prereqs init apply update status diff check clean github-ssh work_machine personal_machine show_profile enable-remote harden-remote disable-remote remote-status
 
 # Detect operating system
 UNAME_S := $(shell uname -s)
@@ -245,3 +245,21 @@ show_profile: check ## Show current machine profile
 		/bin/echo -e "  Run: make work_machine or make personal_machine"; \
 	fi
 	@/bin/echo -e ""
+
+# ── SteamOS remote access ────────────────────────────────────────────────────
+# Deliberately NOT part of `make apply` or any chezmoi run_ script: enabling
+# remote access is an explicit act, never a side effect of applying dotfiles.
+# Re-run enable-remote after every SteamOS update — an atomic image swap
+# discards /usr and can revert /etc.
+
+enable-remote: ## Enable remote management from mimir (SteamOS; explicit opt-in)
+	@./scripts/steamos-remote-access.sh enable
+
+harden-remote: ## Disable SSH password auth (run only after key auth is verified)
+	@./scripts/steamos-remote-access.sh harden
+
+disable-remote: ## Reverse enable-remote entirely (key, sudoers drop-in, sshd)
+	@./scripts/steamos-remote-access.sh disable
+
+remote-status: ## Report remote-access state; changes nothing
+	@./scripts/steamos-remote-access.sh status
