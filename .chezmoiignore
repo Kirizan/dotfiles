@@ -158,6 +158,68 @@ run_once_before_install-vm-packages.sh
 run_once_after_configure-iommu-mimir.sh
 {{- end }}
 
+# SteamOS (Steam Deck / Steam Machine) — minimal managed deployment.
+#
+# Scope here is deliberately "shared shell and tooling config only": shell, git,
+# tmux, Claude settings, SSH client config. Nothing that installs packages, nothing
+# that touches the desktop layer, nothing Obsidian.
+#
+# Why: the root filesystem is read-only and OS updates are atomic A/B image swaps
+# that discard everything under /usr, so system-level changes either fail outright or
+# silently revert on the next update. Game Mode (gamescope) is also the default
+# session, so KDE/Plasma tweaks mostly have nothing to act on.
+#
+# Note that $isArchBased is forced false on SteamOS (see .chezmoi.toml.tmpl), so the
+# gaming-scripts block, the fleet-update-check block and the [data.theme] emission
+# above already exclude themselves. Only what *isn't* covered by that needs listing.
+{{- if .isSteamOS }}
+# Scripts are matched by their TARGET name — the run_ prefix and .tmpl suffix are
+# stripped before .chezmoiignore is consulted. An entry like
+# "run_once_install-tmux.sh.tmpl" silently never matches.
+#
+# Package installers — would reach for pacman, paru, or `npm install -g`
+install-personal-cli-tools.sh
+install-personal-packages.sh
+install-tmux.sh
+install-java.sh
+install-goose.sh
+install-kde-shortcut-deps.sh
+install-locale.sh
+install-windsurf-extensions.sh
+install-fprintd.sh
+# Branches on distro in SHELL, not in templates, so isArchBased=false does not stop
+# it — it would still run `sudo pacman -S base-devel ...` for Homebrew prereqs.
+install-packages.sh
+# Ungated, and the timer's unit files are excluded by the fleet block above, so it
+# would fail on `systemctl --user enable` and abort the whole apply.
+enable-fleet-update-timer.sh
+# Desktop / GUI layer
+.config/alacritty/
+.config/wezterm/
+.config/autostart/
+.config/vim/gvimrc
+.config/kscreenlockerrc
+.config/plasma-localerc
+disable-desktop-sleep.sh
+configure-kde-shortcuts.sh
+configure-kde-clock-mimir.sh
+configure-kde-panel-mimir.sh
+# Obsidian — vault lives on mimir; no vault and no REST token here
+.config/obsidian-config/
+link-obsidian-skills.sh
+fetch-obsidian-skills.sh
+setup-obsidian-vaults.sh
+deploy-obsidian-config.sh
+install-obsidian-plugins.sh
+# Hardware- and host-specific fixes that have no meaning on this machine
+.config/libvirt/
+setup-framework-fixes.sh
+configure-framework-audio.sh
+configure-1password-noauth.sh
+configure-nvidia-sync-terminal.sh
+init-keyring.sh
+{{- end }}
+
 # Scripts and bin directories are handled separately
 # (they're managed but not as dotfiles in home directory)
 

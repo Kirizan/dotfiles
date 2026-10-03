@@ -1,4 +1,4 @@
-{{- if and (not .isHeadless) (not .isWSL) .isDesktop -}}
+{{- if and (not .isSteamOS) (not .isHeadless) (not .isWSL) .isDesktop -}}
 #!/bin/bash
 # Configure Kate session restore + scratch-pad stash behavior.
 #

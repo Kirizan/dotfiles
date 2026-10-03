@@ -3,7 +3,7 @@
 # Wine/Battle.net and other apps can hang or be slow if the hostname
 # doesn't resolve via /etc/hosts (they do a DNS lookup that times out)
 
-{{- if eq .chezmoi.os "linux" }}
+{{- if and (eq .chezmoi.os "linux") (not .isSteamOS) }}
 
 set -e
 

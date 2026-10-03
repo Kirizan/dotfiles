@@ -1,5 +1,5 @@
 #!/bin/bash
-{{- if and (eq .chezmoi.os "linux") (not .isHeadless) (not .isHexOS) (eq .profile "personal") }}
+{{- if and (not .isSteamOS) (eq .chezmoi.os "linux") (not .isHeadless) (not .isHexOS) (eq .profile "personal") }}
 # Configure NetworkManager to use AdGuard Home as DNS server
 # with routing domain for *.{{ .network.dns_routing_domain }}
 #

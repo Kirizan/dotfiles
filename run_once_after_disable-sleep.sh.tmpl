@@ -1,5 +1,5 @@
 #!/bin/bash
-{{- if and (eq .chezmoi.os "linux") (not .isHeadless) .isDesktop }}
+{{- if and (not .isSteamOS) (eq .chezmoi.os "linux") (not .isHeadless) .isDesktop }}
 # Disable all sleep/hibernate/suspend on desktop Linux systems
 # This script runs once via chezmoi apply
 

@@ -21,6 +21,37 @@
 {{-   end -}}
 {{- end -}}
 
+{{- /* Detect SteamOS (Valve's Holo — Steam Deck, Steam Machine) */ -}}
+{{- $isSteamOS := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   if eq .chezmoi.osRelease.id "steamos" -}}
+{{-     $isSteamOS = true -}}
+{{-   else if stat "/etc/steamos-release" -}}
+{{-     $isSteamOS = true -}}
+{{-   else if or (lookPath "steamos-readonly") (lookPath "steamos-update") -}}
+{{-     $isSteamOS = true -}}
+{{-   end -}}
+{{- end -}}
+{{- /* Allow override via environment variable (also used to dry-run SteamOS
+       rendering from another machine — see `make check-steamos`) */ -}}
+{{- if eq (env "CHEZMOI_STEAMOS") "true" -}}
+{{-   $isSteamOS = true -}}
+{{- else if eq (env "CHEZMOI_STEAMOS") "false" -}}
+{{-   $isSteamOS = false -}}
+{{- end -}}
+
+{{- /* SteamOS *is* Arch-based, but `isArchBased` is used throughout this repo to mean
+       "pacman is a safe way to install things here" — and on SteamOS it is not. The root
+       filesystem is read-only, OS updates are atomic A/B image swaps that discard
+       everything under /usr, and a full pacman transaction against the Holo repos can
+       leave the image unbootable. Forcing the flag off here neutralizes every
+       `.isArchBased`-gated script at once, including ones added in future.
+       Durable software on SteamOS goes to flatpak, ~/.local/bin, or distrobox.
+       This must stay AHEAD of the $isOmarchy block below, which derives from it. */ -}}
+{{- if $isSteamOS -}}
+{{-   $isArchBased = false -}}
+{{- end -}}
+
 {{- /* Detect Debian-based distros (Debian, Ubuntu, Mint, Pop!_OS, etc.) */ -}}
 {{- $isDebianBased := false -}}
 {{- if eq .chezmoi.os "linux" -}}
@@ -172,6 +203,7 @@
     isDesktop = {{ $isDesktop }}
     isDGXSpark = {{ $isDGXSpark }}
     isHexOS = {{ $isHexOS }}
+    isSteamOS = {{ $isSteamOS }}
     hasNvidiaPassthrough = {{ $hasNvidiaPassthrough }}
     installCurseforge = {{ $installCurseforge }}
     installMinecraft = {{ $installMinecraft }}
@@ -182,6 +214,14 @@
     install_cmd = "brew install"
     update_cmd = "brew update && brew upgrade"
     search_cmd = "brew search"
+{{- else if $isSteamOS }}
+[data.packages]
+    # pacman exists on SteamOS but must not be used — see the isArchBased override
+    # in .chezmoi.toml.tmpl. OS updates go through steamos-update, never pacman.
+    manager = "flatpak"
+    install_cmd = "flatpak install"
+    update_cmd = "flatpak update"
+    search_cmd = "flatpak search"
 {{- else if $isArchBased }}
 [data.packages]
     manager = "pacman"

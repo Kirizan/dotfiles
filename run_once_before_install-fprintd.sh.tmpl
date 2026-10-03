@@ -2,7 +2,7 @@
 # Install fprintd and configure PAM for fingerprint authentication
 # Only runs on non-headless, non-WSL Linux systems with a fingerprint reader
 
-{{- if and (eq .chezmoi.os "linux") (not .isHeadless) (not .isWSL) }}
+{{- if and (not .isSteamOS) (eq .chezmoi.os "linux") (not .isHeadless) (not .isWSL) }}
 
 set -e
 

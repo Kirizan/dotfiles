@@ -1,4 +1,4 @@
-{{- if and (not .isHeadless) (not .isWSL) -}}
+{{- if and (not .isSteamOS) (not .isHeadless) (not .isWSL) -}}
 #!/bin/bash
 # Deploy Firefox user.js to all profile directories
 # Re-runs when user.js content changes

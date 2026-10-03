@@ -1,5 +1,5 @@
 #!/bin/bash
-{{- if and (eq .chezmoi.os "linux") (not .isWSL) (not .isHeadless) }}
+{{- if and (not .isSteamOS) (eq .chezmoi.os "linux") (not .isWSL) (not .isHeadless) }}
 
 # Set Firefox as default browser
 # Web apps will still use Brave via omarchy-launch-webapp

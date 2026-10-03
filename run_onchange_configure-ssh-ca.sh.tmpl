@@ -1,5 +1,5 @@
 #!/bin/bash
-{{- if and (eq .chezmoi.os "linux") (not .isWSL) (not .isHexOS) (eq .profile "personal") }}
+{{- if and (not .isSteamOS) (eq .chezmoi.os "linux") (not .isWSL) (not .isHexOS) (eq .profile "personal") }}
 # Configure sshd to trust SSH certificates signed by the OpenBao CA
 # This allows any user certificate signed by the CA to authenticate
 # without adding individual public keys to authorized_keys.
