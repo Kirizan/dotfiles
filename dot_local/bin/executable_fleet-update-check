@@ -38,6 +38,21 @@ STALE_DAYS=30
 mkdir -p "$STATE_DIR" "$REPORT_DIR" "$VAULT/daily/$YEAR"
 log() { printf '%s %s\n' "$(date -Is)" "$*" >>"$LOG"; }
 
+# OpenBao auth: a scoped AppRole (policy fleet-check: read-only on grafana,
+# unifi, portainer, ai/claude), not whatever sits in ~/.vault-token. The
+# standing root token that used to live there was revoked 2026-10-09.
+APPROLE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fleet-update-check/approle"
+if [[ -z "${BAO_TOKEN:-}" && -r "$APPROLE_DIR/role-id" && -r "$APPROLE_DIR/secret-id" ]]; then
+  if BAO_TOKEN="$(timeout 20 bao write -field=token auth/approle/login \
+      role_id=@"$APPROLE_DIR/role-id" secret_id=@"$APPROLE_DIR/secret-id" 2>/dev/null)"; then
+    export BAO_TOKEN
+    trap 'bao token revoke -self >/dev/null 2>&1' EXIT
+  else
+    unset BAO_TOKEN
+    log "WARN: fleet-check AppRole login failed; OpenBao-backed sections will be empty"
+  fi
+fi
+
 # The Claude CLI echoes the rejected bearer token verbatim in auth errors, so
 # nothing derived from its stdout/stderr may reach the log or the Obsidian
 # report unfiltered.
@@ -114,6 +129,19 @@ except Exception:
     pass' 2>/dev/null)"
 fi
 unset gpw
+
+# ── 4b. Portainer stack integrity ────────────────────────────────────────
+# Every ${VAR} a stack file needs must have a non-empty env entry, and the
+# infrastructure repo must match what Portainer deployed. Catches the failure
+# mode behind nexterm's 93-day crash loop (an env var silently dropped).
+STACK_CHECK="$HOME/projects/infrastructure/scripts/portainer-stack.py"
+stack_check=""
+stack_bad=0
+if [[ -x "$STACK_CHECK" ]]; then
+  stack_check="$(timeout 120 "$STACK_CHECK" check 2>&1)"
+  stack_bad="$(printf '%s\n' "$stack_check" | grep -c '^BAD' || true)"
+fi
+stack_summary="$([[ -n "$stack_check" ]] && echo "$stack_bad" || echo '?')"
 
 # ── 5. UniFi firmware ────────────────────────────────────────────────────
 unifi="$(timeout 60 python3 - <<'PY' 2>/dev/null
@@ -208,6 +236,7 @@ Live view: [Fleet Update Status]($GRAFANA/d/fleet-updates)
 | [[Claude Code]] | CLI installed / latest | ${claude_installed:-?} / ${claude_latest:-?} |
 | [[Claude Code]] | CLI update available | $([[ "${claude_outdated:-0}" == "1" ]] && echo "**YES**" || echo "no") |
 | [[Claude Code]] | Desktop-bundled CLI | ${claude_bundled:-n/a} |
+| [[Portainer]] | Stacks with drift or missing env | ${stack_summary} |
 
 ## Oldest Container Images
 
@@ -224,6 +253,12 @@ ${unifi:-| _unavailable_ | | |}
 ## Firing / Pending Alerts
 
 ${firing:-_None._}
+
+## Portainer Stack Check
+
+\`\`\`
+${stack_check:-portainer-stack.py unavailable}
+\`\`\`
 
 EOF
 } >"$REPORT"
