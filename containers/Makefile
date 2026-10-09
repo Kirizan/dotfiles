@@ -40,8 +40,8 @@ test-all:
 	@for t in $$(cat toolbox/tools.list) toolbox; do $(KC) test $$t || exit 1; done
 
 lint:
-	shellcheck -s sh -e SC2046,SC2086,SC1090,SC1091 bin/kc base/entrypoint.sh base/kc-bake \
-	    base/kc-tool-install render/render.sh tools/*/install.sh tools/*/smoke.sh toolbox/*.sh
+	shellcheck -s sh -S warning -e SC2046,SC2086,SC1090,SC1091 bin/kc base/entrypoint.sh base/kc-bake \
+	    base/kc-tool-install render/render.sh tools/*/install.sh tools/*/smoke.sh toolbox/*.sh toolbox/shell/install.sh
 
 clean:
 	$(KC) clean

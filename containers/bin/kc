@@ -187,7 +187,7 @@ run_build() { # run_build <name> <containerfile> [extra args...]
 tool_label_args() { # tool_label_args <tool> -> one arg per line
     conf=$SRC/containers/tools/$1/tool.conf
     for k in NAME CMD SHIMS DESCRIPTION TTY PORTS ENV NETWORK; do
-        lk=$(echo "$k" | tr 'A-Z' 'a-z')
+        lk=$(echo "$k" | tr '[:upper:]' '[:lower:]')
         printf '%s\n' --label "$KC_LABEL.$lk=$(conf_get "$conf" "TOOL_$k")"
     done
 }
@@ -554,7 +554,11 @@ cmd_clean() {
         for t in "$@"; do vols="$vols kc-$t-state"; done
     fi
     for v in $vols; do
-        $RT volume rm "$v" >/dev/null 2>&1 && info "removed volume $v" || warn "couldn't remove $v (in use or absent)"
+        if $RT volume rm "$v" >/dev/null 2>&1; then
+            info "removed volume $v"
+        else
+            warn "couldn't remove $v (in use or absent)"
+        fi
     done
 }
 
