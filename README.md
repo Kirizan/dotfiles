@@ -95,7 +95,19 @@ chezmoi add ~/.my-new-config
 ├── dot_bashrc.tmpl              # Templates ~/.bashrc
 ├── dot_config/                  # Templates ~/.config/
 ├── run_once_*.sh.tmpl           # Setup scripts (run once)
-└── run_onchange_*.sh.tmpl       # Scripts run on changes
+├── run_onchange_*.sh.tmpl       # Scripts run on changes
+└── containers/                  # kc: the toolchain as local container images (not deployed)
+```
+
+### Container toolchain (`kc`)
+
+Run the same toolchain on machines where you can't install software, or on someone
+else's machine without touching their dotfiles. Images are built locally from this
+repo. See [`containers/README.md`](containers/README.md).
+
+```bash
+kc build all    # build every image for this machine
+kc run          # fish + nvim + tmux in the toolbox, in the current directory
 ```
 
 ## Platform-Specific Configuration
@@ -197,5 +209,6 @@ chezmoi merge ~/.config/file
 ## More Information
 
 - **Cross-platform configuration guide**: See `CLAUDE.md`
+- **Container toolchain (`kc`)**: See `containers/README.md`
 - **Chezmoi documentation**: https://www.chezmoi.io/
 - **Report issues**: https://github.com/Kirizan/dotfiles/issues

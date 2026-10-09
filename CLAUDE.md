@@ -595,6 +595,22 @@ README.md
 # dot_zshrc-personal.tmpl - only applied on personal machines
 ```
 
+## Container Toolchain (`containers/`, `kc`)
+
+`containers/` builds the dotfile toolchain into local OCI images (Wolfi base), run
+by the `kc` launcher (`containers/bin/kc`, deployed as `~/.local/bin/kc` via
+`dot_local/bin/symlink_kc.tmpl`). Full docs: `containers/README.md`.
+
+- `containers/` is in `.chezmoiignore` and never deploys to `~`.
+- The render stage runs `chezmoi archive` (never `apply`) with `CHEZMOI_CONTAINER=true`,
+  which sets `.isContainer`. **Opt-in only** — never detect it from
+  `/run/.containerenv` (distrobox creates that file). Read it in templates as
+  `get . "isContainer"` so persisted configs that predate the flag keep working.
+- Neovim config checks `vim.env.KC_IN_CONTAINER` at runtime instead of templating.
+- When changing a template that a kc image bakes (`.config/nvim`, `.config/fish`,
+  `starship.toml`, `.gitconfig`, `.tmux.conf`), check both renders: `chezmoi diff` for
+  the host, and `kc build <tool> && kc test <tool>` for the image.
+
 ---
 
 Remember: The goal is a unified, maintainable dotfile repository that works seamlessly across macOS and Omarch 3 (and future systems), with chezmoi's templating handling all platform differences elegantly.

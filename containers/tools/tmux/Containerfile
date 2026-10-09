@@ -1,0 +1,16 @@
+# kc-tmux — built by `kc build tmux` (build context: the repo root).
+# Follow the template contract in tools/_template/README.md.
+ARG KC_BASE=kc-base:latest
+ARG KC_RENDER=kc-render:latest
+FROM ${KC_RENDER} AS render
+
+FROM ${KC_BASE}
+COPY containers/tools/tmux/ /opt/kc/tools/tmux/
+COPY --from=render /rendered /tmp/kc-rendered
+RUN chmod +x /opt/kc/tools/tmux/*.sh \
+ && kc-tool-install tmux \
+ && rm -rf /tmp/kc-rendered
+
+USER ${KC_UID}:${KC_GID}
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/kc-entrypoint", "tmux"]
+CMD []
