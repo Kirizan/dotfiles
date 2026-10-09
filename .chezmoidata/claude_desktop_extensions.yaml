@@ -6,4 +6,4 @@
 claudeDesktopExtensions:
   - name: obsidian-mcp
     source: projects/mcp_servers/obsidian_mcp   # relative to $HOME
-    version: 0.1.0
+    version: 0.1.1
