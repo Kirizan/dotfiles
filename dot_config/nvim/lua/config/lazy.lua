@@ -1,3 +1,8 @@
+-- kc container images (containers/ in the dotfiles repo) set KC_IN_CONTAINER.
+-- There are no SSH keys at image build time, and a container must never update
+-- plugins on its own — they're pinned by lazy-lock.json and updated by rebuilding.
+local in_kc = vim.env.KC_IN_CONTAINER ~= nil
+
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   local lazyrepo = "https://github.com/folke/lazy.nvim.git"
@@ -33,10 +38,12 @@ require("lazy").setup({
   install = { colorscheme = { "tokyonight", "habamax" } },
   git = {
     -- Use SSH for GitHub repos to support private repositories
-    url_format = "git@github.com:%s.git",
+    url_format = in_kc and "https://github.com/%s.git" or "git@github.com:%s.git",
   },
+  -- No plugin here needs luarocks; kc images don't ship hererocks.
+  rocks = { enabled = not in_kc },
   checker = {
-    enabled = true, -- check for plugin updates periodically
+    enabled = not in_kc, -- check for plugin updates periodically (never in kc images)
     notify = false, -- notify on update
   }, -- automatically check for plugin updates
   performance = {

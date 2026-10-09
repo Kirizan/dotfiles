@@ -93,9 +93,13 @@ alias pipxr 'pipx run --spec .'
 alias activate_poetry 'eval (poetry env activate)'
 
 # Go proxy — bypass Google managed proxies
+{{- if get . "isContainer" }}
+# (kc containers set GOPROXY=direct in the image env; `go env -w` would write a file)
+{{- else }}
 if type -q go
     go env -w GOPROXY=direct
 end
+{{- end }}
 
 # pyenv
 if type -q pyenv
@@ -271,6 +275,10 @@ end
 {{- end }}
 
 # Local overrides (not synced to git)
+{{- if get . "isContainer" }}
+# kc containers never read the host's own dotfiles (guest-mode safety).
+{{- else }}
 if test -f {{ .chezmoi.homeDir }}/.config/fish/local.fish
     source {{ .chezmoi.homeDir }}/.config/fish/local.fish
 end
+{{- end }}

@@ -14,9 +14,18 @@ return {
     dependencies = { "barreiroleo/ltex_extra.nvim" },
     opts = function(_, opts)
       opts.servers = opts.servers or {}
+      -- Slim kc-nvim image (built with KC_NVIM_LTEX=false) has no ltex-ls.
+      if vim.env.KC_NVIM_LTEX == "false" then
+        return opts
+      end
       opts.servers.ltex = {
         enabled = true,
         autostart = true,
+        -- Java 24+ enforces jdk.xml.totalEntitySizeLimit, which LanguageTool's
+        -- English grammar.xml exceeds ("Could not activate rules"), so ltex-ls
+        -- died on startup. Lift the limit as upstream LanguageTool does:
+        -- https://github.com/languagetool-org/languagetool/pull/11126
+        cmd_env = { JAVA_OPTS = "-Djdk.xml.totalEntitySizeLimit=0" },
         filetypes = { "typst", "text", "tex", "gitcommit", "rst" },
         settings = {
           ltex = {
@@ -63,6 +72,9 @@ return {
     "mason-org/mason.nvim",
     opts = function(_, opts)
       opts.ensure_installed = opts.ensure_installed or {}
+      if vim.env.KC_NVIM_LTEX == "false" then
+        return opts
+      end
       table.insert(opts.ensure_installed, "ltex-ls")
       return opts
     end,

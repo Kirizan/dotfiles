@@ -1,17 +1,24 @@
+{{- if get . "isContainer" -}}
+# kc container image: no identity is baked. Git also reads the host's ~/.gitconfig
+# (the home bind mount), so identity comes from the machine you're on — or stays
+# unset on someone else's machine. See containers/README.md.
+{{- else -}}
 # User information (profile-based)
 [user]
 	name = {{ .name }}
 	email = {{ .email }}
+{{- end }}
 
 # Profile-specific includes
-{{- if eq .profile "personal" }}
+{{- if get . "isContainer" }}
+{{- else if eq .profile "personal" }}
 [includeIf "gitdir:{{ .chezmoi.homeDir }}/.dotfiles/"]
   path = {{ .chezmoi.homeDir }}/.gitconfig_personal
 [includeIf "gitdir:{{ .chezmoi.homeDir }}/github"]
   path = {{ .chezmoi.homeDir }}/.gitconfig_personal
 {{- end }}
 
-{{- if eq .profile "work" }}
+{{- if and (eq .profile "work") (not (get . "isContainer")) }}
 [includeIf "gitdir:{{ .chezmoi.homeDir }}/.dotfiles_corp/"]
   path = {{ .chezmoi.homeDir }}/.gitconfig_corp
 [includeIf "gitdir:{{ .chezmoi.homeDir }}/projects/"]
@@ -20,7 +27,9 @@
 
 [core]
 	autocrlf = false
+{{- if not (get . "isContainer") }}
 	excludesFile = {{ .chezmoi.homeDir }}/.gitignore_global
+{{- end }}
 [alias]
 	dag = log --graph --format='format:%C(yellow)%h%C(reset) %C(blue)%an <%ae>%C(reset) %C(magenta)%cr%C(reset)%C(auto)%d%C(reset)%n%s' --date-order
 {{- if stat (joinPath .chezmoi.homeDir ".ssh/wellpoint-full-chain.crt") }}

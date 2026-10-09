@@ -44,7 +44,11 @@ set -g prefix C-a
 bind C-a send-prefix
 
 # Reload config
+{{- if get . "isContainer" }}
+bind r source-file /opt/kc/config/tmux/tmux.conf \; display "Config reloaded!"
+{{- else }}
 bind r source-file ~/.tmux.conf \; display "Config reloaded!"
+{{- end }}
 
 # Split panes with | and -
 bind | split-window -h -c "#{pane_current_path}"
@@ -125,6 +129,10 @@ set -g @resurrect-capture-pane-contents 'on'  # Restore pane contents
 # tmux-continuum: Automatic save/restore
 set -g @continuum-restore 'on'  # Auto-restore last saved session on tmux start
 set -g @continuum-save-interval '15'  # Save every 15 minutes
+{{- if get . "isContainer" }}
+# kc toolbox: save sessions in the kc-toolbox-state volume, never in host ~
+set -g @resurrect-dir '/opt/kc/state/tmux/resurrect'
+{{- end }}
 
 # tmux-sessionx: Fuzzy session finder
 set -g @sessionx-bind 'o'  # Prefix + o to open sessionx
@@ -146,7 +154,13 @@ bind-key P run-shell "~/.local/bin/tmux-project-create"  # Prefix+Shift+P: Creat
 # PLATFORM-SPECIFIC SETTINGS
 # ==============================================================================
 
-{{- if eq .chezmoi.os "darwin" }}
+{{- if get . "isContainer" }}
+# kc toolbox: no clipboard binaries in the container — tmux sends OSC 52 and the
+# outer terminal sets the system clipboard
+set -g set-clipboard on
+bind -T copy-mode-vi y send -X copy-selection-and-cancel
+
+{{- else if eq .chezmoi.os "darwin" }}
 # macOS-specific settings
 set -g default-command "reattach-to-user-namespace -l $SHELL"
 
@@ -173,9 +187,17 @@ bind -T copy-mode-vi y send -X copy-pipe-and-cancel "clip.exe"
 # TPM INITIALIZATION (Keep this at the bottom)
 # ==============================================================================
 
+{{- if get . "isContainer" }}
+# kc toolbox: plugins are baked into the image at build time (no runtime clone,
+# nothing written to host ~)
+set-environment -g TMUX_PLUGIN_MANAGER_PATH '/opt/kc/data/tmux/plugins/'
+run '/opt/kc/data/tmux/plugins/tpm/tpm'
+{{- else }}
+
 # Install TPM if not already installed
 if "test ! -d ~/.tmux/plugins/tpm" \
    "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
 
 # Initialize TPM (keep this line at the very bottom)
 run '~/.tmux/plugins/tpm/tpm'
+{{- end }}

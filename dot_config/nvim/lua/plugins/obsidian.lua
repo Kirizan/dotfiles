@@ -1,7 +1,20 @@
+-- Only vaults that exist on this machine. obsidian.nvim hard-errors on load when
+-- no workspace exists ("At least one workspace is required!"), which broke every
+-- markdown buffer on machines without the vaults (kc guest mode, servers).
+local workspaces = vim.tbl_filter(function(ws)
+  return vim.fn.isdirectory(vim.fn.expand(ws.path)) == 1
+end, {
+  { name = "primary", path = "~/Obsidian/Primary" },
+  { name = "work", path = "~/Obsidian/Work" },
+  { name = "sandbox", path = "~/Obsidian/Sandbox" },
+})
+
 return {
   -- obsidian.nvim: Obsidian vault integration for Neovim
   {
     "obsidian-nvim/obsidian.nvim",
+    -- kc image builds (KC_NVIM_BUILD) always install it: vaults may exist at runtime.
+    cond = #workspaces > 0 or vim.env.KC_NVIM_BUILD ~= nil,
     version = "*",
     lazy = true,
     ft = "markdown",
@@ -12,11 +25,7 @@ return {
     },
     opts = {
       ui = { enable = false }, -- render-markdown.nvim handles rendering
-      workspaces = {
-        { name = "primary", path = "~/Obsidian/Primary" },
-        { name = "work", path = "~/Obsidian/Work" },
-        { name = "sandbox", path = "~/Obsidian/Sandbox" },
-      },
+      workspaces = workspaces,
       completion = { nvim_cmp = false }, -- markdown-oxide LSP handles completions
       daily_notes = {
         folder = "daily",

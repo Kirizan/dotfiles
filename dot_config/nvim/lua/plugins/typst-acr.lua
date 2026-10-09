@@ -4,6 +4,9 @@
 return {
   {
     "Kirizan/typst-acr.nvim",
+    -- Private repo: kc container image builds have no GitHub credentials, so the
+    -- plugin is left out of kc images (containers/README.md).
+    cond = vim.env.KC_IN_CONTAINER == nil,
     dependencies = {
       "MunifTanjim/nui.nvim",
       "nvim-telescope/telescope.nvim",

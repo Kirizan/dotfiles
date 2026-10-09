@@ -12,6 +12,8 @@ return {
       -- Detect WSL or Docker environment
       local is_wsl = vim.fn.system("grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0"):match("1") ~= nil
       local is_docker = vim.fn.filereadable("/.dockerenv") == 1
+        or vim.fn.filereadable("/run/.containerenv") == 1
+        or vim.env.KC_IN_CONTAINER ~= nil
 
       local config = {
         dependencies_bin = {
