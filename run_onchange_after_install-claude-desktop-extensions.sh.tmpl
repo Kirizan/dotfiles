@@ -1,0 +1,81 @@
+#!/bin/bash
+# Install or update Claude Desktop extensions (.mcpb) declared in
+# .chezmoidata/claude_desktop_extensions.yaml.
+#
+# Desktop keeps extension state (Claude Extensions/, Claude Extensions Settings/,
+# extensions-installations.json) cached in memory, so this script never writes
+# those files. It builds the .mcpb if needed and hands it to Desktop, which
+# shows its own install/update dialog. Extension settings come from each
+# manifest's user_config defaults.
+#
+# Re-runs whenever the declared list changes:
+# {{ .claudeDesktopExtensions | toJson }}
+
+{{- if and (eq .profile "personal") (not .isHeadless) (eq .chezmoi.os "linux") }}
+
+set -euo pipefail
+
+DESKTOP=/usr/bin/claude-desktop
+EXT_DIR="$HOME/.config/Claude/Claude Extensions"
+
+if [ ! -x "$DESKTOP" ]; then
+    echo "Claude Desktop not installed, skipping extension installation"
+    exit 0
+fi
+
+installed_version() {
+    # Prints the installed version of extension $1, or nothing.
+    python3 - "$EXT_DIR" "$1" <<'PY'
+import json, pathlib, sys
+root, name = pathlib.Path(sys.argv[1]), sys.argv[2]
+for manifest in sorted(root.glob("*/manifest.json")) if root.is_dir() else []:
+    try:
+        data = json.loads(manifest.read_text())
+    except (OSError, ValueError):
+        continue
+    if data.get("name") == name:
+        print(data.get("version", ""))
+        break
+PY
+}
+
+install_extension() {
+    local name="$1" source="$HOME/$2" version="$3"
+    local current
+    current="$(installed_version "$name")"
+    if [ "$current" = "$version" ]; then
+        echo "Claude Desktop extension $name $version is up to date"
+        return 0
+    fi
+    if [ ! -d "$source" ]; then
+        echo "Claude Desktop extension $name: source $source not found, skipping"
+        return 0
+    fi
+
+    local manifest_version
+    manifest_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$source/manifest.json")"
+    if [ "$manifest_version" != "$version" ]; then
+        echo "ERROR: $name: declared version $version but $source/manifest.json is $manifest_version" >&2
+        return 1
+    fi
+
+    local bundle="$source/dist/$name-$version.mcpb"
+    if [ ! -f "$bundle" ]; then
+        echo "Building $name $version..."
+        "$source/scripts/build_mcpb.sh"
+    fi
+
+    if pgrep -f '^/usr/lib/claude-desktop/claude-desktop$' >/dev/null; then
+        echo "Opening $name $version in Claude Desktop (installed: ${current:-none}); confirm the dialog to install"
+        "$DESKTOP" "$bundle" >/dev/null 2>&1 &
+        disown
+    else
+        echo "Claude Desktop is not running. To install $name $version, open: $bundle"
+    fi
+}
+
+{{ range .claudeDesktopExtensions -}}
+install_extension {{ .name | quote }} {{ .source | quote }} {{ .version | quote }}
+{{ end -}}
+
+{{- end }}
