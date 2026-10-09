@@ -1,0 +1,589 @@
+#!/bin/sh
+# kc — run the dotfile toolchain from locally built containers.
+#
+#   kc run [opts] [tool] [args]   run a tool image (default: toolbox shell)
+#   kc build [base|render|toolbox|all|<tool>...]
+#   kc test <tool>                run the tool's smoke.sh with --network none
+#   kc shim install|remove [tool] ~/.local/bin shims (your own machines)
+#   kc env [--fish]               PATH export for session-only shims (guest machines)
+#   kc new <tool>                 scaffold tools/<tool> from tools/_template
+#   kc doctor                     report runtime, arch, SELinux, proxy, CA, images
+#   kc clean [tool]               remove state volume(s)
+#   kc list                       show built kc images
+#
+# POSIX sh on purpose: it has to run anywhere chezmoi does (macOS, Linux, WSL,
+# SteamOS, the Spark, TrueNAS). Images never depend on the runtime; everything
+# runtime-specific lives in this file. See containers/README.md.
+set -eu
+
+KC_LABEL=org.kirizan.kc
+KC_STALE_DAYS=${KC_STALE_DAYS:-30}
+
+die() { echo "kc: $*" >&2; exit 1; }
+warn() { echo "kc: warning: $*" >&2; }
+info() { echo "kc: $*" >&2; }
+
+# ---------------------------------------------------------------------------
+# Locate the source tree (containers/ inside the dotfiles repo)
+# ---------------------------------------------------------------------------
+resolve_self() {
+    f=$0
+    case $f in */*) ;; *) f=$(command -v "$f") ;; esac
+    # Follow symlinks without relying on GNU readlink -f (macOS < 12.3 lacks it).
+    while [ -L "$f" ]; do
+        l=$(readlink "$f")
+        case $l in /*) f=$l ;; *) f=$(dirname "$f")/$l ;; esac
+    done
+    cd "$(dirname "$f")" && pwd -P
+}
+
+find_src() {
+    if [ -n "${KC_SRC:-}" ]; then
+        [ -f "$KC_SRC/containers/base/Containerfile" ] || die "KC_SRC=$KC_SRC has no containers/"
+        echo "$KC_SRC"; return
+    fi
+    d=$(resolve_self)
+    if [ -f "$d/../base/Containerfile" ]; then
+        (cd "$d/../.." && pwd -P); return
+    fi
+    for c in "$HOME/.dotfiles" "$HOME/.local/share/chezmoi"; do
+        if [ -f "$c/containers/base/Containerfile" ]; then echo "$c"; return; fi
+    done
+    die "can't find the dotfiles repo; set KC_SRC to its path"
+}
+
+# ---------------------------------------------------------------------------
+# Runtime detection
+# ---------------------------------------------------------------------------
+detect_runtime() {
+    if [ -n "${KC_RUNTIME:-}" ]; then
+        command -v "$KC_RUNTIME" >/dev/null 2>&1 || die "KC_RUNTIME=$KC_RUNTIME not found"
+        RT=$KC_RUNTIME
+    elif command -v podman >/dev/null 2>&1; then
+        RT=podman
+    elif command -v docker >/dev/null 2>&1; then
+        RT=docker
+    else
+        die "no container runtime found (install podman, or docker/colima)"
+    fi
+    case $RT in
+        *podman*) RT_KIND=podman ;;
+        *) RT_KIND=docker ;;
+    esac
+    # Podman stores locally built images as localhost/<name>; docker as <name>.
+    if [ "$RT_KIND" = podman ]; then IMG_PREFIX=localhost/; else IMG_PREFIX=; fi
+}
+
+os_name() { uname -s 2>/dev/null || echo unknown; }
+
+is_wsl() { grep -qi microsoft /proc/version 2>/dev/null; }
+
+podman_rootless() {
+    [ "$RT_KIND" = podman ] || return 1
+    v=$($RT info --format '{{.Host.Security.Rootless}}' 2>/dev/null || echo unknown)
+    # On macOS the CLI talks to a VM; treat the VM's rootless podman as rootless.
+    [ "$v" = true ]
+}
+
+selinux_on() {
+    [ "$(os_name)" = Linux ] || return 1
+    if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; then return 0; fi
+    if [ -r /sys/fs/selinux/enforce ]; then return 0; fi
+    return 1
+}
+
+# User mapping: files created under the bind-mounted ~ must come out owned by you.
+user_map_args() {
+    if podman_rootless && [ "$(os_name)" = Linux ]; then
+        # keep-id maps your UID 1:1; --user is still required, or an image without
+        # a USER directive runs as container root (= a subuid on the host).
+        echo "--userns=keep-id --user $(id -u):$(id -g)"
+    else
+        echo "--user $(id -u):$(id -g)"
+    fi
+}
+
+# Never relabel $HOME (:z / :Z would relabel your entire home directory).
+selinux_args() {
+    if selinux_on; then echo "--security-opt label=disable"; fi
+}
+
+img() { echo "${IMG_PREFIX}kc-$1:latest"; }
+
+image_exists() { $RT image inspect "$(img "$1")" >/dev/null 2>&1; }
+
+label() {
+    $RT image inspect --format "{{ index .Config.Labels \"$KC_LABEL.$2\" }}" "$(img "$1")" 2>/dev/null \
+        | sed 's/^<no value>$//'
+}
+
+# ---------------------------------------------------------------------------
+# build
+# ---------------------------------------------------------------------------
+conf_get() { # conf_get <tool.conf> <VAR>
+    ( # shellcheck disable=SC1090
+      . "$1"; eval "printf '%s' \"\${$2:-}\"" )
+}
+
+sync_certs() {
+    certdir=$SRC/containers/base/certs
+    find "$certdir" -name '*.crt' -type f -exec rm -f {} + 2>/dev/null || true
+    n=0
+    if [ -d "$HOME/.config/kc/certs" ]; then
+        for c in "$HOME/.config/kc/certs"/*.crt; do
+            [ -f "$c" ] || continue
+            cp "$c" "$certdir/"; n=$((n + 1))
+        done
+    fi
+    [ $n -eq 0 ] || info "baking $n CA cert(s) from ~/.config/kc/certs"
+}
+
+profile() {
+    if [ -n "${KC_PROFILE:-}" ]; then echo "$KC_PROFILE"; return; fi
+    if command -v chezmoi >/dev/null 2>&1; then
+        p=$(chezmoi data --format json 2>/dev/null | sed -n 's/.*"profile": *"\([a-z]*\)".*/\1/p' | head -1)
+        if [ -n "$p" ]; then echo "$p"; return; fi
+    fi
+    echo personal
+}
+
+common_build_args() {
+    printf '%s\n' \
+        --build-arg "KC_USER=$(id -un)" \
+        --build-arg "KC_UID=$(id -u)" \
+        --build-arg "KC_GID=$(id -g)" \
+        --build-arg "KC_HOME=$HOME" \
+        --build-arg "KC_PROFILE=$(profile)" \
+        --build-arg "KC_BASE=$(img base)" \
+        --build-arg "KC_RENDER=$(img render)"
+    for v in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+        eval "val=\${$v:-}"
+        # shellcheck disable=SC2154
+        [ -z "$val" ] || printf '%s\n' --build-arg "$v=$val"
+    done
+}
+
+pull_args() { # only images FROM a registry pull; FROM kc-base must stay local
+    if [ "$RT_KIND" = podman ]; then echo "--pull=newer"; else echo "--pull"; fi
+}
+
+run_build() { # run_build <name> <containerfile> [extra args...]
+    name=$1; cf=$2; shift 2
+    info "building $(img "$name")"
+    created=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    # Word-splitting of the generated args is intentional; values contain no spaces
+    # except HOME, which is passed through the positional list below.
+    set -- "$@" --label "org.opencontainers.image.created=$created" \
+                --label "$KC_LABEL.name=$name"
+    old_ifs=$IFS
+    IFS='
+'
+    # shellcheck disable=SC2046
+    $RT build -f "$SRC/$cf" -t "$(img "$name")" $(common_build_args) "$@" "$SRC" \
+        || { IFS=$old_ifs; die "build of kc-$name failed"; }
+    IFS=$old_ifs
+}
+
+tool_label_args() { # tool_label_args <tool> -> one arg per line
+    conf=$SRC/containers/tools/$1/tool.conf
+    for k in NAME CMD SHIMS DESCRIPTION TTY PORTS ENV NETWORK; do
+        lk=$(echo "$k" | tr 'A-Z' 'a-z')
+        printf '%s\n' --label "$KC_LABEL.$lk=$(conf_get "$conf" "TOOL_$k")"
+    done
+}
+
+build_one() {
+    t=$1
+    case $t in
+        base)
+            sync_certs
+            run_build base containers/base/Containerfile "$(pull_args)" ;;
+        render)
+            # Re-rendered every build so config edits always land; it's cheap.
+            run_build render containers/render/Containerfile --no-cache "$(pull_args)" ;;
+        toolbox)
+            image_exists base || build_one base
+            build_one render
+            run_build toolbox containers/toolbox/Containerfile \
+                --label "$KC_LABEL.cmd=fish" --label "$KC_LABEL.tty=auto" \
+                --label "$KC_LABEL.network=default" \
+                --label "$KC_LABEL.description=Full toolchain: fish shell + every tool in tools.list" \
+                --build-arg "KC_NVIM_LTEX=${KC_NVIM_LTEX:-true}" ;;
+        *)
+            [ -f "$SRC/containers/tools/$t/tool.conf" ] || die "unknown tool '$t' (no containers/tools/$t/tool.conf)"
+            image_exists base || build_one base
+            build_one render
+            t=$1   # the recursive calls above reassign $t
+            old_ifs=$IFS; IFS='
+'
+            # shellcheck disable=SC2046
+            set -- $(tool_label_args "$t")
+            IFS=$old_ifs
+            run_build "$t" "containers/tools/$t/Containerfile" "$@" \
+                --build-arg "KC_NVIM_LTEX=${KC_NVIM_LTEX:-true}" ;;
+    esac
+}
+
+cmd_build() {
+    [ $# -gt 0 ] || set -- all
+    for t in "$@"; do
+        case $t in
+            all)
+                build_one base
+                for d in "$SRC"/containers/tools/*/; do
+                    n=$(basename "$d")
+                    [ "$n" = _template ] && continue
+                    grep -qx "$n" "$SRC/containers/toolbox/tools.list" 2>/dev/null || continue
+                    build_one "$n"
+                done
+                build_one toolbox ;;
+            *) build_one "$t" ;;
+        esac
+    done
+}
+
+# ---------------------------------------------------------------------------
+# run
+# ---------------------------------------------------------------------------
+under_home() {
+    case $1 in "$HOME"|"$HOME"/*) return 0 ;; *) return 1 ;; esac
+}
+
+cmd_run() {
+    ports=0; ssh=0; host_config=0; net_override=
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --ports) ports=1; shift ;;
+            --ssh) ssh=1; shift ;;
+            --host-config) host_config=1; shift ;;
+            --network) net_override=$2; shift 2 ;;
+            --network=*) net_override=${1#--network=}; shift ;;
+            --) shift; break ;;
+            -*) die "unknown run option $1" ;;
+            *) break ;;
+        esac
+    done
+
+    tool=toolbox
+    if [ $# -gt 0 ] && image_exists "$1"; then
+        tool=$1; shift
+    elif [ $# -gt 0 ] && [ -f "$SRC/containers/tools/$1/tool.conf" ]; then
+        die "kc-$1 isn't built yet — run: kc build $1"
+    fi
+    image_exists "$tool" || die "kc-$tool isn't built yet — run: kc build $tool"
+
+    # Home-only: the container sees ~ and nothing else.
+    workdir=$PWD
+    extra_mounts=
+    if ! under_home "$PWD"; then
+        [ "${KC_ALLOW_OUTSIDE:-0}" = 1 ] \
+            || die "$PWD is outside \$HOME; kc only maps ~ (KC_ALLOW_OUTSIDE=1 runs from ~ instead)"
+        workdir=$HOME
+    fi
+    for a in "$@"; do
+        case $a in
+            /*)
+                under_home "$a" && continue
+                if [ "${KC_ALLOW_OUTSIDE:-0}" = 1 ]; then
+                    pdir=$(dirname "$a")
+                    extra_mounts="$extra_mounts $pdir"
+                    info "mounting $pdir (KC_ALLOW_OUTSIDE=1)"
+                else
+                    warn "$a is outside \$HOME and won't be visible in the container (KC_ALLOW_OUTSIDE=1 mounts its directory)"
+                fi ;;
+        esac
+    done
+
+    tty_mode=$(label "$tool" tty); [ -n "$tty_mode" ] || tty_mode=auto
+    tty_flag=
+    if [ "$tty_mode" != never ] && [ -t 0 ] && [ -t 1 ]; then tty_flag=-t; fi
+
+    network=${net_override:-$(label "$tool" network)}
+    net_args=
+    case ${network:-default} in
+        default) ;;
+        host|none) net_args="--network $network" ;;
+        *) net_args="--network $network" ;;
+    esac
+
+    port_args=
+    if [ $ports = 1 ]; then
+        for p in $(label "$tool" ports); do
+            port_args="$port_args -p 127.0.0.1:$p:$p"
+        done
+    fi
+
+    env_args=
+    for v in $(label "$tool" env); do
+        eval "isset=\${$v+x}"
+        # shellcheck disable=SC2154
+        [ -z "$isset" ] || env_args="$env_args -e $v"
+    done
+    for v in TERM COLORTERM LANG TZ TERM_PROGRAM \
+             HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+        eval "isset=\${$v+x}"
+        [ -z "$isset" ] || env_args="$env_args -e $v"
+    done
+
+    # SSH agent: a socket under ~ (e.g. 1Password's ~/.1password/agent.sock) is
+    # already visible through the home mount, so just pass the variable. Anything
+    # else needs --ssh.
+    ssh_args=
+    if [ -n "${SSH_AUTH_SOCK:-}" ] && under_home "$SSH_AUTH_SOCK"; then
+        ssh_args="-e SSH_AUTH_SOCK"
+    elif [ $ssh = 1 ]; then
+        if [ "$(os_name)" = Darwin ] && [ "$RT_KIND" = docker ]; then
+            ssh_args="-v /run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock -e SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock"
+        elif [ -n "${SSH_AUTH_SOCK:-}" ]; then
+            ssh_args="-v $SSH_AUTH_SOCK:$SSH_AUTH_SOCK -e SSH_AUTH_SOCK"
+        else
+            warn "--ssh given but SSH_AUTH_SOCK is unset"
+        fi
+    fi
+
+    hc_args=
+    if [ $host_config = 1 ]; then
+        cfgname=$tool
+        [ "$tool" = toolbox ] && cfgname=fish
+        if [ -d "$HOME/.config/$cfgname" ]; then
+            hc_args="-v $HOME/.config/$cfgname:/opt/kc/config/$cfgname"
+            info "using live ~/.config/$cfgname (--host-config)"
+        else
+            warn "--host-config: ~/.config/$cfgname doesn't exist; using the baked config"
+        fi
+    fi
+
+    mount_args=
+    for m in $extra_mounts; do mount_args="$mount_args -v $m:$m"; done
+
+    # $HOME may contain spaces (unlikely on Linux, possible on macOS), so it and
+    # $workdir are passed as separate quoted arguments.
+    # shellcheck disable=SC2086
+    exec $RT run --rm -i $tty_flag \
+        --name "kc-$tool-$$" \
+        $(user_map_args) $(selinux_args) \
+        -v "$HOME:$HOME" \
+        -v "kc-$tool-state:/opt/kc/state" \
+        $mount_args $hc_args \
+        -w "$workdir" \
+        -e "HOME=$HOME" -e "USER=$(id -un)" \
+        $env_args $ssh_args $net_args $port_args \
+        --hostname "kc-$tool" \
+        "$(img "$tool")" "$@"
+}
+
+# ---------------------------------------------------------------------------
+# test
+# ---------------------------------------------------------------------------
+cmd_test() {
+    [ $# -eq 1 ] || die "usage: kc test <tool|toolbox>"
+    t=$1
+    image_exists "$t" || die "kc-$t isn't built yet — run: kc build $t"
+    if [ "$t" = toolbox ]; then smoke=/opt/kc/toolbox/smoke.sh; else smoke=/opt/kc/tools/$t/smoke.sh; fi
+    info "smoke-testing kc-$t offline (--network none)"
+    vol="kc-$t-test-$$"
+    # shellcheck disable=SC2046
+    $RT run --rm -i --network none $(user_map_args) $(selinux_args) \
+        -v "$vol:/opt/kc/state" -e "HOME=/opt/kc/build-home" -w /opt/kc/build-home \
+        --entrypoint /usr/bin/tini "$(img "$t")" -- /usr/local/bin/kc-entrypoint "$smoke" \
+        && rc=0 || rc=$?
+    $RT volume rm -f "$vol" >/dev/null 2>&1 || true
+    [ $rc -eq 0 ] && info "kc-$t smoke test passed"
+    return $rc
+}
+
+# ---------------------------------------------------------------------------
+# shims / env
+# ---------------------------------------------------------------------------
+SHIM_MARK="# kc-shim"
+
+kc_path() { echo "$(resolve_self)/$(basename "$0")"; }
+
+write_shims() { # write_shims <dir> [tools...]
+    dir=$1; shift
+    mkdir -p "$dir"
+    [ $# -gt 0 ] || set -- $(built_tools)
+    self=$(kc_path)
+    for t in "$@"; do
+        [ "$t" = toolbox ] && continue
+        for s in $(label "$t" shims); do
+            f=$dir/$s
+            if [ -e "$f" ] && ! grep -q "^$SHIM_MARK" "$f" 2>/dev/null; then
+                warn "$f exists and isn't a kc shim; leaving it alone"
+                continue
+            fi
+            printf '#!/bin/sh\n%s %s\nexec "%s" run %s "$@"\n' "$SHIM_MARK" "$t" "$self" "$t" >"$f"
+            chmod 0755 "$f"
+            info "shim $f -> kc run $t"
+        done
+    done
+}
+
+remove_shims() { # remove_shims <dir> [tools...]
+    dir=$1; shift
+    [ -d "$dir" ] || return 0
+    for f in "$dir"/*; do
+        [ -f "$f" ] || continue
+        line=$(sed -n 2p "$f" 2>/dev/null)
+        case $line in "$SHIM_MARK"*) ;; *) continue ;; esac
+        if [ $# -gt 0 ]; then
+            match=0
+            for t in "$@"; do [ "$line" = "$SHIM_MARK $t" ] && match=1; done
+            [ $match = 1 ] || continue
+        fi
+        rm -f "$f"; info "removed $f"
+    done
+}
+
+built_tools() {
+    $RT images --format '{{.Repository}}' 2>/dev/null | sed -n "s#^${IMG_PREFIX}kc-##p" \
+        | grep -vxE 'base|render' | sort -u
+}
+
+cmd_shim() {
+    [ $# -ge 1 ] || die "usage: kc shim install|remove [tool...]"
+    action=$1; shift
+    case $action in
+        install) write_shims "$HOME/.local/bin" "$@"
+                 info "make sure ~/.local/bin is before the system bin dirs in PATH" ;;
+        remove) remove_shims "$HOME/.local/bin" "$@" ;;
+        *) die "usage: kc shim install|remove [tool...]" ;;
+    esac
+}
+
+cmd_env() {
+    dir=$HOME/.local/share/kc/bin
+    write_shims "$dir" 2>/dev/null
+    shell=posix
+    [ "${1:-}" = --fish ] && shell=fish
+    case ${SHELL:-} in */fish) [ "${1:-}" = --posix ] || shell=fish ;; esac
+    if [ $shell = fish ]; then
+        echo "set -gx PATH $dir \$PATH"
+    else
+        echo "export PATH=\"$dir:\$PATH\""
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# new
+# ---------------------------------------------------------------------------
+cmd_new() {
+    [ $# -eq 1 ] || die "usage: kc new <tool>"
+    t=$1
+    case $t in *[!a-z0-9-]*|''|-*) die "tool names are lowercase letters, digits and '-'" ;; esac
+    case $t in base|render|toolbox|_template) die "'$t' is reserved" ;; esac
+    dst=$SRC/containers/tools/$t
+    [ ! -e "$dst" ] || die "$dst already exists"
+    cp -R "$SRC/containers/tools/_template" "$dst"
+    for f in "$dst"/*; do
+        [ -f "$f" ] || continue
+        sed "s/__TOOL__/$t/g" "$f" >"$f.kcnew" && cat "$f.kcnew" >"$f" && rm -f "$f.kcnew"
+    done
+    info "created $dst — fill in tool.conf, then: kc build $t && kc test $t"
+    if [ -t 0 ]; then
+        printf 'Add %s to toolbox/tools.list? [y/N] ' "$t" >&2
+        read -r ans || ans=
+        case $ans in
+            y|Y) echo "$t" >>"$SRC/containers/toolbox/tools.list"; info "added to tools.list" ;;
+        esac
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# doctor / list / clean
+# ---------------------------------------------------------------------------
+age_days() { # age_days <iso8601>
+    c=$1
+    now=$(date -u +%s)
+    if then=$(date -u -d "$c" +%s 2>/dev/null); then :;
+    elif then=$(date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$c" +%s 2>/dev/null); then :;
+    else echo '?'; return; fi
+    echo $(( (now - then) / 86400 ))
+}
+
+cmd_list() {
+    for t in $(built_tools); do
+        created=$($RT image inspect --format '{{ index .Config.Labels "org.opencontainers.image.created" }}' "$(img "$t")" 2>/dev/null)
+        printf '%-12s %-60s built %s (%s days)\n' "$t" "$(label "$t" description)" "$created" "$(age_days "$created")"
+    done
+}
+
+cmd_doctor() {
+    echo "source:      $SRC"
+    echo "runtime:     $RT ($($RT --version 2>/dev/null | head -1))"
+    echo "os/arch:     $(os_name) $(uname -m)$(is_wsl && echo ' (WSL)')"
+    if [ "$RT_KIND" = podman ]; then
+        echo "rootless:    $(podman_rootless && echo yes || echo no)"
+        [ "$(os_name)" = Darwin ] && echo "             (macOS: podman machine VM; files under ~ are shared into the VM)"
+    else
+        ctx=$($RT context show 2>/dev/null || echo default)
+        echo "docker ctx:  $ctx$(case $ctx in colima*) echo ' (Colima)';; esac)"
+    fi
+    echo "user map:    $(user_map_args)"
+    echo "selinux:     $(selinux_on && echo 'on (runs use --security-opt label=disable; never :z/:Z on ~)' || echo off)"
+    for v in HTTP_PROXY HTTPS_PROXY NO_PROXY; do
+        eval "val=\${$v:-}"
+        [ -z "$val" ] || echo "proxy:       $v is set (passed through at build and run time)"
+    done
+    n=$(ls "$HOME/.config/kc/certs"/*.crt 2>/dev/null | wc -l | tr -d ' ')
+    echo "CA certs:    $n in ~/.config/kc/certs (baked into kc-base at build)"
+    if [ -n "${SSH_AUTH_SOCK:-}" ]; then
+        if under_home "$SSH_AUTH_SOCK"; then echo "ssh agent:   $SSH_AUTH_SOCK (under ~, forwarded automatically)"
+        else echo "ssh agent:   $SSH_AUTH_SOCK (outside ~, forwarded only with --ssh)"; fi
+    else
+        echo "ssh agent:   none"
+    fi
+    echo "images:"
+    stale=0
+    for t in base $(built_tools); do
+        image_exists "$t" || { echo "  kc-$t: not built"; continue; }
+        created=$($RT image inspect --format '{{ index .Config.Labels "org.opencontainers.image.created" }}' "$(img "$t")" 2>/dev/null)
+        d=$(age_days "$created")
+        flag=
+        if [ "$d" != '?' ] && [ "$d" -gt "$KC_STALE_DAYS" ]; then flag="  <- older than $KC_STALE_DAYS days, run: kc build all"; stale=1; fi
+        echo "  kc-$t: $d days old$flag"
+    done
+    [ $stale = 0 ] || return 1
+}
+
+cmd_clean() {
+    if [ $# -eq 0 ]; then
+        vols=$($RT volume ls --format '{{.Name}}' 2>/dev/null | grep -E '^kc-.*-state$' || true)
+    else
+        vols=
+        for t in "$@"; do vols="$vols kc-$t-state"; done
+    fi
+    for v in $vols; do
+        $RT volume rm "$v" >/dev/null 2>&1 && info "removed volume $v" || warn "couldn't remove $v (in use or absent)"
+    done
+}
+
+usage() {
+    sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# ---------------------------------------------------------------------------
+main() {
+    [ $# -gt 0 ] || { usage; exit 0; }
+    cmd=$1; shift
+    case $cmd in
+        -h|--help|help) usage; exit 0 ;;
+    esac
+    SRC=$(find_src)
+    detect_runtime
+    case $cmd in
+        run) cmd_run "$@" ;;
+        build) cmd_build "$@" ;;
+        test) cmd_test "$@" ;;
+        shim) cmd_shim "$@" ;;
+        env) cmd_env "$@" ;;
+        new) cmd_new "$@" ;;
+        doctor) cmd_doctor ;;
+        list) cmd_list ;;
+        clean) cmd_clean "$@" ;;
+        export|import) die "export/import was dropped: every machine builds its own images (kc build all)" ;;
+        *) usage; exit 1 ;;
+    esac
+}
+
+main "$@"

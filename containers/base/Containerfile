@@ -1,0 +1,76 @@
+# kc-base — shared runtime for every kc image.
+#
+# Plain OCI: nothing in here is Docker- or Podman-specific. Runtime differences
+# (user mapping, SELinux, sockets) are handled by `kc run` at start time.
+#
+# Images are always built locally (no registry), so the invoking user's identity
+# is baked in at build time: files written under the bind-mounted $HOME come out
+# owned by you, and /opt/kc is writable by you inside the container.
+#
+# Build context: the repo root (see /.dockerignore).
+
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+ARG KC_USER=kc
+ARG KC_UID=1000
+ARG KC_GID=1000
+ARG KC_HOME=/home/kc
+
+# Shared runtime. Tool-specific packages belong in tools/<tool>/tool.conf.
+RUN apk add --no-cache \
+      bash zsh fish \
+      busybox coreutils findutils grep sed gawk diffutils file \
+      git openssh-client \
+      curl wget ca-certificates ca-certificates-bundle \
+      less ncurses ncurses-terminfo \
+      glibc-locale-en glibc-locale-posix \
+      tini shadow \
+      gzip xz unzip
+
+# Corporate CA certs (Phase 6). `kc build` copies ~/.config/kc/certs/*.crt into
+# containers/base/certs/ before building; with none present this is a no-op.
+COPY containers/base/certs/ /usr/local/share/ca-certificates/kc/
+RUN if ls /usr/local/share/ca-certificates/kc/*.crt >/dev/null 2>&1; then \
+      update-ca-certificates; \
+    fi
+
+# The baked user. /etc/passwd and /etc/group stay writable so the entrypoint shim
+# can add an entry when the runtime hands us a UID we didn't bake (e.g. a docker
+# --user override). Container-local only; nothing here reaches the host.
+RUN if ! getent group "${KC_GID}" >/dev/null; then groupadd -g "${KC_GID}" "${KC_USER}"; fi \
+ && if ! getent passwd "${KC_UID}" >/dev/null; then \
+      useradd -M -u "${KC_UID}" -g "${KC_GID}" -d "${KC_HOME}" -s /usr/bin/fish "${KC_USER}"; \
+    fi \
+ && chmod 0666 /etc/passwd /etc/group
+
+# /opt/kc layout:
+#   config  XDG_CONFIG_HOME — rendered chezmoi config, baked
+#   data    XDG_DATA_HOME   — plugins, parsers, LSPs, baked
+#   state   named volume kc-<tool>-state (XDG_STATE_HOME + XDG_CACHE_HOME)
+#   tools   tool definitions copied from containers/tools/
+# state is 1777 so a fresh named volume copies up a mode any UID can write.
+RUN mkdir -p /opt/kc/config /opt/kc/data /opt/kc/state /opt/kc/tools /opt/kc/build-home \
+ && chmod 1777 /opt/kc/state
+
+ENV KC_USER=${KC_USER} \
+    KC_UID=${KC_UID} \
+    KC_GID=${KC_GID} \
+    XDG_CONFIG_HOME=/opt/kc/config \
+    XDG_DATA_HOME=/opt/kc/data \
+    XDG_STATE_HOME=/opt/kc/state/state \
+    XDG_CACHE_HOME=/opt/kc/state/cache \
+    STARSHIP_CONFIG=/opt/kc/config/starship.toml \
+    KC_IN_CONTAINER=1 \
+    LANG=en_US.UTF-8 \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    GOPROXY=direct
+
+COPY containers/base/entrypoint.sh /usr/local/bin/kc-entrypoint
+COPY containers/base/kc-bake /usr/local/bin/kc-bake
+COPY containers/base/kc-tool-install /usr/local/bin/kc-tool-install
+RUN chmod 0755 /usr/local/bin/kc-entrypoint /usr/local/bin/kc-bake /usr/local/bin/kc-tool-install
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/kc-entrypoint"]
+CMD ["/bin/bash", "-l"]

@@ -151,6 +151,18 @@
 {{-   $useHomebrew = false -}}
 {{- end -}}
 
+{{- /* Rendering for a kc container image (containers/). Explicit opt-in ONLY —
+       deliberately not auto-detected from /.dockerenv or /run/.containerenv, because
+       distrobox (the sanctioned install path on SteamOS) creates /run/.containerenv,
+       and a chezmoi apply inside a distrobox must keep the host's git identity and
+       clipboard behavior. Set by containers/render and by the kc-toolbox image.
+       Templates read it as `get . "isContainer"` so a persisted config generated
+       before this flag existed keeps applying cleanly. */ -}}
+{{- $isContainer := false -}}
+{{- if eq (env "CHEZMOI_CONTAINER") "true" -}}
+{{-   $isContainer = true -}}
+{{- end -}}
+
 {{- /* Optional gaming tools — opt-in via env var, default off */ -}}
 {{- $installCurseforge := false -}}
 {{- if eq (env "CHEZMOI_INSTALL_CURSEFORGE") "true" -}}
@@ -204,6 +216,7 @@
     isDGXSpark = {{ $isDGXSpark }}
     isHexOS = {{ $isHexOS }}
     isSteamOS = {{ $isSteamOS }}
+    isContainer = {{ $isContainer }}
     hasNvidiaPassthrough = {{ $hasNvidiaPassthrough }}
     installCurseforge = {{ $installCurseforge }}
     installMinecraft = {{ $installMinecraft }}

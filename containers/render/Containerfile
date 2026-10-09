@@ -1,0 +1,13 @@
+# kc-render — build-time only. Renders the chezmoi source into /rendered/<paths>
+# so tool images can `COPY --from` the config they bake. Never run.
+#
+# Build context: the repo root (see /.dockerignore).
+
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+ARG KC_HOME=/home/kc
+ARG KC_PROFILE=personal
+
+RUN apk add --no-cache chezmoi
+COPY . /src
+RUN KC_HOME="$KC_HOME" KC_PROFILE="$KC_PROFILE" sh /src/containers/render/render.sh

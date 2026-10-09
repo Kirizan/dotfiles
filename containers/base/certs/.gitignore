@@ -1,0 +1,4 @@
+# Corporate CA certs are copied here from ~/.config/kc/certs/ by `kc build`.
+# They are machine-local and never committed.
+*
+!.gitignore

@@ -1,0 +1,47 @@
+#!/bin/sh
+# kc-tool-install <tool>... — the one recipe shared by single-tool images and the
+# toolbox. For each tool, in order:
+#
+#   1. apk add $TOOL_APK
+#   2. kc-bake $TOOL_CONFIG_PATHS from the rendered chezmoi output
+#   3. run tools/<tool>/install.sh (build-time network is allowed here, never at runtime)
+#
+# Runs as root during the image build. Ownership of /opt/kc is handed to the baked
+# user afterwards so runtime writes (ephemeral) don't fail.
+set -eu
+
+rendered=${KC_RENDERED:-/tmp/kc-rendered}
+export HOME=/opt/kc/build-home
+
+for tool in "$@"; do
+    dir=/opt/kc/tools/$tool
+    if [ ! -f "$dir/tool.conf" ]; then
+        echo "kc-tool-install: no tool.conf for '$tool' in $dir" >&2
+        exit 1
+    fi
+    # shellcheck disable=SC1091
+    . "$dir/tool.conf"
+    echo "==> kc-tool-install: $TOOL_NAME"
+
+    if [ -n "${TOOL_APK:-}" ]; then
+        # shellcheck disable=SC2086
+        apk add --no-cache $TOOL_APK
+    fi
+
+    if [ -n "${TOOL_CONFIG_PATHS:-}" ]; then
+        # shellcheck disable=SC2086
+        kc-bake "$rendered" $TOOL_CONFIG_PATHS
+    fi
+
+    if [ -x "$dir/install.sh" ]; then
+        (cd "$dir" && ./install.sh)
+    fi
+
+    unset TOOL_NAME TOOL_CMD TOOL_SHIMS TOOL_DESCRIPTION TOOL_APK TOOL_CONFIG_PATHS \
+          TOOL_TTY TOOL_PORTS TOOL_ENV TOOL_NETWORK
+done
+
+uid=${KC_UID:-1000}
+gid=${KC_GID:-1000}
+chown -R "$uid:$gid" /opt/kc/config /opt/kc/data /opt/kc/build-home
+rm -rf /opt/kc/build-home/.npm /opt/kc/build-home/.cache /root/.cache 2>/dev/null || true

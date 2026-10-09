@@ -1,0 +1,10 @@
+# Build context for containers/ (kc). Podman and Docker both read this file from
+# the context root, which is the repo root so the render stage can see the chezmoi
+# source. Allowlist: only the chezmoi source state and containers/ are sent.
+# (chezmoi ignores dot-prefixed source files, so this never deploys to ~.)
+*
+!.chezmoi.toml.tmpl
+!.chezmoiignore
+!.chezmoiremove
+!dot_*
+!containers

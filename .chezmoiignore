@@ -1,6 +1,9 @@
 # Repository management files
 README.md
 scripts/
+# Container toolchain sources (kc) — built into images, never deployed to ~.
+# The launcher reaches ~/.local/bin via dot_local/bin/executable_kc instead.
+containers/
 LICENSE
 Makefile
 PROFILES.md
@@ -67,7 +70,9 @@ Library/
 {{- if not (stat (joinPath .chezmoi.homeDir ".local/share/omarchy")) }}
 .config/omarchy/
 {{- end }}
-{{- if not (lookPath "fish") }}
+{{- /* Container renders (containers/render) have no fish binary in the render
+       stage, but the kc-toolbox shell IS fish — so don't gate it on lookPath there. */ -}}
+{{- if not (or (lookPath "fish") (get . "isContainer")) }}
 .config/fish/
 {{- end }}
 {{- if not (lookPath "windsurf") }}

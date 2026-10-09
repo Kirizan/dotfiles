@@ -1,0 +1,40 @@
+#!/bin/sh
+# kc-bake <rendered-root> <target-path>...
+#
+# Copy chezmoi-rendered paths (as they would land in ~) into the image's XDG
+# layout under /opt/kc/config. A few legacy ~/ paths get remapped to their XDG
+# equivalent so the tools read them without touching the host's ~:
+#
+#   .config/<x>          -> /opt/kc/config/<x>
+#   .gitconfig           -> /opt/kc/config/git/config
+#   .gitignore_global    -> /opt/kc/config/git/ignore
+#   .tmux.conf           -> /opt/kc/config/tmux/tmux.conf
+#
+# Anything else is an error: the image must never write into ~.
+set -eu
+
+root=$1
+shift
+cfg=/opt/kc/config
+
+for p in "$@"; do
+    src="$root/$p"
+    if [ ! -e "$src" ]; then
+        echo "kc-bake: $p not in rendered output (check .chezmoiignore for the container render)" >&2
+        exit 1
+    fi
+    case "$p" in
+        .config/*)          dst="$cfg/${p#.config/}" ;;
+        .gitconfig)         dst="$cfg/git/config" ;;
+        .gitignore_global)  dst="$cfg/git/ignore" ;;
+        .tmux.conf)         dst="$cfg/tmux/tmux.conf" ;;
+        *)
+            echo "kc-bake: no XDG mapping for $p" >&2
+            exit 1
+            ;;
+    esac
+    mkdir -p "$(dirname "$dst")"
+    rm -rf "$dst"
+    cp -a "$src" "$dst"
+    echo "kc-bake: $p -> $dst"
+done

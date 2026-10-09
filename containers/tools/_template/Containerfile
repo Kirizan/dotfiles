@@ -1,0 +1,16 @@
+# kc-__TOOL__ — built by `kc build __TOOL__` (build context: the repo root).
+# Follow the template contract in tools/_template/README.md.
+ARG KC_BASE=kc-base:latest
+ARG KC_RENDER=kc-render:latest
+FROM ${KC_RENDER} AS render
+
+FROM ${KC_BASE}
+COPY containers/tools/__TOOL__/ /opt/kc/tools/__TOOL__/
+COPY --from=render /rendered /tmp/kc-rendered
+RUN chmod +x /opt/kc/tools/__TOOL__/*.sh \
+ && kc-tool-install __TOOL__ \
+ && rm -rf /tmp/kc-rendered
+
+USER ${KC_UID}:${KC_GID}
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/kc-entrypoint", "__TOOL__"]
+CMD []
