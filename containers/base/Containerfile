@@ -29,8 +29,10 @@ RUN apk add --no-cache \
 
 # Corporate CA certs (Phase 6). `kc build` copies ~/.config/kc/certs/*.crt into
 # containers/base/certs/ before building; with none present this is a no-op.
-COPY containers/base/certs/ /usr/local/share/ca-certificates/kc/
-RUN if ls /usr/local/share/ca-certificates/kc/*.crt >/dev/null 2>&1; then \
+# Wolfi's update-ca-certificates only reads the top level of this directory.
+COPY containers/base/certs/ /usr/local/share/ca-certificates/
+RUN rm -f /usr/local/share/ca-certificates/.gitignore \
+ && if ls /usr/local/share/ca-certificates/*.crt >/dev/null 2>&1; then \
       update-ca-certificates; \
     fi
 
