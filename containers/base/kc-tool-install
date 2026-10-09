@@ -45,3 +45,9 @@ uid=${KC_UID:-1000}
 gid=${KC_GID:-1000}
 chown -R "$uid:$gid" /opt/kc/config /opt/kc/data /opt/kc/build-home
 rm -rf /opt/kc/build-home/.npm /opt/kc/build-home/.cache /root/.cache 2>/dev/null || true
+
+# /opt/kc/state is the mount point for the kc-<tool>-state volume, and a fresh
+# named volume copies up whatever is here — including ownership. Anything a
+# build step created in it (as root) would be unwritable at runtime.
+find /opt/kc/state -mindepth 1 -delete
+chmod 1777 /opt/kc/state

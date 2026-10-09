@@ -1,0 +1,26 @@
+# kc-toolbox — the full toolchain: every tool in tools.list plus the shell layer.
+# Built by `kc build toolbox` (build context: the repo root). Tools are installed
+# with the same kc-tool-install recipe as their single-tool images, so a tool is
+# defined once and appears in both places.
+ARG KC_BASE=kc-base:latest
+ARG KC_RENDER=kc-render:latest
+FROM ${KC_RENDER} AS render
+
+FROM ${KC_BASE}
+ARG KC_NVIM_LTEX=true
+ENV KC_NVIM_LTEX=${KC_NVIM_LTEX} \
+    CHEZMOI_CONTAINER=true \
+    STARSHIP_CACHE=/opt/kc/state/cache/starship \
+    SHELL=/usr/bin/fish
+
+COPY containers/tools/ /opt/kc/tools/
+COPY containers/toolbox/shell/ /opt/kc/tools/shell/
+COPY containers/toolbox/ /opt/kc/toolbox/
+COPY --from=render /rendered /tmp/kc-rendered
+RUN find /opt/kc/tools /opt/kc/toolbox -name '*.sh' -exec chmod +x {} + \
+ && kc-tool-install $(grep -vE '^\s*(#|$)' /opt/kc/toolbox/tools.list) shell \
+ && rm -rf /tmp/kc-rendered /opt/kc/tools/_template
+
+USER ${KC_UID}:${KC_GID}
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/kc-entrypoint"]
+CMD ["/usr/bin/fish", "-l"]
