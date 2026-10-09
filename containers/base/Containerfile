@@ -24,7 +24,7 @@ RUN apk add --no-cache \
       curl wget ca-certificates ca-certificates-bundle \
       less ncurses ncurses-terminfo \
       glibc-locale-en glibc-locale-posix \
-      tini shadow \
+      tini shadow posix-libc-utils \
       gzip xz unzip
 
 # Corporate CA certs (Phase 6). `kc build` copies ~/.config/kc/certs/*.crt into
