@@ -8,8 +8,9 @@
 # shows its own install/update dialog. Extension settings come from each
 # manifest's user_config defaults.
 #
-# Re-runs whenever the declared list changes:
-# {{ .claudeDesktopExtensions | toJson }}
+# Runs on every apply (run_after_), so a dismissed install dialog is retried
+# next time; it is a no-op when every declared version is already installed.
+# Declared: {{ .claudeDesktopExtensions | toJson }}
 
 {{- if and (eq .profile "personal") (not .isHeadless) (eq .chezmoi.os "linux") }}
 

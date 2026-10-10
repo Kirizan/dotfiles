@@ -1,6 +1,6 @@
 # Claude Desktop extensions (.mcpb) installed by
-# run_onchange_after_install-claude-desktop-extensions.sh.tmpl.
-# Bump `version` to roll out a new build; the script re-runs on any change here.
+# run_after_install-claude-desktop-extensions.sh.tmpl (runs every apply).
+# Bump `version` to roll out a new build.
 # Desktop is the only writer of its extension state: the script just opens the
 # .mcpb so Desktop shows its own install/update dialog.
 claudeDesktopExtensions:

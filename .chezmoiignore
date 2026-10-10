@@ -31,7 +31,7 @@ templates/
 # Claude Desktop rewrites claude_desktop_config.json from its in-memory copy
 # (see vault note "Claude Desktop Config Overwrite Bug"), so it is never managed.
 # Desktop MCP servers ship as .mcpb extensions instead; see
-# run_onchange_after_install-claude-desktop-extensions.sh.tmpl.
+# run_after_install-claude-desktop-extensions.sh.tmpl.
 .config/Claude/claude_desktop_config.json
 
 # Documentation files
