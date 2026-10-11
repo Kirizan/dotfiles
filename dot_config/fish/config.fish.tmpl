@@ -141,13 +141,16 @@ if test -f {{ .chezmoi.homeDir }}/.profile_corp.fish
 end
 {{- end }}
 
+{{- if not .isHexOS }}
+
+# OpenBao CLI (same as dot_bashrc.tmpl; without it bao defaults to 127.0.0.1:8200)
+set -gx BAO_ADDR "{{ .openbao.addr }}"
+{{- end }}
+
 {{- if .hasNvidiaPassthrough }}
 
 # Libvirt: use system connection by default (user is in libvirt group)
 set -gx LIBVIRT_DEFAULT_URI "qemu:///system"
-
-# OpenBao CLI (mirrors dot_bashrc.tmpl; without it bao defaults to 127.0.0.1:8200)
-set -gx BAO_ADDR "https://vault.internal.kirby.network"
 
 # GPU passthrough functions for RTX 5090 / AI Workbench VM
 # PCI slots: GPU={{ .gpu.nvidia_pci_slot }}, Audio={{ .gpu.nvidia_audio_pci_slot }}
