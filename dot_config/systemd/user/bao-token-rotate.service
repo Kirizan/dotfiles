@@ -1,0 +1,14 @@
+[Unit]
+Description=Rotate the mimir-cli OpenBao CLI token in the keyring
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/bao-token-rotate
+Environment=BAO_ADDR=https://vault.internal.kirby.network
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Right after login the network or the wallet may not be ready yet; retry
+# instead of waiting a whole day. The token has 14 days of slack anyway.
+Restart=on-failure
+RestartSec=15min

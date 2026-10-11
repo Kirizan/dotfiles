@@ -1,0 +1,24 @@
+#!/bin/bash
+# Enable the daily mimir-cli OpenBao token rotation timer.
+#
+# Re-runs whenever either unit file changes, via the hashes below.
+# unit hash: {{ include "dot_config/systemd/user/bao-token-rotate.service" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/bao-token-rotate.timer" | sha256sum }}
+
+set -euo pipefail
+
+UNIT="bao-token-rotate.timer"
+
+if ! command -v systemctl >/dev/null 2>&1; then
+  echo "systemd not present — skipping $UNIT"
+  exit 0
+fi
+
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+  echo "no systemd user session — skipping $UNIT (enable manually later)"
+  exit 0
+fi
+
+systemctl --user daemon-reload
+systemctl --user enable --now "$UNIT"
+systemctl --user list-timers --all "$UNIT" --no-pager | sed 's/^/  /'

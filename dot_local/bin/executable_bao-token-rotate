@@ -1,0 +1,50 @@
+#!/bin/bash
+# Daily rotation of the mimir-cli OpenBao token kept in the keyring.
+#
+# Creates a successor from token role mimir-cli (policy mimir-cli, 14d period,
+# 30d explicit max TTL), stores it through bao-token-helper, checks it
+# round-trips and works, then revokes the predecessor by accessor. Token values
+# never reach argv, the journal or the terminal.
+#
+# If the keyring token is gone or expired (mimir off for 14+ days), recreate it
+# from the WebUI console:  write auth/token/create/mimir-cli display_name=mimir-cli
+# then on mimir:            wl-paste -n | bao login -
+set -euo pipefail
+
+export BAO_ADDR="${BAO_ADDR:-https://vault.internal.kirby.network}"
+HELPER="$HOME/.local/bin/bao-token-helper"
+ROLE=mimir-cli
+
+fail() {
+  echo "bao-token-rotate: $*" >&2
+  command -v notify-send >/dev/null && notify-send -u critical "OpenBao token rotation failed" "$*" || true
+  exit 1
+}
+
+old="$("$HELPER" get)"
+[[ -n "$old" ]] || fail "no token in the keyring (wallet locked or token never stored)"
+
+old_acc="$(BAO_TOKEN="$old" bao token lookup -format=json 2>/dev/null | jq -r '.data.accessor // empty')" \
+  || true
+[[ -n "$old_acc" ]] || fail "keyring token is expired or revoked; recreate it from the WebUI (see script header)"
+
+# The role's token_explicit_max_ttl is not applied by OpenBao 2.6 (lookups show
+# explicit_max_ttl=0), so request the 30-day cap explicitly; the role still
+# supplies the policy and the 14-day period.
+new="$(BAO_TOKEN="$old" bao token create -role="$ROLE" -display-name="$ROLE" -explicit-max-ttl=720h -field=token 2>/dev/null)" \
+  || fail "could not create a successor token from role $ROLE"
+
+if ! printf '%s' "$new" | "$HELPER" store || [[ "$("$HELPER" get)" != "$new" ]]; then
+  # Put the old token back and throw the new one away, so nothing changes.
+  printf '%s' "$old" | "$HELPER" store || true
+  BAO_TOKEN="$new" bao token revoke -self >/dev/null 2>&1 || true
+  fail "keyring store did not round-trip; kept the old token"
+fi
+
+BAO_TOKEN="$new" bao token lookup >/dev/null 2>&1 \
+  || fail "new token stored but does not authenticate; old token NOT revoked"
+BAO_TOKEN="$new" bao token revoke -accessor "$old_acc" >/dev/null \
+  || fail "new token in place, but revoking the old one failed (accessor kept in journal)"
+
+expire="$(BAO_TOKEN="$new" bao token lookup -format=json | jq -r .data.expire_time)"
+echo "rotated mimir-cli token; new one expires ${expire} unless renewed or rotated"

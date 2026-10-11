@@ -38,18 +38,8 @@ STALE_DAYS=30
 mkdir -p "$STATE_DIR" "$REPORT_DIR" "$VAULT/daily/$YEAR"
 log() { printf '%s %s\n' "$(date -Is)" "$*" >>"$LOG"; }
 
-# Keep the user's interactive mimir-cli token alive. It is a periodic token
-# (768h period, no max TTL) that dies if nothing renews it within 32 days; a
-# weekly renew keeps it going indefinitely. Uses the token itself, not the
-# AppRole below, and only ever renews — never reads or prints it.
-if [[ -r "$HOME/.vault-token" ]]; then
-  if ! BAO_TOKEN="$(<"$HOME/.vault-token")" timeout 20 bao token renew >/dev/null 2>&1; then
-    log "WARN: renewing ~/.vault-token (mimir-cli) failed; it may have expired — recreate it via the mimir-cli token role"
-  fi
-fi
-
 # OpenBao auth: a scoped AppRole (policy fleet-check: read-only on grafana,
-# unifi, portainer, ai/claude), not whatever sits in ~/.vault-token.
+# unifi, portainer, ai/claude), independent of the user's own CLI token.
 APPROLE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fleet-update-check/approle"
 if [[ -z "${BAO_TOKEN:-}" && -r "$APPROLE_DIR/role-id" && -r "$APPROLE_DIR/secret-id" ]]; then
   if BAO_TOKEN="$(timeout 20 bao write -field=token auth/approle/login \

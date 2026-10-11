@@ -1,0 +1,17 @@
+#!/bin/bash
+# OpenBao CLI token helper: keeps the token in the Secret Service keyring
+# (KWallet, unlocked at login by pam_kwallet) instead of plain-text
+# ~/.vault-token. Wired up by ~/.bao (token_helper = ...).
+#
+# Protocol (same as Vault's): bao runs `get` (token on stdout), `store` (token
+# on stdin) and `erase`. Rotated daily by bao-token-rotate.
+set -euo pipefail
+
+ATTRS=(service openbao account mimir-cli)
+
+case "${1:-}" in
+  get)   secret-tool lookup "${ATTRS[@]}" 2>/dev/null || true ;;
+  store) secret-tool store --label="OpenBao CLI token (mimir-cli)" "${ATTRS[@]}" ;;
+  erase) secret-tool clear "${ATTRS[@]}" 2>/dev/null || true ;;
+  *)     echo "usage: ${0##*/} get|store|erase" >&2; exit 1 ;;
+esac

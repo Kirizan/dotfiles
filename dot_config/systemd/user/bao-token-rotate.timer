@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily rotation of the mimir-cli OpenBao CLI token
+
+[Timer]
+OnCalendar=*-*-* 09:23
+# Catch up after the desktop was off; a token unused for 14 days expires.
+Persistent=true
+RandomizedDelaySec=20m
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target
