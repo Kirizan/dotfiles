@@ -1,0 +1,49 @@
+#!/bin/bash
+# clipboard-plaintext — make every paste a "paste without formatting" (Wayland).
+#
+# Linux desktops have no way to rebind Ctrl+V to an app's "Paste Without
+# Formatting" menu item, so this works one layer down: it watches the clipboard
+# and, whenever a copy carries rich text (HTML/RTF), re-copies only its plain
+# text. Every app then pastes plain text on Ctrl+V.
+#
+# Left untouched: images, copied files (text/uri-list), password-manager copies
+# (KDE hint), and anything that is already plain text.
+#
+# Run by the clipboard-plaintext.service systemd user unit.
+
+set -euo pipefail
+
+if [ "${1:-}" = "--handle" ]; then
+    # wl-paste --watch pipes the new clipboard content to us; we don't need it.
+    cat >/dev/null || true
+
+    types=$(wl-paste --list-types 2>/dev/null) || exit 0
+
+    grep -qE '^(image/|text/uri-list$|x-kde-passwordManagerHint$)' <<<"$types" && exit 0
+    grep -qE '^(text/html|text/rtf|text/richtext|application/rtf)' <<<"$types" || exit 0
+
+    plain=""
+    for t in 'text/plain;charset=utf-8' 'text/plain' 'UTF8_STRING'; do
+        if grep -qxF "$t" <<<"$types"; then
+            plain=$t
+            break
+        fi
+    done
+    [ -n "$plain" ] || exit 0
+
+    # Re-copying offers only text/plain, so the watch event this triggers
+    # finds no rich type and stops here — no loop.
+    wl-paste --no-newline --type "$plain" | wl-copy --type text/plain
+    exit 0
+fi
+
+if ! command -v wl-paste >/dev/null 2>&1; then
+    echo "wl-paste not found (install wl-clipboard) — nothing to do" >&2
+    exit 0
+fi
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    echo "WAYLAND_DISPLAY not set — not a Wayland session, nothing to do" >&2
+    exit 0
+fi
+
+exec wl-paste --watch "$(readlink -f "$0")" --handle

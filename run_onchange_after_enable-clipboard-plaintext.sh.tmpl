@@ -1,0 +1,31 @@
+#!/bin/bash
+# Enable the clipboard-plaintext watcher (Ctrl+V pastes without formatting).
+#
+# Re-runs whenever the unit or the script changes, via the hashes below.
+# unit hash: {{ include "dot_config/systemd/user/clipboard-plaintext.service" | sha256sum }}
+# script hash: {{ include "dot_local/bin/executable_clipboard-plaintext" | sha256sum }}
+
+set -euo pipefail
+
+UNIT="clipboard-plaintext.service"
+
+if ! command -v systemctl >/dev/null 2>&1; then
+  echo "systemd not present — skipping $UNIT"
+  exit 0
+fi
+
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+  echo "no systemd user session — skipping $UNIT (enable manually later)"
+  exit 0
+fi
+
+systemctl --user daemon-reload
+systemctl --user enable "$UNIT"
+
+# Only (re)start inside a running graphical session; otherwise it starts at next login.
+if systemctl --user is-active --quiet graphical-session.target; then
+  systemctl --user restart "$UNIT"
+  echo "$UNIT running — Ctrl+V now pastes plain text"
+else
+  echo "$UNIT enabled — starts with the next graphical login"
+fi

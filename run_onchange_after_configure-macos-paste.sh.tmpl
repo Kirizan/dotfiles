@@ -1,0 +1,13 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+# Make Cmd+V "Paste and Match Style" (paste without formatting) in every app.
+#
+# NSUserKeyEquivalents rebinds a menu item by its title, globally. Apps without
+# that menu item keep the normal Cmd+V paste. Apps pick the
+# change up on their next launch.
+
+set -euo pipefail
+
+defaults write -g NSUserKeyEquivalents -dict-add "Paste and Match Style" -string "@v"
+echo "Cmd+V now pastes without formatting (restart open apps to apply)"
+{{- end }}

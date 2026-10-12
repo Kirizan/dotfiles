@@ -138,6 +138,14 @@ run_onchange_after_enable-bao-token-rotate.sh.tmpl
 .local/share/applications/kirizan-tailscale.desktop
 {{- end }}
 
+# Clipboard-plaintext watcher (Ctrl+V pastes without formatting) — needs a Wayland
+# desktop session. macOS does this with a menu-key remap instead
+# (run_onchange_after_configure-macos-paste.sh.tmpl).
+{{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL .isSteamOS }}
+.local/bin/clipboard-plaintext
+.config/systemd/user/clipboard-plaintext.service
+enable-clipboard-plaintext.sh
+{{- end }}
 
 # Optional gaming tools — opt-in only
 {{- if not .installCurseforge }}

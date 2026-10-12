@@ -1,0 +1,12 @@
+[Unit]
+Description=Strip formatting from the clipboard so Ctrl+V pastes plain text
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/clipboard-plaintext
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
