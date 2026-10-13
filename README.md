@@ -6,13 +6,28 @@ My personal dotfiles managed with [chezmoi](https://www.chezmoi.io/).
 
 ### Initial Setup
 
-1. **Install chezmoi** (if not already installed):
+0. **Bootstrap the toolchain** (optional, but required before any `make` target).
+   `make install-prereqs` cannot install `make` itself, so this one step is run by
+   hand. It installs `make`, `git`, `curl` and `chezmoi` using whatever package
+   manager the system has — pacman, apt, dnf, zypper, apk, xbps, emerge, pkg, or
+   Homebrew — and is idempotent:
+   ```bash
+   ./scripts/bootstrap-prereqs.sh --check   # report only, change nothing
+   ./scripts/bootstrap-prereqs.sh           # install what is missing
+   ```
+   On SteamOS it warns and asks first, because pacman writes into `/usr` and the
+   next OS update discards it — see [SteamOS](#steamos-steam-deck--steam-machine).
+
+1. **Install chezmoi** (if not already installed — step 0 also does this):
    ```bash
    # macOS
    brew install chezmoi
 
    # Arch Linux
    sudo pacman -S chezmoi
+
+   # Anywhere (static binary into ~/.local/bin)
+   sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin
    ```
 
 2. **Initialize dotfiles**:
@@ -137,6 +152,18 @@ sudo systemctl enable --now sshd && ip -4 addr show scope global | grep inet
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin
 chezmoi init --apply https://github.com/Kirizan/dotfiles.git
 ```
+
+SteamOS ships without `make`, so the `make` targets below are unavailable until
+you bootstrap them. **You do not have to** — every target is a thin wrapper, and
+the script underneath runs on its own:
+
+```bash
+cd ~/.local/share/chezmoi && ./scripts/steamos-remote-access.sh enable
+```
+
+Installing `make` on SteamOS means pacman writing into `/usr`, which the next OS
+update discards. If you want it anyway, `./scripts/bootstrap-prereqs.sh` will do
+it — it warns, asks first, and must be re-run after each OS update.
 
 ### Remote management from mimir
 

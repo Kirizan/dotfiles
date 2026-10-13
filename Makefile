@@ -1,4 +1,4 @@
-.PHONY: help setup install-chezmoi install-prereqs init apply update status diff check clean github-ssh work_machine personal_machine show_profile enable-remote harden-remote disable-remote remote-status
+.PHONY: help setup install-chezmoi install-prereqs init apply update status diff check clean github-ssh work_machine personal_machine show_profile enable-remote harden-remote disable-remote remote-status prereqs prereqs-check
 
 # Detect operating system
 UNAME_S := $(shell uname -s)
@@ -263,3 +263,14 @@ disable-remote: ## Reverse enable-remote entirely (key, sudoers drop-in, sshd)
 
 remote-status: ## Report remote-access state; changes nothing
 	@./scripts/steamos-remote-access.sh status
+
+# ── Prerequisites ────────────────────────────────────────────────────────────
+# Note the chicken-and-egg: this target cannot install `make` itself. On a
+# machine with no make at all, run the script directly:
+#     ./scripts/bootstrap-prereqs.sh
+
+prereqs: ## Install the minimum toolchain this Makefile needs (make, git, curl, chezmoi)
+	@./scripts/bootstrap-prereqs.sh
+
+prereqs-check: ## Report missing prerequisites; install nothing
+	@./scripts/bootstrap-prereqs.sh --check
