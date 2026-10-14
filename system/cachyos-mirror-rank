@@ -1,0 +1,241 @@
+#!/bin/bash
+# cachyos-mirror-rank — order the CachyOS x86_64_v4 mirrorlist by COMPLETENESS,
+# keeping rate-mirrors' throughput order as the tie-breaker.
+#
+# Why this exists
+#   cachyos-rate-mirrors ranks by download speed only. CachyOS mirrors publish a
+#   new repo DB before every package file has landed, and Cloudflare-fronted
+#   mirrors cache the resulting 404s for up to an hour. When pacman hits three
+#   errors on one mirror it drops that mirror for the rest of the transaction
+#   and pushes everything onto the next one, so one gap cascades into unrelated
+#   failures. The CachyOS mirror API ("synced", delay_seconds) checks DB
+#   freshness only and reports these mirrors as healthy, so --max-delay cannot
+#   catch it.
+#
+# How it runs
+#   1. ExecStartPost of cachyos-rate-mirrors.service (systemd drop-in), so every
+#      timer run produces a completeness-ordered list. Mode: auto.
+#   2. As the pre-flight gate before every upgrade: `cachyos-mirror-rank --pending`.
+#      Exit 3 means no mirror holds every file the upgrade needs — do not upgrade.
+#
+# What it probes (HEAD on each file and its .sig, as pacman's User-Agent)
+#   --pending      the exact x86_64_v4 files a `pacman -Syu` would download now
+#                  (from checkupdates' private DB; the system DB is untouched)
+#   --recent N     files built in the last N days per the newest repo DB. Partial
+#                  syncs miss the newest files, so this is the cheap weekly check.
+#   auto (default) --pending if any v4 files are pending, else --recent 3
+#
+# Ranking: complete -> unverified (rate-limited, no confirmed 404) -> incomplete
+# (fewest missing first) -> unreachable. Mirrors are NEVER removed, only
+# reordered: gaps are often disjoint, so a mirror that misses one file can be the
+# only one holding another.
+#
+# Exit codes: 0 at least one complete mirror; 2 could not determine (list left
+# untouched); 3 no complete mirror (list still reordered best-effort).
+#
+# Managed by chezmoi (~/.dotfiles/system/cachyos-mirror-rank). Edit there.
+
+set -uo pipefail
+
+MIRRORLIST="${MIRRORLIST:-/etc/pacman.d/cachyos-v4-mirrorlist}"
+REPOS=(cachyos-znver4 cachyos-core-znver4 cachyos-extra-znver4)
+PARALLEL_PER_MIRROR=4
+# Per-mirror time budget (first pass / retry pass). A rate-limiting mirror would
+# otherwise hold the whole run hostage; whatever it has not answered by then
+# counts as unverified, which already ranks it below every complete mirror.
+PROBE_BUDGET=150
+RETRY_BUDGET=45
+MODE=auto
+RECENT_DAYS=3
+DRY_RUN=0
+
+usage() {
+    sed -n '2,/^# Managed by/p' "$0" | sed 's/^# \{0,1\}//'
+    echo "Usage: $0 [--pending | --recent DAYS] [--dry-run]"
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --pending) MODE=pending ;;
+        --recent) MODE=recent; RECENT_DAYS="${2:?--recent needs a number of days}"; shift ;;
+        --dry-run) DRY_RUN=1 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+    esac
+    shift
+done
+
+log() { echo "cachyos-mirror-rank: $*" >&2; }
+
+if [ "$DRY_RUN" -eq 0 ] && [ "$EUID" -ne 0 ]; then
+    log "must run as root to rewrite $MIRRORLIST (use --dry-run to only report)"
+    exit 2
+fi
+
+WORK="$(mktemp -d)"
+trap 'rm -rf -- "$WORK"' EXIT
+
+# Some mirrors (krfoss) answer curl's default User-Agent with 418, which a probe
+# would misread as "missing". Identify as pacman, which is what really downloads.
+UA="pacman/$(pacman -Q pacman 2>/dev/null | awk '{print $2}' | cut -d- -f1) (Linux x86_64) libalpm"
+export UA
+
+mapfile -t SERVERS < <(grep -E '^[[:space:]]*Server[[:space:]]*=' "$MIRRORLIST" | sed -E 's/^[[:space:]]*Server[[:space:]]*=[[:space:]]*//')
+if [ "${#SERVERS[@]}" -eq 0 ]; then
+    log "no Server lines in $MIRRORLIST; leaving it untouched"
+    exit 2
+fi
+
+# Resolve a mirror's Server template to the URL of one repo directory.
+repo_url() { local s="${1//\$arch_v4/x86_64_v4}"; echo "${s//\$repo/$2}"; }
+
+# ---- Build the file set: "<repo> <filename>" per line --------------------------
+
+pending_files() {
+    local db="${CHECKUPDATES_DB:-/tmp/checkup-db-${EUID}}"
+    CHECKUPDATES_DB="$db" checkupdates >/dev/null 2>&1
+    local rc=$?
+    # checkupdates: 0 = updates pending, 2 = none pending, anything else = failure
+    if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then
+        log "checkupdates failed (rc=$rc)"
+        return 1
+    fi
+    local pending
+    pending=$(pacman -Sup --dbpath "$db" --logfile /dev/null 2>/dev/null | grep -E '^https?://' || true)
+    if [ -z "$pending" ] && [ "$rc" -eq 0 ]; then
+        log "updates are pending but $db yields no URLs; refusing a false all-clear"
+        return 1
+    fi
+    printf '%s\n' "$pending" | grep '/x86_64_v4/' | sed -E 's#.*/x86_64_v4/([^/]+)/([^/]+)$#\1 \2#'
+}
+
+recent_files() {
+    local days="$1" now repo s lm newest newest_src
+    now=$(date +%s)
+    for repo in "${REPOS[@]}"; do
+        # Pull the DB from whichever mirror published the newest one; it lists
+        # the files every other mirror should already have.
+        newest=0; newest_src=""
+        for s in "${SERVERS[@]}"; do
+            lm=$(curl -sI -A "$UA" --max-time 15 "$(repo_url "$s" "$repo")/$repo.db" \
+                | tr -d '\r' | awk -F': ' 'tolower($1)=="last-modified"{print $2}')
+            [ -n "$lm" ] || continue
+            lm=$(date -d "$lm" +%s 2>/dev/null) || continue
+            if [ "$lm" -gt "$newest" ]; then newest=$lm; newest_src=$s; fi
+        done
+        if [ -z "$newest_src" ]; then
+            log "no mirror served $repo.db"
+            return 1
+        fi
+        curl -sf -A "$UA" --max-time 120 -o "$WORK/$repo.db" "$(repo_url "$newest_src" "$repo")/$repo.db" \
+            || { log "failed to download $repo.db"; return 1; }
+        bsdtar -xOf "$WORK/$repo.db" --include='*/desc' \
+            | awk -v r="$repo" -v now="$now" -v d="$days" '
+                /^%FILENAME%$/  { getline f }
+                /^%BUILDDATE%$/ { getline b; if ((now - b) < d * 86400) print r, f }'
+    done
+}
+
+case "$MODE" in
+    pending) files=$(pending_files) || exit 2; label="pending upgrade" ;;
+    recent)  files=$(recent_files "$RECENT_DAYS") || exit 2; label="built in last ${RECENT_DAYS}d" ;;
+    auto)
+        files=$(pending_files) || files=""
+        label="pending upgrade"
+        if [ -z "$files" ]; then
+            files=$(recent_files "$RECENT_DAYS") || exit 2
+            label="built in last ${RECENT_DAYS}d"
+        fi
+        ;;
+esac
+files=$(printf '%s\n' "$files" | sed '/^$/d' | sort -u)
+nfiles=$(printf '%s\n' "$files" | sed '/^$/d' | wc -l)
+if [ "$nfiles" -eq 0 ]; then
+    log "no x86_64_v4 files to probe ($label); mirror order irrelevant, leaving list untouched"
+    exit 0
+fi
+log "probing ${#SERVERS[@]} mirrors x $nfiles files + signatures ($label)"
+
+# ---- Probe ---------------------------------------------------------------------
+
+probe_mirror() {
+    local idx="$1" server="$2"
+    local out="$WORK/m$idx" start=$SECONDS
+    printf '%s\n' "$files" | while read -r repo f; do
+        u="$(repo_url "$server" "$repo")/$f"
+        echo "$u"; echo "$u.sig"
+    done > "$out.urls"
+    timeout "$PROBE_BUDGET" xargs -P "$PARALLEL_PER_MIRROR" -I{} sh -c \
+        'echo "$(curl -s -A "$UA" -o /dev/null -w "%{http_code}" --max-time 20 -I "{}") {}"' \
+        < "$out.urls" > "$out.codes"
+    # Anything that is neither 200 nor a real "not found" (429, 418, 403, 5xx,
+    # timeouts) gets one slow retry before it counts as unverified.
+    awk '$1!="200" && $1!="404" && $1!="410" {print $2}' "$out.codes" > "$out.retry"
+    if [ -s "$out.retry" ]; then
+        sleep 10
+        awk '$1=="200" || $1=="404" || $1=="410"' "$out.codes" > "$out.final"
+        timeout "$RETRY_BUDGET" xargs -P 1 -I{} sh -c \
+            'echo "$(curl -s -A "$UA" -o /dev/null -w "%{http_code}" --max-time 20 -I "{}") {}"' \
+            < "$out.retry" >> "$out.final"
+    else
+        cp "$out.codes" "$out.final"
+    fi
+    local total missing other ok
+    # Count against every URL, not every answer: anything cut off by the time
+    # budget never got a result line and lands in "other" (unverified).
+    total=$(wc -l < "$out.urls")
+    ok=$(awk '$1=="200"' "$out.final" | wc -l)
+    missing=$(awk '$1=="404" || $1=="410"' "$out.final" | wc -l)
+    other=$(( total - ok - missing ))
+    local class rank
+    if   [ "$ok" -eq 0 ] && [ "$missing" -eq 0 ]; then class=unreachable; rank=3
+    elif [ "$missing" -gt 0 ];                   then class=incomplete;  rank=2
+    elif [ "$other" -gt 0 ];                     then class=unverified;  rank=1
+    else                                              class=complete;    rank=0
+    fi
+    # rank, missing, original position, class, other, seconds, server
+    echo "$rank $missing $idx $class $other $(( SECONDS - start )) $server" > "$out.result"
+}
+
+for i in "${!SERVERS[@]}"; do
+    probe_mirror "$i" "${SERVERS[$i]}" &
+done
+wait
+
+results=$(cat "$WORK"/m*.result 2>/dev/null | sort -k1,1n -k2,2n -k3,3n)
+if [ "$(printf '%s\n' "$results" | sed '/^$/d' | wc -l)" -ne "${#SERVERS[@]}" ]; then
+    log "probe produced incomplete results; leaving list untouched"
+    exit 2
+fi
+
+ncomplete=$(printf '%s\n' "$results" | awk '$4=="complete"' | wc -l)
+summary=$(printf '%s\n' "$results" | awk '{printf "#   %-11s missing=%-5s unverified=%-5s %4ss  %s\n", $4, $2, $5, $6, $7}')
+
+# ---- Write ---------------------------------------------------------------------
+
+new="$WORK/mirrorlist"
+{
+    echo "# CachyOS x86_64_v4 mirrors, ordered by COMPLETENESS, then rate-mirrors throughput."
+    echo "# Written by /usr/local/bin/cachyos-mirror-rank at $(date -Is)."
+    echo "# Probed $nfiles files + signatures ($label)."
+    echo "# Do not hand-reorder: rerun 'sudo cachyos-mirror-rank --pending' instead."
+    echo "#"
+    printf '%s\n' "$summary"
+    echo
+    printf '%s\n' "$results" | awk '{print "Server = " $7}'
+} > "$new"
+
+printf '%s\n' "$summary" | sed 's/^#   /  /' >&2
+
+if [ "$DRY_RUN" -eq 1 ]; then
+    log "dry run; $MIRRORLIST not modified"
+else
+    install -m 0644 --backup=simple --suffix=".pre-rank" "$new" "$MIRRORLIST"
+    log "wrote $MIRRORLIST ($ncomplete of ${#SERVERS[@]} mirrors complete)"
+fi
+
+if [ "$ncomplete" -eq 0 ]; then
+    log "NO mirror holds every probed file — an upgrade now would hit 404s"
+    exit 3
+fi
+exit 0

@@ -1,0 +1,69 @@
+#!/bin/bash
+# Order mimir's CachyOS v4 mirrorlist by completeness after every rate-mirrors run.
+#
+# cachyos-rate-mirrors.timer re-ranks /etc/pacman.d/cachyos-v4-mirrorlist by
+# throughput only, roughly every 10 days. A fast mirror that is mid-sync (new
+# repo DB published, package files still landing) then wins position 1, pacman
+# 404s on it, blacklists it after three errors and cascades the rest of the
+# transaction onto the next mirror. Hand-reordering the list never stuck: the
+# next timer run wiped it (2026-09-15, 2026-09-25).
+#
+# Fix: a systemd drop-in runs cachyos-mirror-rank as ExecStartPost of the
+# rate-mirrors service, so every list the timer writes is re-ordered by probed
+# completeness with throughput as the tie-breaker. The drop-in lives in /etc and
+# the script in /usr/local/bin, so neither is touched by package upgrades. Run
+# `sudo cachyos-mirror-rank --pending` as the pre-flight gate before upgrading.
+#
+# The script is installed root-owned: a root service must never execute a file
+# in a user-writable home directory.
+#
+# ranker hash: {{ include "system/cachyos-mirror-rank" | sha256sum }}
+#
+# TO REVERSE:
+#   sudo rm -r /etc/systemd/system/cachyos-rate-mirrors.service.d/10-completeness.conf
+#   sudo rm /usr/local/bin/cachyos-mirror-rank
+#   sudo systemctl daemon-reload
+
+{{- if and (eq .chezmoi.os "linux") (eq .chezmoi.hostname "mimir") }}
+
+set -e
+
+SRC="{{ .chezmoi.sourceDir }}/system/cachyos-mirror-rank"
+DEST="/usr/local/bin/cachyos-mirror-rank"
+DROPIN_DIR="/etc/systemd/system/cachyos-rate-mirrors.service.d"
+DROPIN="$DROPIN_DIR/10-completeness.conf"
+
+echo "Installing cachyos-mirror-rank for mimir..."
+
+if [ ! -x /usr/bin/cachyos-rate-mirrors ]; then
+    echo "  cachyos-rate-mirrors not installed; nothing to do"
+    exit 0
+fi
+
+sudo install -o root -g root -m 0755 "$SRC" "$DEST"
+echo "  Installed $DEST"
+
+sudo install -d -o root -g root -m 0755 "$DROPIN_DIR"
+sudo tee "$DROPIN" >/dev/null <<'EOF'
+# Managed by chezmoi (run_onchange_after_install-cachyos-mirror-rank-mimir.sh.tmpl).
+# After rate-mirrors ranks by throughput, re-order the v4 list by completeness.
+# A failure here marks the run failed on purpose, so a list with no complete
+# mirror shows up in `systemctl --failed` instead of in the next upgrade.
+[Service]
+ExecStartPost=/usr/local/bin/cachyos-mirror-rank
+EOF
+sudo chmod 0644 "$DROPIN"
+sudo systemctl daemon-reload
+echo "  Installed $DROPIN"
+
+# Confirm systemd actually picked the drop-in up, not just that the file exists.
+if systemctl show cachyos-rate-mirrors.service -p ExecStartPost | grep -q cachyos-mirror-rank; then
+    echo "  Verified: ExecStartPost active on cachyos-rate-mirrors.service"
+else
+    echo "  ERROR: drop-in written but not loaded by systemd" >&2
+    exit 1
+fi
+
+{{- else }}
+echo "Skipping cachyos-mirror-rank (not applicable on this system)"
+{{- end }}

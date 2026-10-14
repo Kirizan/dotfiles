@@ -272,3 +272,6 @@ projects/
 .config/work
 {{- end }}
 
+
+# System files installed outside ~ by run_onchange scripts (sudo), never deployed to ~.
+system/
