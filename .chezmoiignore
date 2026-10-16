@@ -147,6 +147,13 @@ run_onchange_after_enable-bao-token-rotate.sh.tmpl
 enable-clipboard-plaintext.sh
 {{- end }}
 
+# Polymath's KDE process monitor (per-app Flux keyboard profiles). Follows the
+# polymath package, which run_once_install-personal-packages installs.
+{{- if or (not .isArchBased) (ne .profile "personal") .isWSL .isHeadless }}
+.local/share/kwin/scripts/waylandProcessMonitor
+enable-polymath-kwin-monitor.sh
+{{- end }}
+
 # Optional gaming tools — opt-in only
 {{- if not .installCurseforge }}
 install-curseforge.sh

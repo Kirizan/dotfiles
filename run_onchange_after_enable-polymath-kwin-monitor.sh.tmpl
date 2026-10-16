@@ -1,0 +1,27 @@
+#!/bin/bash
+# Enable Polymath's KDE process monitor (KWin script), which reports the focused
+# app to Polymath so Flux keyboard profiles switch automatically per app.
+#
+# The script itself ships in the polymath package; chezmoi symlinks it into
+# ~/.local/share/kwin/scripts/waylandProcessMonitor, the same link Polymath
+# creates on first launch. This makes it present before Polymath ever runs.
+# script hash: {{ include "dot_local/share/kwin/scripts/symlink_waylandProcessMonitor" | sha256sum }}
+
+set -euo pipefail
+
+if ! command -v kwriteconfig6 >/dev/null 2>&1; then
+  echo "KDE Plasma not present — skipping Polymath process monitor"
+  exit 0
+fi
+
+kwriteconfig6 --file kwinrc --group Plugins --key waylandProcessMonitorEnabled true
+
+# Load it into a running KWin; reconfigure alone does not load a newly enabled script.
+if [ -d /opt/polymath/waylandMonitors/waylandProcessMonitor/KDE/waylandProcessMonitor ] \
+  && command -v qdbus6 >/dev/null 2>&1 && qdbus6 org.kde.KWin /KWin >/dev/null 2>&1; then
+  qdbus6 org.kde.KWin /KWin reconfigure
+  qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start
+  echo "Polymath process monitor loaded: $(qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.isScriptLoaded waylandProcessMonitor)"
+else
+  echo "Polymath process monitor enabled — loads once polymath is installed and Plasma restarts"
+fi
