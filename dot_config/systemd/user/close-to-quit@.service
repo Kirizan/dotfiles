@@ -1,0 +1,6 @@
+[Unit]
+Description=Quit process %i if its last window closed while it hides in the tray
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/close-to-quit %i

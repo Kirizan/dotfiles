@@ -1,0 +1,33 @@
+#!/bin/bash
+# Enable the close-to-quit KWin script: closing an app's last window quits it,
+# unless the app is allowlisted to live in the tray (see ~/.local/bin/close-to-quit).
+#
+# Re-runs whenever the script, helper or unit changes, via the hashes below.
+# script hash: {{ include "dot_local/share/kwin/scripts/close-to-quit/contents/code/main.js" | sha256sum }}
+# metadata hash: {{ include "dot_local/share/kwin/scripts/close-to-quit/metadata.json" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/close-to-quit@.service" | sha256sum }}
+
+set -euo pipefail
+
+if ! command -v kwriteconfig6 >/dev/null 2>&1; then
+  echo "KDE Plasma not present — skipping close-to-quit"
+  exit 0
+fi
+
+if systemctl --user show-environment >/dev/null 2>&1; then
+  systemctl --user daemon-reload
+fi
+
+kwriteconfig6 --file kwinrc --group Plugins --key close-to-quitEnabled true
+
+# Reload the script in a running session so code changes take effect now:
+# unload it, reconfigure so KWin re-reads the enabled plugin, then start it
+# (reconfigure alone does not load a newly enabled script).
+if command -v qdbus6 >/dev/null 2>&1 && qdbus6 org.kde.KWin /KWin >/dev/null 2>&1; then
+  qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript close-to-quit >/dev/null || true
+  qdbus6 org.kde.KWin /KWin reconfigure
+  qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start
+  echo "close-to-quit KWin script loaded: $(qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.isScriptLoaded close-to-quit)"
+else
+  echo "close-to-quit enabled — loads with the next Plasma login"
+fi

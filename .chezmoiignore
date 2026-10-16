@@ -147,6 +147,15 @@ run_onchange_after_enable-bao-token-rotate.sh.tmpl
 enable-clipboard-plaintext.sh
 {{- end }}
 
+# close-to-quit: KWin script that makes closing an app's last window quit it.
+# KDE Plasma desktops only; the enable script also no-ops without kwriteconfig6.
+{{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL .isSteamOS }}
+.local/bin/close-to-quit
+.local/share/kwin/scripts/close-to-quit
+.config/systemd/user/close-to-quit@.service
+enable-close-to-quit.sh
+{{- end }}
+
 # Optional gaming tools — opt-in only
 {{- if not .installCurseforge }}
 install-curseforge.sh
