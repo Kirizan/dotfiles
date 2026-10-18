@@ -1,0 +1,6 @@
+[Unit]
+Description=Sync the personal spell-check word list to every app dictionary
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/personal-dict sync

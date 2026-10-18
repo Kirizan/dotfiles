@@ -29,6 +29,7 @@ declare -A PLUGIN_REPOS=(
     ["obsidian-local-rest-api"]="coddingtonbear/obsidian-local-rest-api"
     ["calendar"]="liamcain/obsidian-calendar-plugin"
     ["obsidian-plantuml"]="joethei/obsidian-plantuml"
+    ["obsidian-pandoc"]="OliverBalfour/obsidian-pandoc"
 )
 
 # Files to download for each plugin
@@ -37,7 +38,13 @@ PLUGIN_FILES=("main.js" "manifest.json" "styles.css")
 install_plugin() {
     local plugin_id="$1"
     local plugin_dir="$2"
-    local repo="${PLUGIN_REPOS[$plugin_id]}"
+    local repo="${PLUGIN_REPOS[$plugin_id]:-}"
+
+    # Plugins kept in this repo are linked in by deploy-obsidian-config
+    if [ -d "$CONFIG_DIR/plugins/$plugin_id" ]; then
+        echo "    Local plugin (deployed from dotfiles): $plugin_id"
+        return 0
+    fi
 
     if [ -z "$repo" ]; then
         echo "    Warning: No GitHub repo mapping for plugin '$plugin_id' — skipping"

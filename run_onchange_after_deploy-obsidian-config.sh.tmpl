@@ -1,7 +1,7 @@
 {{- if not .isHeadless -}}
 #!/bin/bash
 # Deploy Obsidian config to all vaults using hybrid strategy:
-# - Symlink read-only files (templates, types, snippets)
+# - Symlink read-only files (templates, types, snippets, local plugins)
 # - Copy writable files (app.json, appearance.json, community-plugins.json, core-plugins.json)
 # Note: graph.json, hotkeys.json, bookmarks.json are NOT managed — Obsidian creates and
 # modifies these at runtime.
@@ -13,6 +13,8 @@
 # hash: {{ include "dot_config/obsidian-config/appearance.json" | sha256sum }}
 # hash: {{ include "dot_config/obsidian-config/community-plugins.json" | sha256sum }}
 # hash: {{ include "dot_config/obsidian-config/core-plugins.json" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/plugins/personal-dictionary/main.js" | sha256sum }}
+# hash: {{ include "dot_config/obsidian-config/plugins/personal-dictionary/manifest.json" | sha256sum }}
 
 set -e
 
@@ -79,6 +81,20 @@ for vault in "${VAULTS[@]}"; do
             rm -f "$OBS_DIR/snippets/$snippet_name"
             ln -s "$snippet" "$OBS_DIR/snippets/$snippet_name"
             echo "    Linked snippet: $snippet_name"
+        done
+    fi
+
+    # Symlink plugins kept in this repo (not on GitHub, so the plugin
+    # installer skips them)
+    if [ -d "$CONFIG_DIR/plugins" ]; then
+        mkdir -p "$OBS_DIR/plugins"
+        for plugin in "$CONFIG_DIR/plugins"/*/; do
+            [ -f "$plugin/manifest.json" ] || continue
+            plugin="${plugin%/}"
+            plugin_name="$(basename "$plugin")"
+            rm -rf "$OBS_DIR/plugins/$plugin_name"
+            ln -s "$plugin" "$OBS_DIR/plugins/$plugin_name"
+            echo "    Linked plugin: $plugin_name"
         done
     fi
 

@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+"""Keep one personal word list in sync across every spell checker.
+
+The master list is an Obsidian note (a "## Words" section of "- word"
+bullets). `sync` copies it to:
+
+  - Chrome and Electron apps (Obsidian, Claude, Discord, ...):
+    <profile>/Custom Dictionary.txt, with Chromium's checksum trailer
+  - Firefox: <profile>/persdict.dat
+  - hunspell and KDE Sonnet: ~/.hunspell_en_US
+
+Words added in an app with its own "Add to dictionary" are pulled back into
+the note. Removal only works from the note: a word that was in the list at the
+last sync but is gone from the note is removed everywhere. A word missing from
+an app's file is never treated as a removal, because apps rewrite those files
+from memory and a new app starts with an empty one.
+
+Running apps load their dictionary at startup, so a restart picks up words
+added elsewhere. The Obsidian personal-dictionary plugin applies them live.
+
+Usage: personal-dict sync | add WORD... | list | path
+"""
+
+import hashlib
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+HOME = Path.home()
+{{- if eq .profile "work" }}
+NOTE = Path("{{ .obsidian.vault_root }}/{{ .obsidian.work_vault }}/3-Resources/Spelling/Personal Dictionary.md")
+{{- else }}
+NOTE = Path("{{ .obsidian.vault_root }}/{{ .obsidian.primary_vault }}/3-Resources/Spelling/Personal Dictionary.md")
+{{- end }}
+STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "personal-dict/last-sync.txt"
+HEADING = "## Words"
+CHECKSUM_PREFIX = "checksum_v1 = "
+# Chromium rejects custom words of 100+ bytes.
+MAX_WORD_BYTES = 99
+
+
+def valid(word):
+    return bool(word) and not any(c.isspace() for c in word) and len(word.encode()) <= MAX_WORD_BYTES
+
+
+def sort_words(words):
+    return sorted(words, key=lambda w: (w.casefold(), w))
+
+
+def atomic_write(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(text)
+    if path.exists():
+        os.chmod(tmp, path.stat().st_mode & 0o777)
+    os.replace(tmp, path)
+
+
+# --- Obsidian note -----------------------------------------------------------
+
+def split_note(text):
+    """Return (before, words, after) around the Words section."""
+    lines = text.splitlines(keepends=True)
+    start = next((i for i, l in enumerate(lines) if l.strip() == HEADING), None)
+    if start is None:
+        sep = "" if text.endswith("\n") or not text else "\n"
+        return text + sep + "\n", set(), ""
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    words = set()
+    for line in lines[start + 1:end]:
+        s = line.strip()
+        if s.startswith("- ") and valid(s[2:].strip()):
+            words.add(s[2:].strip())
+    return "".join(lines[:start]), words, "".join(lines[end:])
+
+
+def read_note():
+    return split_note(NOTE.read_text(encoding="utf-8"))[1]
+
+
+def write_note(words):
+    before, _, after = split_note(NOTE.read_text(encoding="utf-8"))
+    body = "".join(f"- {w}\n" for w in sort_words(words))
+    section = f"{HEADING}\n\n{body}"
+    if after:
+        section += "\n"
+    atomic_write(NOTE, before + section + after)
+
+
+# --- App dictionaries --------------------------------------------------------
+
+class Target:
+    def __init__(self, path, kind):
+        self.path, self.kind = path, kind
+
+    def read(self):
+        if not self.path.exists():
+            return set()
+        text = self.path.read_text(encoding="utf-8", errors="replace")
+        if self.kind == "chromium":
+            pos = text.rfind(CHECKSUM_PREFIX)
+            if pos != -1:
+                text = text[:pos]
+        return {w.strip() for w in text.splitlines() if valid(w.strip())}
+
+    def render(self, words):
+        body = "".join(f"{w}\n" for w in sort_words(words))
+        if self.kind == "chromium":
+            return body + CHECKSUM_PREFIX + hashlib.md5(body.encode()).hexdigest()
+        return body
+
+    def write(self, words):
+        text = self.render(words)
+        current = self.path.read_text(encoding="utf-8", errors="replace") if self.path.exists() else None
+        if current != text:
+            atomic_write(self.path, text)
+            return True
+        return False
+
+
+def chromium_targets():
+    # Every Chromium-based app keeps a Dictionaries/ folder beside its profile.
+    # Chrome itself has profile subfolders (Default, Profile 1, ...); Electron
+    # apps use the app folder as the profile.
+    seen = set()
+    for root, dirs, _ in os.walk(HOME / ".config"):
+        depth = Path(root).relative_to(HOME / ".config").parts
+        if len(depth) >= 4:
+            dirs[:] = []
+            continue
+        if "Dictionaries" not in dirs:
+            continue
+        app = Path(root)
+        if (app / "Default").is_dir():
+            profiles = [app / "Default", *sorted(app.glob("Profile *"))]
+        else:
+            profiles = [app]
+        for p in profiles:
+            if p not in seen:
+                seen.add(p)
+                yield Target(p / "Custom Dictionary.txt", "chromium")
+
+
+def firefox_targets():
+    for base in (HOME / ".mozilla/firefox", HOME / ".config/mozilla/firefox"):
+        if base.is_dir():
+            for prefs in sorted(base.glob("*/prefs.js")):
+                yield Target(prefs.parent / "persdict.dat", "plain")
+
+
+def all_targets():
+    return [*chromium_targets(), *firefox_targets(), Target(HOME / ".hunspell_en_US", "plain")]
+
+
+# --- Commands ----------------------------------------------------------------
+
+def sync(quiet=False):
+    note = read_note()
+    last = set(STATE.read_text(encoding="utf-8").split()) if STATE.exists() else set()
+    targets = all_targets()
+
+    # New words from apps = anything an app has that wasn't in the last sync.
+    harvested = set()
+    for t in targets:
+        harvested |= t.read() - last
+    words = note | harvested
+
+    if harvested - note:
+        write_note(words)
+        if not quiet:
+            print(f"personal-dict: pulled into note: {' '.join(sort_words(harvested - note))}")
+    for t in targets:
+        if t.write(words) and not quiet:
+            print(f"personal-dict: updated {t.path}")
+    atomic_write(STATE, "".join(f"{w}\n" for w in sort_words(words)))
+    return words
+
+
+def main(argv):
+    if not NOTE.exists():
+        sys.exit(f"personal-dict: word list not found: {NOTE}")
+    cmd, args = (argv[0], argv[1:]) if argv else ("sync", [])
+    if cmd == "sync":
+        sync(quiet="-q" in args)
+    elif cmd == "add":
+        new = {a.strip() for a in args}
+        bad = [w for w in new if not valid(w)]
+        if not new or bad:
+            sys.exit(f"personal-dict: give single words without spaces{': ' + ' '.join(bad) if bad else ''}")
+        write_note(read_note() | new)
+        sync(quiet=True)
+        print(f"personal-dict: added {' '.join(sort_words(new))}")
+    elif cmd == "list":
+        print("\n".join(sort_words(read_note())))
+    elif cmd == "path":
+        print(NOTE)
+    else:
+        sys.exit(__doc__.strip().splitlines()[-1])
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

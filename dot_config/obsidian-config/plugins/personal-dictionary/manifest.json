@@ -1,0 +1,9 @@
+{
+  "id": "personal-dictionary",
+  "name": "Personal Dictionary",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Right-click \"Add to personal dictionary\" for any word, kept in a vault note shared with every spell checker via personal-dict.",
+  "author": "Kirizan",
+  "isDesktopOnly": true
+}

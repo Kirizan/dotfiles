@@ -131,6 +131,16 @@ run_onchange_after_enable-fleet-update-timer.sh.tmpl
 run_onchange_after_enable-bao-token-rotate.sh.tmpl
 {{- end }}
 
+# Personal spell-check word list (an Obsidian note) synced to every app's
+# dictionary. Needs a desktop with the vault on disk and graphical apps.
+{{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL }}
+.local/bin/personal-dict
+.config/systemd/user/personal-dict.service
+.config/systemd/user/personal-dict.timer
+.config/systemd/user/personal-dict.path
+enable-personal-dict.sh
+{{- end }}
+
 # Tailscale on-demand launcher — needs a graphical session for notify-send and an
 # application menu to launch it from. Headless boxes keep tailscaled enabled instead.
 {{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL }}

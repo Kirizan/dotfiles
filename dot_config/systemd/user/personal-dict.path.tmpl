@@ -1,0 +1,13 @@
+[Unit]
+Description=Sync the personal dictionary whenever its Obsidian note changes
+
+[Path]
+{{- if eq .profile "work" }}
+PathChanged={{ .obsidian.vault_root }}/{{ .obsidian.work_vault }}/3-Resources/Spelling/Personal Dictionary.md
+{{- else }}
+PathChanged={{ .obsidian.vault_root }}/{{ .obsidian.primary_vault }}/3-Resources/Spelling/Personal Dictionary.md
+{{- end }}
+Unit=personal-dict.service
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,26 @@
+#!/bin/bash
+# Enable the personal dictionary sync: a path unit that fires when the
+# Obsidian word list changes, and a timer that collects words added inside apps.
+#
+# Re-runs whenever a unit file changes, via the hashes below.
+# unit hash: {{ include "dot_config/systemd/user/personal-dict.service" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/personal-dict.timer" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/personal-dict.path.tmpl" | sha256sum }}
+
+set -euo pipefail
+
+UNITS=(personal-dict.path personal-dict.timer)
+
+if ! command -v systemctl >/dev/null 2>&1; then
+  echo "systemd not present — skipping ${UNITS[*]}"
+  exit 0
+fi
+
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+  echo "no systemd user session — skipping ${UNITS[*]} (enable manually later)"
+  exit 0
+fi
+
+systemctl --user daemon-reload
+systemctl --user enable --now "${UNITS[@]}"
+systemctl --user start personal-dict.service
