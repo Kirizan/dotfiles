@@ -1,0 +1,37 @@
+{{- if and .isArchBased (not .isHeadless) (not .isWSL) -}}
+#!/bin/bash
+# Point every Chromium/Electron app's spell-check dictionary at the system one.
+#
+# Chrome and Electron apps (Obsidian, Claude, Discord, Signal, 1Password, ...)
+# don't read hunspell. Each downloads Google's en-US-10-1.bdic into
+# ~/.config/<app>/Dictionaries/ once and never updates it, so they flag common
+# words like "crafter". hunspell-en_us ships the current SCOWL list already
+# compiled to .bdic for QtWebEngine — the same format Chromium uses — so each
+# app's copy becomes a symlink to it and pacman updates reach every app.
+#
+# run_after_ (not run_onchange_) so apps installed later get picked up on the
+# next apply. Restart an app for it to load the new dictionary.
+
+set -euo pipefail
+
+SYSTEM_BDIC="/usr/share/qt6/qtwebengine_dictionaries/en_US.bdic"
+
+if [ ! -f "$SYSTEM_BDIC" ]; then
+    echo "spellcheck: $SYSTEM_BDIC missing (install hunspell-en_us) — skipping"
+    exit 0
+fi
+
+# Dictionaries/ sits at ~/.config/<app>/ for Electron apps, deeper for some
+# (NVIDIA Sync); Chrome keeps it at ~/.config/google-chrome/.
+find "$HOME/.config" -maxdepth 4 -type d -name Dictionaries -print0 2>/dev/null |
+while IFS= read -r -d '' dir; do
+    for bdic in "$dir"/en-US-*.bdic; do
+        [ -e "$bdic" ] || [ -L "$bdic" ] || continue
+        if [ "$(readlink "$bdic")" = "$SYSTEM_BDIC" ]; then
+            continue
+        fi
+        ln -sfn "$SYSTEM_BDIC" "$bdic"
+        echo "spellcheck: linked $bdic"
+    done
+done
+{{- end }}

@@ -121,6 +121,12 @@ sudo systemctl disable tailscaled 2>/dev/null || true
 
 {{- if not .isHeadless }}
 
+# US English dictionaries: hunspell for KDE (Sonnet) and Firefox, which reads
+# /usr/share/hunspell on Arch; the bundled .bdic also feeds Chromium/Electron
+# apps via run_after_link-chromium-spellcheck-dict.sh
+echo "Installing spell-check dictionaries..."
+sudo pacman -S --needed --noconfirm hunspell-en_us
+
 # Install PipeWire camera support (needed for webcams on Wayland)
 echo "Installing PipeWire camera support..."
 sudo pacman -S --needed --noconfirm \
