@@ -60,10 +60,10 @@ function joinNote({ before, words, after }) {
   return before + `${HEADING}\n\n${body}` + (after ? "\n" + after : "");
 }
 
-// Trim stray punctuation and the possessive: right-clicking "crafter's"
-// should add "crafter", which the spell checker then accepts with 's.
+// Trim surrounding quotes and dashes, but keep the word as written:
+// right-clicking "crafter's" adds "crafter's", not "crafter".
 function cleanWord(raw) {
-  return raw.trim().replace(/^['’-]+|['’-]+$/g, "").replace(/['’]s$/i, "");
+  return raw.trim().replace(/^['’-]+|['’-]+$/g, "");
 }
 
 module.exports = class PersonalDictionaryPlugin extends Plugin {
