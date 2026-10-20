@@ -186,7 +186,62 @@ if [[ -n "$claude_installed" && -n "$claude_latest" ]]; then
   [[ "$newest" != "$claude_installed" ]] && claude_outdated=1
 fi
 
-log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update | ctr stale=$ctr_stale restarting=$ctr_restarting | claude cli=${claude_installed:-?} latest=${claude_latest:-?} outdated=$claude_outdated"
+# ── 5c. motherboard BIOS ─────────────────────────────────────────────────
+# Report-only: a BIOS flash is always a manual decision (it resets settings
+# and ASUS releases >=1805 cannot be rolled back). ASUS publishes nothing to
+# LVFS for this board, so fwupd never sees these releases. The source is the
+# ROG support site's own JSON API (the request its helpdesk_bios page makes).
+# Every query parameter must be present, even empty, or the API returns
+# "No HTTP resource". It also wants a browser UA. The model slug is derived
+# from DMI so a board swap doesn't silently check the wrong product.
+bios_installed="$(tr -d '[:space:]' </sys/class/dmi/id/bios_version 2>/dev/null)"
+bios_board="$(cat /sys/class/dmi/id/board_name 2>/dev/null)"
+bios_slug="$(printf '%s' "$bios_board" | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-')"
+bios_latest="" bios_latest_date="" bios_newer=0 bios_releases=""
+if [[ -n "$bios_installed" && -n "$bios_slug" ]]; then
+  bios_json="$(curl -s --max-time 30 \
+    -A 'Mozilla/5.0 (X11; Linux x86_64; rv:158.0) Gecko/20100101 Firefox/158.0' \
+    "https://rog.asus.com/support/webapi/ProductV2/GetPDBIOS?website=global&model=${bios_slug}&pdid=0&m1id=&cpu=&LevelTagId=&systemCode=rog" \
+    2>/dev/null)"
+  # Prints: latest<TAB>date<TAB>count-newer, then one markdown row per newer release.
+  bios_parsed="$(BIOS_INSTALLED="$bios_installed" python3 -c '
+import json, os, re, sys
+try:
+    d = json.loads(sys.stdin.read())
+    files = [f for o in d["Result"]["Obj"] if o.get("Name") == "BIOS" for f in o.get("Files", [])]
+except Exception:
+    sys.exit(0)
+def key(v):
+    return [int(x) for x in re.findall(r"\d+", v)] or [0]
+inst = os.environ["BIOS_INSTALLED"]
+files = [f for f in files if f.get("Version")]
+if not files:
+    sys.exit(0)
+files.sort(key=lambda f: key(f["Version"]), reverse=True)
+newer = [f for f in files if key(f["Version"]) > key(inst)]
+print("%s\t%s\t%d" % (files[0]["Version"], files[0].get("ReleaseDate", "?"), len(newer)))
+for f in newer:
+    desc = re.sub(r"<br\s*/?>", " ", f.get("Description") or "")
+    desc = re.sub(r"<[^>]+>", "", desc).replace("|", "/").replace("\"", "").strip()
+    desc = re.sub(r"\s*Before running the USB BIOS Flashback tool.*$", "", desc)
+    url = (f.get("DownloadUrl") or {}).get("Global") or ""
+    if url.startswith("/"):
+        url = "https://dlcdnets.asus.com" + url
+    oneway = " **(one-way)**" if re.search(r"cannot be rolled back|irreversible", desc, re.I) else ""
+    print("| %s%s | %s | %s | [zip](%s) |" % (f["Version"], oneway, f.get("ReleaseDate", "?"), desc[:300], url))
+' <<<"$bios_json" 2>/dev/null)"
+  if [[ -n "$bios_parsed" ]]; then
+    IFS=$'\t' read -r bios_latest bios_latest_date bios_newer <<<"$(head -1 <<<"$bios_parsed")"
+    bios_releases="$(tail -n +2 <<<"$bios_parsed")"
+  else
+    log "WARN: ASUS BIOS lookup failed for model '$bios_slug'"
+  fi
+fi
+# Fail safe to 0: a failed lookup must never read as "update available".
+bios_outdated=0
+[[ -n "$bios_latest" && "${bios_newer:-0}" -gt 0 ]] && bios_outdated=1
+
+log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update | ctr stale=$ctr_stale restarting=$ctr_restarting | claude cli=${claude_installed:-?} latest=${claude_latest:-?} outdated=$claude_outdated | bios=${bios_installed:-?} latest=${bios_latest:-?} newer=${bios_newer:-0}"
 
 # ── 6. push host-level metrics into VictoriaMetrics ──────────────────────
 {
@@ -197,6 +252,7 @@ log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_u
     "$([[ "$truenas_update" == "AVAILABLE" ]] && echo 1 || echo 0)"
   printf 'fleet_unifi_firmware_updates_pending %s\n' "${unifi_pending:-0}"
   printf 'fleet_claude_cli_outdated{host="mimir"} %s\n' "${claude_outdated:-0}"
+  printf 'fleet_bios_releases_behind{host="mimir"} %s\n' "${bios_newer:-0}"
 } | curl -sk --max-time 20 --data-binary @- "$VM/api/v1/import/prometheus" \
   && log "pushed host metrics to VictoriaMetrics" \
   || log "WARN: metric push failed"
@@ -223,6 +279,8 @@ Live view: [Fleet Update Status]($GRAFANA/d/fleet-updates)
 | [[mimir]] | Pending repo updates | ${repo_count:-?} |
 | [[mimir]] | Pending AUR updates | ${aur_count:-?} |
 | [[mimir]] | Days since full upgrade | ${days_since:-?} |
+| [[mimir]] | BIOS installed / latest | ${bios_installed:-?} / ${bios_latest:-?} (${bios_latest_date:-?}) |
+| [[mimir]] | BIOS update available | $([[ "$bios_outdated" == "1" ]] && echo "**YES** (${bios_newer} newer, review only)" || echo "no") |
 | [[avalon]] | TrueNAS version | ${truenas_version:-?} |
 | [[avalon]] | TrueNAS update | ${truenas_update} |
 | Containers | Tracked | ${ctr_total:-?} |
@@ -237,6 +295,19 @@ Live view: [Fleet Update Status]($GRAFANA/d/fleet-updates)
 | [[Claude Code]] | Desktop-bundled CLI | ${claude_bundled:-n/a} |
 | [[Portainer]] | Stacks with drift or missing env | ${stack_summary} |
 
+$(if [[ "$bios_outdated" == "1" ]]; then cat <<BIOS
+## mimir BIOS Releases (review only, never auto-installed)
+
+${bios_board}: installed **${bios_installed}**. Newer releases from ASUS:
+
+| Version | Date | Notes | Download |
+|---------|------|-------|----------|
+${bios_releases}
+
+Before flashing, save the current settings (see [[mimir-bios-update]]). Flashing past a **one-way** release means you can never go back below it.
+
+BIOS
+fi)
 ## Oldest Container Images
 
 | Container | Stack | Age (days) |
@@ -274,6 +345,7 @@ State:
 - containers: ${ctr_stale} images older than 180 days, oldest ${ctr_oldest%%.*} days, ${ctr_restarting} restarting, ${ctr_unhealthy} unhealthy
 - Diun reports ${diun_updates} images with newer digests upstream
 - UniFi: ${unifi_pending} firmware updates pending
+- mimir BIOS: installed ${bios_installed:-?}, ASUS latest ${bios_latest:-?} (${bios_newer:-0} newer). Flashing is a manual decision; only mention it if newer releases exist
 
 Tasks:
 1. Fetch https://archlinux.org/feeds/news/ and list ONLY news items requiring
@@ -358,6 +430,7 @@ if ! grep -q "^## Fleet Update Check" "$ACTIVITY" 2>/dev/null; then
 
 - Automated weekly check ran across [[mimir]], [[avalon]], and the UniFi fleet
 - [[mimir]]: ${repo_count} repo + ${aur_count} AUR updates pending, ${days_since} days since last full upgrade
+$([[ "$bios_outdated" == "1" ]] && echo "- [[mimir]]: BIOS ${bios_latest} available (installed ${bios_installed}), review only")
 - Containers: ${ctr_stale} images older than 180 days, ${ctr_restarting} restarting, ${ctr_unhealthy} unhealthy
 - Full report: [[$TODAY-fleet-updates]]
 EOF
@@ -375,7 +448,7 @@ if command -v notify-send >/dev/null; then
     --icon=system-software-update \
     "Fleet update check complete" \
     "mimir: ${repo_count} repo / ${aur_count} AUR
-containers: ${ctr_stale} stale, ${ctr_restarting} restarting
+containers: ${ctr_stale} stale, ${ctr_restarting} restarting$([[ "$bios_outdated" == "1" ]] && printf '\nBIOS %s available (installed %s)' "$bios_latest" "$bios_installed")
 Report saved to Obsidian"
 fi
 
