@@ -1,0 +1,97 @@
+#!/bin/bash
+# Record every BIOS setting whose effect Linux can observe, so a BIOS flash
+# (which resets all settings to defaults) can be verified afterwards.
+#
+# ASUS UEFI cannot export settings as text, and its .CMO user profiles are
+# tied to the BIOS version that wrote them — a profile saved on 1104 is not
+# safe to load on 2503. This snapshot is the version-independent record:
+# take one before flashing, re-enter settings by hand, take another, diff.
+#
+#   bios-settings-snapshot           write a snapshot (uses sudo for dmidecode)
+#   bios-settings-snapshot diff      diff the two most recent snapshots
+#   bios-settings-snapshot list      list snapshots
+#
+# Managed by chezmoi.
+
+set -uo pipefail
+
+DIR="${XDG_STATE_HOME:-$HOME/.local/state}/bios-snapshots"
+mkdir -p "$DIR"
+
+case "${1:-snap}" in
+  list) ls -1 "$DIR"; exit 0 ;;
+  diff)
+    mapfile -t snaps < <(ls -1 "$DIR"/*.txt 2>/dev/null | tail -2)
+    if (( ${#snaps[@]} < 2 )); then echo "need two snapshots in $DIR" >&2; exit 1; fi
+    # Skip the header (timestamp, BIOS version), which always differs.
+    if diff --label "$(basename "${snaps[0]}")" --label "$(basename "${snaps[1]}")" \
+         -u <(sed '1,/^## /{/^## /!d}' "${snaps[0]}") <(sed '1,/^## /{/^## /!d}' "${snaps[1]}"); then
+      echo "No observable differences."
+    fi
+    exit 0 ;;
+  snap) ;;
+  *) echo "usage: $0 [snap|diff|list]" >&2; exit 2 ;;
+esac
+
+bios="$(cat /sys/class/dmi/id/bios_version 2>/dev/null)"
+out="$DIR/$(date +%Y-%m-%dT%H%M%S)-bios-${bios:-unknown}.txt"
+
+sec() { printf '\n## %s\n' "$1"; }
+kv()  { printf '%-34s %s\n' "$1" "$2"; }
+
+{
+  echo "# BIOS settings snapshot — $(date -Is)"
+  kv "BIOS version / date" "$bios / $(cat /sys/class/dmi/id/bios_date 2>/dev/null)"
+
+  sec "Board"
+  kv "System vendor" "$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null)"
+  kv "Board" "$(cat /sys/class/dmi/id/board_vendor /sys/class/dmi/id/board_name 2>/dev/null | paste -sd' ')"
+
+  # "running" above JEDEC means EXPO/DOCP is on. The EXPO rating itself is
+  # in the module's SPD, which dmidecode does not show.
+  sec "Memory (EXPO / DOCP)"
+  sudo dmidecode -t 17 2>/dev/null \
+    | awk -F': ' '/^\tLocator:/{loc=$2} /Bank Locator:/{bank=$2} /^\tSize:/{sz=$2}
+        /Configured Memory Speed:/{cs=$2} /^\tSpeed:/{rs=$2}
+        /Configured Voltage:/{cv=$2} /Part Number:/{pn=$2}
+        /^$/{ if (sz && sz!="No Module Installed") printf "%-34s %s, JEDEC %s, running %s @ %s, %s\n", loc "/" bank, sz, rs, cs, cv, pn; sz="" }'
+  kv "Total RAM" "$(awk '/MemTotal/{printf "%.1f GiB", $2/1048576}' /proc/meminfo)"
+
+  sec "CPU"
+  kv "Model" "$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ //')"
+  kv "Microcode" "$(grep -m1 microcode /proc/cpuinfo | awk '{print $3}')"
+  kv "Logical CPUs online (SMT)" "$(nproc --all) (smt: $(cat /sys/devices/system/cpu/smt/control 2>/dev/null))"
+  kv "Scaling driver / amd_pstate" "$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver 2>/dev/null) / $(cat /sys/devices/system/cpu/amd_pstate/status 2>/dev/null)"
+  kv "Core boost" "$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo n/a)"
+  kv "Max freq cpu0 (kHz)" "$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null)"
+  kv "CPPC preferred-core ranking" "$(cat /sys/devices/system/cpu/amd_pstate/prefcore 2>/dev/null || echo n/a)"
+  kv "C-states" "$(cat /sys/devices/system/cpu/cpu0/cpuidle/state*/name 2>/dev/null | paste -sd' ')"
+  # grep -c, not -q: under pipefail, -q's early exit SIGPIPEs journalctl and reads as "no".
+  kv "RDSEED32 flagged broken" "$(journalctl -k -b 0 2>/dev/null | grep -c 'RDSEED32 is broken' | sed 's/^0$/no/;s/^[1-9].*/yes/')"
+
+  sec "Virtualization / IOMMU"
+  kv "SVM (AMD-V)" "$(grep -qw svm /proc/cpuinfo && echo enabled || echo disabled)"
+  kv "IOMMU groups" "$(ls /sys/kernel/iommu_groups 2>/dev/null | wc -l)"
+
+  sec "Security"
+  sb="$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ')"
+  kv "Secure Boot" "$([[ "$sb" == 1 ]] && echo enabled || echo disabled)"
+  kv "TPM" "$( [[ -e /sys/class/tpm/tpm0 ]] && echo "present (v$(cat /sys/class/tpm/tpm0/tpm_version_major 2>/dev/null))" || echo absent)"
+
+  sec "PCIe / graphics (GPU links downclock at idle; compare max, or snapshot under load)"
+  kv "ASPM policy" "$(grep -o '\[[a-z_]*\]' /sys/module/pcie_aspm/parameters/policy 2>/dev/null)"
+  kv "NVIDIA BAR1 (Resizable BAR)" "$(nvidia-smi -q -d MEMORY 2>/dev/null | awk '/BAR1 Memory Usage/{f=1} f&&/Total/{print $3,$4; exit}')"
+  igpu=no; for d in /sys/bus/pci/drivers/amdgpu/0000:*; do [[ -e "$d" ]] && igpu=yes; done
+  kv "iGPU (amdgpu) present" "$igpu"
+  for d in /sys/bus/pci/devices/*; do
+    cls="$(cat "$d/class" 2>/dev/null)"
+    case "$cls" in 0x030000|0x010802|0x028000|0x020000) ;; *) continue ;; esac
+    kv "Link $(basename "$d") ($cls)" "$(cat "$d/current_link_speed" 2>/dev/null) x$(cat "$d/current_link_width" 2>/dev/null) (max $(cat "$d/max_link_speed" 2>/dev/null) x$(cat "$d/max_link_width" 2>/dev/null))"
+  done
+
+  sec "Boot"
+  efibootmgr 2>/dev/null | grep -E '^(BootOrder|Boot[0-9A-F]{4}\*?)' | sed -E 's/\t.*//'
+
+} >"$out"
+
+echo "Wrote $out"
