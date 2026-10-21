@@ -2,7 +2,7 @@
 # version = "0.108.0"
 
 # Use ISO 8601 timestamps
-$env.LC_TIME = "en_DK.UTF-8"
+$env.LC_TIME = "en_SE.UTF-8"
 
 # Add custom bin directories to PATH
 $env.PATH = ($env.PATH | split row (char esep) | append $"($env.HOME)/.dotfiles/bin")

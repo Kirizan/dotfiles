@@ -54,7 +54,7 @@ config.warn_about_missing_glyphs = false
 -- Shell integration
 config.set_environment_variables = {
   -- Use ISO 8601 timestamps
-  LC_TIME = 'en_DK.UTF-8',
+  LC_TIME = 'en_SE.UTF-8',
 }
 
 -- Default program (use login shell)

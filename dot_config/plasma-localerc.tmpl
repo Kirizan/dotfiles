@@ -1,3 +1,6 @@
+{{- /* LC_TIME is en_SE, not en_DK: Qt/KDE take date formats from CLDR, where
+       en_DK's short date is dd/MM/yyyy. CLDR en_SE is yyyy-MM-dd HH:mm, and
+       glibc's en_SE is ISO 8601 too, so Qt and non-Qt apps agree. */ -}}
 [Formats]
 LANG=en_US.UTF-8
-LC_TIME=en_DK.UTF-8
+LC_TIME=en_SE.UTF-8

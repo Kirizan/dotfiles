@@ -1,5 +1,7 @@
 #!/bin/bash
-# Install en_DK.UTF-8 locale and configure system LC_TIME for ISO 8601 formatting
+# Install en_SE.UTF-8 locale and configure system LC_TIME for ISO 8601 formatting.
+# en_SE rather than en_DK: Qt/KDE use CLDR data, where en_DK dates are dd/MM/yyyy;
+# en_SE is yyyy-MM-dd in both CLDR and glibc.
 # This runs once before other configurations are applied
 
 set -e
@@ -7,13 +9,13 @@ set -e
 LOCALE_INSTALLED=false
 
 # Check if locale already exists
-if locale -a 2>/dev/null | grep -qi "en_DK.utf8\|en_DK.UTF-8"; then
-    echo "✓ en_DK.UTF-8 locale already available"
+if locale -a 2>/dev/null | grep -qi "en_SE.utf8\|en_SE.UTF-8"; then
+    echo "✓ en_SE.UTF-8 locale already available"
     LOCALE_INSTALLED=true
 fi
 
 if [ "$LOCALE_INSTALLED" = false ]; then
-    echo "Installing en_DK.UTF-8 locale..."
+    echo "Installing en_SE.UTF-8 locale..."
 
 {{- if eq .chezmoi.os "darwin" }}
     # macOS has locales built-in, no installation needed
@@ -23,9 +25,9 @@ if [ "$LOCALE_INSTALLED" = false ]; then
 {{- else if eq .chezmoi.os "linux" }}
 {{-   if .isArchBased }}
     # Arch-based Linux (Arch, CachyOS, EndeavourOS, etc.)
-    if ! grep -q "^en_DK.UTF-8 UTF-8" /etc/locale.gen 2>/dev/null; then
-        echo "Enabling en_DK.UTF-8 in /etc/locale.gen..."
-        echo "en_DK.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen > /dev/null
+    if ! grep -q "^en_SE.UTF-8 UTF-8" /etc/locale.gen 2>/dev/null; then
+        echo "Enabling en_SE.UTF-8 in /etc/locale.gen..."
+        echo "en_SE.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen > /dev/null
     fi
     echo "Generating locale..."
     sudo locale-gen
@@ -36,8 +38,8 @@ if [ "$LOCALE_INSTALLED" = false ]; then
         echo "Installing glibc language pack..."
         sudo dnf install -y glibc-langpack-en glibc-locale-source
     fi
-    echo "Generating en_DK.UTF-8 locale..."
-    sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || true
+    echo "Generating en_SE.UTF-8 locale..."
+    sudo localedef -i en_SE -f UTF-8 en_SE.UTF-8 2>/dev/null || true
 
 {{-   else if .isDebianBased }}
     # Debian-based (Debian, Ubuntu, Mint, etc.)
@@ -47,13 +49,13 @@ if [ "$LOCALE_INSTALLED" = false ]; then
         sudo apt-get install -y locales
     fi
     echo "Generating locale..."
-    sudo locale-gen en_DK.UTF-8
+    sudo locale-gen en_SE.UTF-8
 
 {{-   else }}
     # Generic Linux - try localedef
     echo "Attempting to generate locale with localedef..."
-    sudo localedef -i en_DK -f UTF-8 en_DK.UTF-8 2>/dev/null || {
-        echo "Warning: Could not generate en_DK.UTF-8 locale automatically"
+    sudo localedef -i en_SE -f UTF-8 en_SE.UTF-8 2>/dev/null || {
+        echo "Warning: Could not generate en_SE.UTF-8 locale automatically"
         echo "You may need to install it manually for ISO 8601 timestamps"
     }
 {{-   end }}
@@ -66,8 +68,8 @@ if [ "$LOCALE_INSTALLED" = false ]; then
 {{- end }}
 
     # Verify installation
-    if locale -a 2>/dev/null | grep -qi "en_DK.utf8\|en_DK.UTF-8"; then
-        echo "✓ en_DK.UTF-8 locale installed successfully"
+    if locale -a 2>/dev/null | grep -qi "en_SE.utf8\|en_SE.UTF-8"; then
+        echo "✓ en_SE.UTF-8 locale installed successfully"
         LOCALE_INSTALLED=true
     else
         echo "⚠ Locale installation may have failed - check manually with 'locale -a'"
@@ -78,12 +80,12 @@ fi
 # Set LC_TIME at the system level so graphical applications also use ISO 8601
 if [ "$LOCALE_INSTALLED" = true ]; then
     CURRENT_LC_TIME=$(grep "^LC_TIME=" /etc/locale.conf 2>/dev/null | cut -d= -f2 || true)
-    if [ "$CURRENT_LC_TIME" != "en_DK.UTF-8" ]; then
-        echo "Setting system-level LC_TIME=en_DK.UTF-8 in /etc/locale.conf..."
-        sudo localectl set-locale LC_TIME=en_DK.UTF-8
-        echo "✓ System LC_TIME set to en_DK.UTF-8 (ISO 8601)"
+    if [ "$CURRENT_LC_TIME" != "en_SE.UTF-8" ]; then
+        echo "Setting system-level LC_TIME=en_SE.UTF-8 in /etc/locale.conf..."
+        sudo localectl set-locale LC_TIME=en_SE.UTF-8
+        echo "✓ System LC_TIME set to en_SE.UTF-8 (ISO 8601)"
     else
-        echo "✓ System LC_TIME already set to en_DK.UTF-8"
+        echo "✓ System LC_TIME already set to en_SE.UTF-8"
     fi
 fi
 {{- end }}
