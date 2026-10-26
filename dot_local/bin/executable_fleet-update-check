@@ -90,6 +90,87 @@ truenas_update="${truenas_update:-UNKNOWN}"
 truenas_version="$(timeout 60 ssh -o BatchMode=yes -o ConnectTimeout=10 avalon \
   'midclt call system.version 2>/dev/null' 2>/dev/null | tr -d '"')"
 
+# ── 2b. avalon: update trains, TrueNAS apps, pool health ─────────────────
+# Feeds the weekly-avalon-update run (Claude desktop, Sundays after this).
+# UNAVAILABLE on the current train is not always "up to date": when a train
+# reaches end of life (Fangtooth after 25.04.2.6) the only way forward is a
+# train switch, which check_available reports only when asked per train.
+# Read-only midclt calls; kirizan needs no sudo for any of them.
+avalon_state="$(timeout 180 ssh -o BatchMode=yes -o ConnectTimeout=10 avalon 'python3 -' 2>/dev/null <<'PY'
+import json, subprocess
+def mc(*a):
+    try:
+        r = subprocess.run(["midclt", "call", *a], capture_output=True, text=True, timeout=90)
+        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
+    except Exception:
+        return None
+t = mc("update.get_trains") or {}
+cur = t.get("current") or ""
+newer = []
+for name in (t.get("trains") or {}):
+    if name == cur:
+        continue
+    c = mc("update.check_available", json.dumps({"train": name})) or {}
+    if c.get("status") == "AVAILABLE":
+        newer.append({"train": name, "version": c.get("version"), "notes": c.get("release_notes_url")})
+c = mc("update.check_available") or {}
+apps = [a for a in (mc("app.query", "[]", json.dumps({"select": ["name", "version", "upgrade_available", "latest_version"]})) or [])]
+pools = [{"name": p["name"], "status": p["status"], "healthy": p["healthy"],
+          "scan": "%s %s" % ((p.get("scan") or {}).get("function"), (p.get("scan") or {}).get("state"))}
+         for p in (mc("pool.query", "[]", json.dumps({"select": ["name", "status", "healthy", "scan"]})) or [])]
+print(json.dumps({"train": cur, "patch": c.get("version") if c.get("status") == "AVAILABLE" else None,
+                  "newer_trains": newer, "apps": apps, "pools": pools}))
+PY
+)"
+# Prints: patch<TAB>train<TAB>newer-train<TAB>app-updates<TAB>pools-bad, then markdown rows.
+avalon_parsed="$(python3 -c '
+import json, sys
+try:
+    d = json.loads(sys.stdin.read())
+except Exception:
+    sys.exit(0)
+nt = d["newer_trains"][-1] if d["newer_trains"] else None
+apps_up = [a for a in d["apps"] if a.get("upgrade_available")]
+bad = [p for p in d["pools"] if not p["healthy"] or p["status"] != "ONLINE" or "SCANNING" in p["scan"] and "SCRUB" not in p["scan"]]
+print("%s\t%s\t%s\t%d\t%d" % (d["patch"] or "none", d["train"] or "?",
+      "%s %s" % (nt["train"], nt["version"]) if nt else "none", len(apps_up), len(bad)))
+for a in d["apps"]:
+    print("APP| %s | %s | %s | %s |" % (a["name"], a.get("version"), a.get("latest_version") or "-",
+          "**YES**" if a.get("upgrade_available") else "no"))
+for p in d["pools"]:
+    print("POOL| %s | %s | %s | %s |" % (p["name"], p["status"], "yes" if p["healthy"] else "**NO**", p["scan"]))
+' <<<"$avalon_state" 2>/dev/null)"
+truenas_patch="" truenas_train="" truenas_newer_train="" truenas_app_updates="?" avalon_pools_bad="?"
+if [[ -n "$avalon_parsed" ]]; then
+  IFS=$'\t' read -r truenas_patch truenas_train truenas_newer_train truenas_app_updates avalon_pools_bad \
+    <<<"$(head -1 <<<"$avalon_parsed")"
+else
+  log "WARN: avalon train/app/pool query failed"
+fi
+avalon_apps="$(sed -n 's/^APP//p' <<<"$avalon_parsed")"
+avalon_pools="$(sed -n 's/^POOL//p' <<<"$avalon_parsed")"
+truenas_train_eol=0
+[[ "$truenas_patch" == "none" && -n "$truenas_newer_train" && "$truenas_newer_train" != "none" ]] && truenas_train_eol=1
+
+# ── 2c. avalon: container image updates ──────────────────────────────────
+# image-updates.py never pulls: manifest HEADs and tag lists only, classified
+# by update-policy.toml. Its JSON is the weekly-avalon-update run's work list.
+IMG_CHECK="$HOME/projects/infrastructure/scripts/image-updates.py"
+IMG_JSON="$STATE_DIR/avalon-images.json"
+img_table="" img_apply="?" img_hold="?" img_errors="?" img_digest="?" img_versions="?"
+if [[ -x "$IMG_CHECK" ]]; then
+  if img_table="$(timeout 600 "$IMG_CHECK" --json "$IMG_JSON" 2>>"$LOG")"; then
+    IFS=$'\t' read -r img_apply img_hold img_errors img_digest img_versions <<<"$(python3 -c '
+import json, sys
+s = json.load(open(sys.argv[1]))["summary"]
+print("%d\t%d\t%d\t%d\t%d" % (s["apply"], s["hold"], s["errors"], s["digest"], s["minor"] + s["major"]))
+' "$IMG_JSON" 2>/dev/null)"
+  else
+    img_table=""
+    log "WARN: image-updates.py failed (see above)"
+  fi
+fi
+
 # ── 3. containers (already in VictoriaMetrics) ───────────────────────────
 ctr_total="$(vmq 'fleet_exporter_containers_total')"
 ctr_stale="$(vmq 'count(fleet_container_image_age_days > 180) or vector(0)')"
@@ -241,7 +322,7 @@ fi
 bios_outdated=0
 [[ -n "$bios_latest" && "${bios_newer:-0}" -gt 0 ]] && bios_outdated=1
 
-log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update | ctr stale=$ctr_stale restarting=$ctr_restarting | claude cli=${claude_installed:-?} latest=${claude_latest:-?} outdated=$claude_outdated | bios=${bios_installed:-?} latest=${bios_latest:-?} newer=${bios_newer:-0}"
+log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update train=${truenas_train:-?} patch=${truenas_patch:-?} newer-train=${truenas_newer_train:-?} apps=$truenas_app_updates | images apply=$img_apply hold=$img_hold err=$img_errors | ctr stale=$ctr_stale restarting=$ctr_restarting | claude cli=${claude_installed:-?} latest=${claude_latest:-?} outdated=$claude_outdated | bios=${bios_installed:-?} latest=${bios_latest:-?} newer=${bios_newer:-0}"
 
 # ── 6. push host-level metrics into VictoriaMetrics ──────────────────────
 {
@@ -251,6 +332,16 @@ log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_u
   printf 'fleet_truenas_update_available{host="avalon"} %s\n' \
     "$([[ "$truenas_update" == "AVAILABLE" ]] && echo 1 || echo 0)"
   printf 'fleet_unifi_firmware_updates_pending %s\n' "${unifi_pending:-0}"
+  printf 'fleet_truenas_train_eol{host="avalon"} %s\n' "$truenas_train_eol"
+  [[ "$truenas_app_updates" =~ ^[0-9]+$ ]] && \
+    printf 'fleet_truenas_app_updates{host="avalon"} %s\n' "$truenas_app_updates"
+  [[ "$avalon_pools_bad" =~ ^[0-9]+$ ]] && \
+    printf 'fleet_avalon_pools_unhealthy{host="avalon"} %s\n' "$avalon_pools_bad"
+  if [[ "$img_apply" =~ ^[0-9]+$ ]]; then
+    printf 'fleet_avalon_container_updates{host="avalon",action="apply"} %s\n' "$img_apply"
+    printf 'fleet_avalon_container_updates{host="avalon",action="hold"} %s\n' "$img_hold"
+    printf 'fleet_avalon_container_updates{host="avalon",action="check"} %s\n' "$img_errors"
+  fi
   printf 'fleet_claude_cli_outdated{host="mimir"} %s\n' "${claude_outdated:-0}"
   printf 'fleet_bios_releases_behind{host="mimir"} %s\n' "${bios_newer:-0}"
 } | curl -sk --max-time 20 --data-binary @- "$VM/api/v1/import/prometheus" \
@@ -283,6 +374,11 @@ Live view: [Fleet Update Status]($GRAFANA/d/fleet-updates)
 | [[mimir]] | BIOS update available | $([[ "$bios_outdated" == "1" ]] && echo "**YES** (${bios_newer} newer, review only)" || echo "no") |
 | [[avalon]] | TrueNAS version | ${truenas_version:-?} |
 | [[avalon]] | TrueNAS update | ${truenas_update} |
+| [[avalon]] | Patch on current train (${truenas_train:-?}) | ${truenas_patch:-?} |
+| [[avalon]] | Newer train available | $([[ "$truenas_train_eol" == "1" ]] && echo "**${truenas_newer_train}** (current train at end of life; switch needs approval)" || echo "${truenas_newer_train:-?}") |
+| [[avalon]] | TrueNAS app upgrades | ${truenas_app_updates} |
+| [[avalon]] | Unhealthy pools | ${avalon_pools_bad} |
+| [[avalon]] | Container updates to apply / held / unchecked | ${img_apply} / ${img_hold} / ${img_errors} |
 | Containers | Tracked | ${ctr_total:-?} |
 | Containers | Images > 180 days | ${ctr_stale:-?} |
 | Containers | Oldest image (days) | ${ctr_oldest%%.*} |
@@ -308,6 +404,29 @@ Before flashing, save the current settings (see [[mimir-bios-update]]). Flashing
 
 BIOS
 fi)
+## avalon
+
+Processed by the \`weekly-avalon-update\` run (Sundays, after this report), using
+\`update-policy.toml\` in the infrastructure repo. Work list: \`${IMG_JSON}\`.
+
+### TrueNAS apps
+
+| App | Installed | Latest | Upgrade |
+|-----|-----------|--------|---------|
+${avalon_apps:-| _unavailable_ | | | |}
+
+### Pools
+
+| Pool | Status | Healthy | Last scan |
+|------|--------|---------|-----------|
+${avalon_pools:-| _unavailable_ | | | |}
+
+### Container image updates
+
+${img_digest} digest refreshes, ${img_versions} newer pinned versions. Rows with action **none** are omitted.
+
+${img_table:-_image-updates.py unavailable — see the state log._}
+
 ## Oldest Container Images
 
 | Container | Stack | Age (days) |
@@ -341,7 +460,8 @@ running ~54 Docker containers. Be concise and factual. Change nothing.
 
 State:
 - mimir: ${repo_count} repo updates, ${aur_count} AUR updates, ${days_since} days since last full upgrade
-- avalon: TrueNAS ${truenas_version}, update status ${truenas_update}
+- avalon: TrueNAS ${truenas_version}, update status ${truenas_update}; train ${truenas_train:-?}, patch ${truenas_patch:-?}, newer train ${truenas_newer_train:-?}; ${truenas_app_updates} TrueNAS app upgrades; ${avalon_pools_bad} unhealthy pools
+- avalon containers: ${img_apply} updates eligible for the weekly run, ${img_hold} held by policy, ${img_errors} unchecked (the run does the per-item risk review; do not repeat it)
 - containers: ${ctr_stale} images older than 180 days, oldest ${ctr_oldest%%.*} days, ${ctr_restarting} restarting, ${ctr_unhealthy} unhealthy
 - Diun reports ${diun_updates} images with newer digests upstream
 - UniFi: ${unifi_pending} firmware updates pending
@@ -432,6 +552,7 @@ if ! grep -q "^## Fleet Update Check" "$ACTIVITY" 2>/dev/null; then
 - [[mimir]]: ${repo_count} repo + ${aur_count} AUR updates pending, ${days_since} days since last full upgrade
 $([[ "$bios_outdated" == "1" ]] && echo "- [[mimir]]: BIOS ${bios_latest} available (installed ${bios_installed}), review only")
 - Containers: ${ctr_stale} images older than 180 days, ${ctr_restarting} restarting, ${ctr_unhealthy} unhealthy
+- [[avalon]]: ${img_apply} container updates queued for the weekly run, ${img_hold} held$([[ "$truenas_train_eol" == "1" ]] && echo "; TrueNAS train at end of life, ${truenas_newer_train} needs approval")
 - Full report: [[$TODAY-fleet-updates]]
 EOF
 fi
@@ -448,7 +569,8 @@ if command -v notify-send >/dev/null; then
     --icon=system-software-update \
     "Fleet update check complete" \
     "mimir: ${repo_count} repo / ${aur_count} AUR
-containers: ${ctr_stale} stale, ${ctr_restarting} restarting$([[ "$bios_outdated" == "1" ]] && printf '\nBIOS %s available (installed %s)' "$bios_latest" "$bios_installed")
+containers: ${ctr_stale} stale, ${ctr_restarting} restarting
+avalon: ${img_apply} queued, ${img_hold} held$([[ "$bios_outdated" == "1" ]] && printf '\nBIOS %s available (installed %s)' "$bios_latest" "$bios_installed")
 Report saved to Obsidian"
 fi
 
