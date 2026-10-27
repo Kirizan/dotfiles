@@ -267,6 +267,26 @@ if [[ -n "$claude_installed" && -n "$claude_latest" ]]; then
   [[ "$newest" != "$claude_installed" ]] && claude_outdated=1
 fi
 
+# ── 5d. watched packages ─────────────────────────────────────────────────
+# Software whose development the user follows. Not treated differently by the
+# update run; it is only named, so a release is noticed instead of disappearing
+# into the AUR count. Asks the AUR RPC directly rather than parsing `paru -Qua`,
+# so the release date comes along. Fail safe to 0 like the other lookups.
+polymath_installed="$(pacman -Q polymath 2>/dev/null | awk '{print $2}')"
+polymath_latest="" polymath_date="" polymath_new=0
+if [[ -n "$polymath_installed" ]]; then
+  read -r polymath_latest polymath_date < <(curl -s --max-time 20 \
+    'https://aur.archlinux.org/rpc/v5/info?arg[]=polymath' 2>/dev/null | python3 -c '
+import json, sys, datetime
+r = json.load(sys.stdin)["results"][0]
+print(r["Version"], datetime.date.fromtimestamp(r["LastModified"]).isoformat())' 2>/dev/null)
+  if [[ -n "$polymath_latest" && "$polymath_latest" != "$polymath_installed" ]] \
+     && [[ "$(printf '%s\n%s\n' "$polymath_installed" "$polymath_latest" | sort -V | tail -1)" == "$polymath_latest" ]]; then
+    polymath_new=1
+  fi
+  [[ -z "$polymath_latest" ]] && log "WARN: AUR lookup for polymath failed"
+fi
+
 # ── 5c. motherboard BIOS ─────────────────────────────────────────────────
 # Report-only: a BIOS flash is always a manual decision (it resets settings
 # and ASUS releases >=1805 cannot be rolled back). ASUS publishes nothing to
@@ -322,7 +342,7 @@ fi
 bios_outdated=0
 [[ -n "$bios_latest" && "${bios_newer:-0}" -gt 0 ]] && bios_outdated=1
 
-log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update train=${truenas_train:-?} patch=${truenas_patch:-?} newer-train=${truenas_newer_train:-?} apps=$truenas_app_updates | images apply=$img_apply hold=$img_hold err=$img_errors | ctr stale=$ctr_stale restarting=$ctr_restarting | claude cli=${claude_installed:-?} latest=${claude_latest:-?} outdated=$claude_outdated | bios=${bios_installed:-?} latest=${bios_latest:-?} newer=${bios_newer:-0}"
+log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_update train=${truenas_train:-?} patch=${truenas_patch:-?} newer-train=${truenas_newer_train:-?} apps=$truenas_app_updates | images apply=$img_apply hold=$img_hold err=$img_errors | ctr stale=$ctr_stale restarting=$ctr_restarting | claude cli=${claude_installed:-?} latest=${claude_latest:-?} outdated=$claude_outdated | bios=${bios_installed:-?} latest=${bios_latest:-?} newer=${bios_newer:-0} | polymath=${polymath_installed:-?} aur=${polymath_latest:-?} new=$polymath_new"
 
 # ── 6. push host-level metrics into VictoriaMetrics ──────────────────────
 {
@@ -344,6 +364,7 @@ log "mimir repo=$repo_count aur=$aur_count days=$days_since | truenas=$truenas_u
   fi
   printf 'fleet_claude_cli_outdated{host="mimir"} %s\n' "${claude_outdated:-0}"
   printf 'fleet_bios_releases_behind{host="mimir"} %s\n' "${bios_newer:-0}"
+  printf 'fleet_watched_package_update{host="mimir",package="polymath"} %s\n' "$polymath_new"
 } | curl -sk --max-time 20 --data-binary @- "$VM/api/v1/import/prometheus" \
   && log "pushed host metrics to VictoriaMetrics" \
   || log "WARN: metric push failed"
@@ -372,6 +393,7 @@ Live view: [Fleet Update Status]($GRAFANA/d/fleet-updates)
 | [[mimir]] | Days since full upgrade | ${days_since:-?} |
 | [[mimir]] | BIOS installed / latest | ${bios_installed:-?} / ${bios_latest:-?} (${bios_latest_date:-?}) |
 | [[mimir]] | BIOS update available | $([[ "$bios_outdated" == "1" ]] && echo "**YES** (${bios_newer} newer, review only)" || echo "no") |
+| [[mimir]] | PolyMath installed / AUR | ${polymath_installed:-?} / ${polymath_latest:-?} (${polymath_date:-?})$([[ "$polymath_new" == "1" ]] && echo " — **NEW RELEASE**") |
 | [[avalon]] | TrueNAS version | ${truenas_version:-?} |
 | [[avalon]] | TrueNAS update | ${truenas_update} |
 | [[avalon]] | Patch on current train (${truenas_train:-?}) | ${truenas_patch:-?} |
@@ -403,6 +425,13 @@ ${bios_releases}
 Before flashing, save the current settings (see [[mimir-bios-update]]). Flashing past a **one-way** release means you can never go back below it.
 
 BIOS
+fi)
+$(if [[ "$polymath_new" == "1" ]]; then cat <<POLY
+## PolyMath release
+
+[[Polymath|PolyMath]] (Flux keyboard layout tool) **${polymath_latest}** is in the AUR (updated ${polymath_date}); installed ${polymath_installed}. It is a watched package: it goes through the normal AUR update with everything else, and is named here so the release is noticed. Release notes: [fluxkeyboard.com/updates](https://fluxkeyboard.com/updates/), package: [AUR](https://aur.archlinux.org/packages/polymath).
+
+POLY
 fi)
 ## avalon
 
@@ -466,6 +495,7 @@ State:
 - Diun reports ${diun_updates} images with newer digests upstream
 - UniFi: ${unifi_pending} firmware updates pending
 - mimir BIOS: installed ${bios_installed:-?}, ASUS latest ${bios_latest:-?} (${bios_newer:-0} newer). Flashing is a manual decision; only mention it if newer releases exist
+- PolyMath (watched AUR package, Flux keyboard tool): installed ${polymath_installed:-?}, AUR ${polymath_latest:-?}. If it differs, name the new PolyMath release explicitly and summarise its changes from https://fluxkeyboard.com/updates/ if you can fetch them
 
 Tasks:
 1. Fetch https://archlinux.org/feeds/news/ and list ONLY news items requiring
@@ -551,6 +581,7 @@ if ! grep -q "^## Fleet Update Check" "$ACTIVITY" 2>/dev/null; then
 - Automated weekly check ran across [[mimir]], [[avalon]], and the UniFi fleet
 - [[mimir]]: ${repo_count} repo + ${aur_count} AUR updates pending, ${days_since} days since last full upgrade
 $([[ "$bios_outdated" == "1" ]] && echo "- [[mimir]]: BIOS ${bios_latest} available (installed ${bios_installed}), review only")
+$([[ "$polymath_new" == "1" ]] && echo "- [[mimir]]: **[[Polymath|PolyMath]] ${polymath_latest}** released (installed ${polymath_installed})")
 - Containers: ${ctr_stale} images older than 180 days, ${ctr_restarting} restarting, ${ctr_unhealthy} unhealthy
 - [[avalon]]: ${img_apply} container updates queued for the weekly run, ${img_hold} held$([[ "$truenas_train_eol" == "1" ]] && echo "; TrueNAS train at end of life, ${truenas_newer_train} needs approval")
 - Full report: [[$TODAY-fleet-updates]]
@@ -570,7 +601,7 @@ if command -v notify-send >/dev/null; then
     "Fleet update check complete" \
     "mimir: ${repo_count} repo / ${aur_count} AUR
 containers: ${ctr_stale} stale, ${ctr_restarting} restarting
-avalon: ${img_apply} queued, ${img_hold} held$([[ "$bios_outdated" == "1" ]] && printf '\nBIOS %s available (installed %s)' "$bios_latest" "$bios_installed")
+avalon: ${img_apply} queued, ${img_hold} held$([[ "$polymath_new" == "1" ]] && printf '\nPolyMath %s released (installed %s)' "$polymath_latest" "$polymath_installed")$([[ "$bios_outdated" == "1" ]] && printf '\nBIOS %s available (installed %s)' "$bios_latest" "$bios_installed")
 Report saved to Obsidian"
 fi
 
