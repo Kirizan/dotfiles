@@ -1,13 +1,17 @@
 #!/bin/bash
-# Enable the weekly fleet update check timer.
+# Enable the weekly fleet update check timer, and the nightly Plex idle-update
+# timer that finishes a Plex update the weekly avalon run approved.
 #
 # Re-runs whenever either unit file changes, via the hashes below.
 # unit hash: {{ include "dot_config/systemd/user/fleet-update-check.service" | sha256sum }}
 # unit hash: {{ include "dot_config/systemd/user/fleet-update-check.timer" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/plex-idle-update.service" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/plex-idle-update.timer" | sha256sum }}
 
 set -euo pipefail
 
 UNIT="fleet-update-check.timer"
+UNITS="fleet-update-check.timer plex-idle-update.timer"
 
 if ! command -v systemctl >/dev/null 2>&1; then
   echo "systemd not present — skipping $UNIT"
@@ -24,9 +28,9 @@ fi
 echo "Reloading systemd user units..."
 systemctl --user daemon-reload
 
-echo "Enabling $UNIT..."
-systemctl --user enable --now "$UNIT"
+echo "Enabling $UNITS..."
+systemctl --user enable --now $UNITS
 
-systemctl --user list-timers --all "$UNIT" --no-pager | sed 's/^/  /'
+systemctl --user list-timers --all $UNITS --no-pager | sed 's/^/  /'
 echo "Fleet update check scheduled. Run once now with:"
 echo "  systemctl --user start fleet-update-check.service"
