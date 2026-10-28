@@ -1,1 +1,7 @@
 .config/nvim/lua/plugins/spell-checking.lua
+
+# plex-idle-update (2026-10-28, retired the same day: Plex now updates in the
+# Sunday run regardless of streams)
+.local/bin/plex-idle-update
+.config/systemd/user/plex-idle-update.service
+.config/systemd/user/plex-idle-update.timer

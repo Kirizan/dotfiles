@@ -117,9 +117,6 @@ run_once_after_install-battlenet.sh.tmpl
 .local/bin/fleet-update-check
 .config/systemd/user/fleet-update-check.service
 .config/systemd/user/fleet-update-check.timer
-.local/bin/plex-idle-update
-.config/systemd/user/plex-idle-update.service
-.config/systemd/user/plex-idle-update.timer
 run_onchange_after_enable-fleet-update-timer.sh.tmpl
 {{- end }}
 
