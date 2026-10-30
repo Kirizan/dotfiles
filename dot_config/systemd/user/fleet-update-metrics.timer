@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily fleet metrics push
+Documentation=https://grafana.internal.kirby.network/d/hw-summary
+
+[Timer]
+# After Diun's 06:00 watch. Catches up if the desktop was off.
+OnCalendar=*-*-* 06:37
+Persistent=true
+RandomizedDelaySec=5m
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target

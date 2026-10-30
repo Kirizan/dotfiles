@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily fleet metrics push for the Home Hardware dashboards
+Documentation=https://grafana.internal.kirby.network/d/hw-summary
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/fleet-update-check --metrics-only
+TimeoutStartSec=20min
+Environment=BAO_ADDR=https://vault.internal.kirby.network
+# systemd user units get a minimal PATH; claude and paru live in these dirs.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Nice=10
+IOSchedulingClass=idle

@@ -1,9 +1,11 @@
 #!/bin/bash
-# Enable the weekly fleet update check timer.
+# Enable the weekly fleet update check timer and the daily metrics push.
 #
 # Re-runs whenever either unit file changes, via the hashes below.
 # unit hash: {{ include "dot_config/systemd/user/fleet-update-check.service" | sha256sum }}
 # unit hash: {{ include "dot_config/systemd/user/fleet-update-check.timer" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/fleet-update-metrics.service" | sha256sum }}
+# unit hash: {{ include "dot_config/systemd/user/fleet-update-metrics.timer" | sha256sum }}
 
 set -euo pipefail
 
@@ -25,8 +27,8 @@ echo "Reloading systemd user units..."
 systemctl --user daemon-reload
 
 echo "Enabling $UNIT..."
-systemctl --user enable --now "$UNIT"
+systemctl --user enable --now "$UNIT" fleet-update-metrics.timer
 
-systemctl --user list-timers --all "$UNIT" --no-pager | sed 's/^/  /'
+systemctl --user list-timers --all "$UNIT" fleet-update-metrics.timer --no-pager | sed 's/^/  /'
 echo "Fleet update check scheduled. Run once now with:"
 echo "  systemctl --user start fleet-update-check.service"
