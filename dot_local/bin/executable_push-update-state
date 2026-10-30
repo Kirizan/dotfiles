@@ -2,10 +2,13 @@
 """Publish what an update run held back, for the Home Hardware dashboards.
 
 Called at the end of weekly-mimir-update and weekly-avalon-update. Reads a JSON
-list on stdin, one object per held item (an empty list clears the panel):
+list on stdin, one object per item the run did not install (an empty list clears
+the panel). status is held (the default), failed or rolled back:
 
   push-update-state avalon <<< '[{"item": "portainer", "from": "1.6.1",
-      "to": "1.7.19", "risk": "high", "reason": "one-way DB migration"}]'
+      "to": "1.7.19", "risk": "high", "status": "held", "reason": "one-way DB migration"}]'
+
+The push also records that the run happened, so a missed run can be flagged.
 
 Pushes fleet_update_held_info and fleet_report_timestamp_seconds{target="held-<target>"},
 and keeps a copy that fleet-update-check uses to mark held packages.
@@ -36,7 +39,7 @@ def main():
     lines = [f'fleet_report_timestamp_seconds{{target="held-{target}"}} {ts}']
     for i in items:
         labels = {"target": target, "item": i["item"], "from": i.get("from"), "to": i.get("to"),
-                  "risk": i.get("risk"), "reason": i.get("reason"), "run": run}
+                  "risk": i.get("risk"), "status": i.get("status") or "held", "reason": i.get("reason"), "run": run}
         lines.append("fleet_update_held_info{%s} %d" % (
             ",".join(f'{k}="{esc(v)}"' for k, v in labels.items()), ts))
     req = urllib.request.Request(VM, data="\n".join(lines).encode() + b"\n", method="POST")

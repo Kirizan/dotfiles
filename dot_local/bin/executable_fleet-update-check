@@ -399,7 +399,8 @@ reboot_pending=0
 # Info metrics: labels carry the text, the value is this run's timestamp. A
 # version change creates a new series and the old one lingers in the lookback
 # window, so panels keep only series equal to the latest
-# fleet_report_timestamp_seconds for that target.
+# fleet_report_timestamp_seconds for that target. manual="yes" marks what the
+# weekly runs never install (BIOS, TrueNAS train switch); the rest is covered.
 home_metrics="$(RUN_TS="$(date +%s)" IMG_JSON="$IMG_JSON" UNIFI_JSON="$UNIFI_JSON" STATE_DIR="$STATE_DIR" \
   REPO_LIST="$repo_list" AUR_LIST="$aur_list" AVALON_STATE="$avalon_state" \
   TRUENAS_VERSION="$truenas_version" TRUENAS_PATCH="$truenas_patch" TRUENAS_NEWER="$truenas_newer_train" \
@@ -432,7 +433,7 @@ def pkg_url(name, src):
     return "https://aur.archlinux.org/packages/" + name if src == "aur" else "https://archlinux.org/packages/?q=" + name
 for name, (old, new, src) in pending.items():
     emit("fleet_host_package_info", host="mimir", name=name, installed=old, available=new, source=src,
-         held="yes" if name in held else "no", update="yes", url=pkg_url(name, src))
+         held="yes" if name in held else "no", update="yes", manual="no", url=pkg_url(name, src))
 for label, pkg in (("Kernel", "linux-cachyos"), ("NVIDIA driver", "nvidia-utils"), ("Mesa", "mesa"),
                    ("Linux firmware", "linux-firmware")):
     q = subprocess.run(["pacman", "-Q", pkg], capture_output=True, text=True).stdout.split()
@@ -440,7 +441,7 @@ for label, pkg in (("Kernel", "linux-cachyos"), ("NVIDIA driver", "nvidia-utils"
         p = pending.get(pkg)
         emit("fleet_host_package_info", host="mimir", name=label, installed=q[1], available=p[1] if p else q[1],
              source="platform", held="yes" if pkg in held else "no", update="yes" if p else "no",
-             url=pkg_url(pkg, "repo"))
+             manual="no", url=pkg_url(pkg, "repo"))
 for label, inst, latest, new, url in (
         ("BIOS", E["BIOS_INSTALLED"], E["BIOS_LATEST"], E["BIOS_NEWER"] != "0", "https://rog.asus.com/support/"),
         ("Claude CLI", E["CLAUDE_INSTALLED"], E["CLAUDE_LATEST"], E["CLAUDE_OUTDATED"] == "1",
@@ -449,7 +450,8 @@ for label, inst, latest, new, url in (
          "https://fluxkeyboard.com/updates/")):
     if inst:
         emit("fleet_host_package_info", host="mimir", name=label, installed=inst, available=latest or inst,
-             source="platform", held="no", update="yes" if new else "no", url=url)
+             source="platform", held="no", update="yes" if new else "no",
+             manual="yes" if label == "BIOS" else "no", url=url)
 emit("fleet_report_timestamp_seconds", target="mimir")
 
 # avalon
@@ -459,14 +461,15 @@ if a:
     tn = "" if tn in ("", "none") else tn
     notes = "https://www.truenas.com/docs/scale/"
     emit("fleet_host_package_info", host="avalon", name="TrueNAS", installed=E["TRUENAS_VERSION"],
-         available=tn or E["TRUENAS_VERSION"], source="platform", held="no", update="yes" if tn else "no", url=notes)
+         available=tn or E["TRUENAS_VERSION"], source="platform", held="no", update="yes" if tn else "no",
+         manual="yes" if tn and E["TRUENAS_PATCH"] in ("", "none") else "no", url=notes)
     for label, ver in (("Kernel", a.get("kernel")), ("ZFS", a.get("zfs")), ("Arc A310 driver", a.get("gpu_driver"))):
         emit("fleet_host_package_info", host="avalon", name=label, installed=ver, available=ver,
-             source="platform", held="no", update="no", url=notes)
+             source="platform", held="no", update="no", manual="no", url=notes)
     for x in a.get("apps") or []:
         emit("fleet_host_package_info", host="avalon", name=x.get("name"), installed=x.get("version"),
              available=x.get("latest_version") or x.get("version"), source="truenas-app", held="no",
-             update="yes" if x.get("upgrade_available") else "no", url="https://truenas.internal.kirby.network/ui/apps")
+             update="yes" if x.get("upgrade_available") else "no", manual="no", url="https://truenas.internal.kirby.network/ui/apps")
     for d in a.get("smart") or []:
         bad = d["status"] not in ("SUCCESS", "RUNNING", "ABORTED", "")
         emit("fleet_smart_self_test_failed", 1 if bad else 0, device=d["device"], test=d["test"], status=d["status"])
