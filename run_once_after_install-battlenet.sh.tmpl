@@ -1,7 +1,8 @@
 #!/bin/bash
 # Install Battle.net via umu-run with Proton on Arch-based personal desktops
 
-{{ if and (eq .profile "personal") (not .isWSL) (not .isHeadless) .isArchBased -}}
+{{- /* Needs a GUI login, so an unattended provisioning run must skip it. A later apply from the desktop runs it. */ -}}
+{{ if and (eq .profile "personal") (not .isWSL) (not .isHeadless) .isArchBased (not (env "CHEZMOI_NO_GUI_INSTALLS")) -}}
 
 WINEPREFIX="{{ .chezmoi.homeDir }}/Games/battlenet"
 BATTLENET_EXE="$WINEPREFIX/drive_c/Program Files (x86)/Battle.net/Battle.net.exe"
