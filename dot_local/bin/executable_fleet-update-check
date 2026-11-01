@@ -93,18 +93,23 @@ fi
 
 # ── 2. avalon / TrueNAS ──────────────────────────────────────────────────
 truenas_update="$(timeout 90 ssh -o BatchMode=yes -o ConnectTimeout=10 avalon \
-  'midclt call update.check_available 2>/dev/null' 2>/dev/null \
-  | grep -o '"status": *"[A-Z]*"' | cut -d'"' -f4)"
+  'midclt call update.status 2>/dev/null' 2>/dev/null \
+  | python3 -c 'import json, sys
+d = json.load(sys.stdin)
+if d.get("code") == "NORMAL":
+    print("AVAILABLE" if d["status"].get("new_version") else "UNAVAILABLE")' 2>/dev/null)"
 truenas_update="${truenas_update:-UNKNOWN}"
 truenas_version="$(timeout 60 ssh -o BatchMode=yes -o ConnectTimeout=10 avalon \
   'midclt call system.version 2>/dev/null' 2>/dev/null | tr -d '"')"
 
 # ── 2b. avalon: update trains, TrueNAS apps, pool health ─────────────────
-# Feeds the weekly-avalon-update run (Claude desktop, Sundays after this).
+# Feeds the weekly-avalon-update run (Claude desktop, Saturday night after this).
 # UNAVAILABLE on the current train is not always "up to date": when a train
-# reaches end of life (Fangtooth after 25.04.2.6) the only way forward is a
-# train switch, which check_available reports only when asked per train.
-# Read-only midclt calls; kirizan needs no sudo for any of them.
+# reaches end of life the only way forward is a train switch.
+# update.available_versions lists newer versions across all trains (25.10
+# replaced update.check_available and update.get_trains).
+# Read-only midclt calls; kirizan needs no sudo for any of them. smartctl does,
+# because 25.10 removed smart.test.results; it only reads the self-test log.
 avalon_state="$(timeout 180 ssh -o BatchMode=yes -o ConnectTimeout=10 avalon 'python3 -' 2>/dev/null <<'PY'
 import glob, json, os, subprocess
 def mc(*a):
@@ -113,25 +118,20 @@ def mc(*a):
         return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
     except Exception:
         return None
-t = mc("update.get_trains") or {}
-cur = t.get("current") or ""
-newer = []
-for name in (t.get("trains") or {}):
-    if name == cur:
-        continue
-    c = mc("update.check_available", json.dumps({"train": name})) or {}
-    if c.get("status") == "AVAILABLE":
-        newer.append({"train": name, "version": c.get("version"), "notes": c.get("release_notes_url")})
-c = mc("update.check_available") or {}
+st = (mc("update.status") or {}).get("status") or {}
+cur = (st.get("current_version") or {}).get("train") or ""
+patch, newer = None, []
+for a in mc("update.available_versions") or []:
+    v = a.get("version") or {}
+    if a.get("train") == cur:
+        patch = v.get("version")
+    else:
+        newer.append({"train": a.get("train"), "version": v.get("version"), "notes": v.get("release_notes_url")})
+patch = patch or (st.get("new_version") or {}).get("version")
 apps = [a for a in (mc("app.query", "[]", json.dumps({"select": ["name", "version", "upgrade_available", "latest_version"]})) or [])]
 pools = [{"name": p["name"], "status": p["status"], "healthy": p["healthy"],
           "scan": "%s %s" % ((p.get("scan") or {}).get("function"), (p.get("scan") or {}).get("state"))}
          for p in (mc("pool.query", "[]", json.dumps({"select": ["name", "status", "healthy", "scan"]})) or [])]
-# Dashboard inputs. The smartctl exporter has no self-test metrics for SATA
-# disks, so the most recent result per disk comes from TrueNAS.
-smart = [{"device": d.get("disk") or d.get("name"), "test": (d.get("tests") or [{}])[0].get("description", ""),
-          "status": (d.get("tests") or [{}])[0].get("status", "")}
-         for d in (mc("smart.test.results", "[]") or [])]
 disk_pool, scrubs = {}, {}
 def walk(pool, vdevs):
     for v in vdevs or []:
@@ -149,11 +149,29 @@ def read(path):
         return open(path).read().strip()
     except OSError:
         return ""
+# Dashboard inputs. The smartctl exporter has no self-test metrics for SATA
+# disks, so the most recent result per disk comes from each disk's own log.
+smart = []
+for dev in sorted(disk_pool):
+    try:
+        r = subprocess.run(["sudo", "-n", "smartctl", "-j", "-l", "selftest", "/dev/" + dev],
+                           capture_output=True, text=True, timeout=30)
+        log = json.loads(r.stdout)
+    except Exception:
+        continue
+    table = (log.get("ata_smart_self_test_log", {}).get("standard") or {}).get("table") \
+        or log.get("nvme_self_test_log", {}).get("table") or []
+    if table:
+        s = table[0].get("status") or {}
+        text = s.get("string", "")
+        status = "SUCCESS" if s.get("passed") else "RUNNING" if "progress" in text.lower() \
+            else "ABORTED" if "abort" in text.lower() else text
+        smart.append({"device": dev, "test": (table[0].get("type") or {}).get("string", ""), "status": status})
 gpu = ""
 for card in glob.glob("/sys/class/drm/card[0-9]"):  # the Arc A310; card0 is the BMC
     if read(card + "/device/vendor") == "0x8086":
         gpu = os.path.basename(os.path.realpath(card + "/device/driver"))
-print(json.dumps({"train": cur, "patch": c.get("version") if c.get("status") == "AVAILABLE" else None,
+print(json.dumps({"train": cur, "patch": patch,
                   "newer_trains": newer, "apps": apps, "pools": pools, "smart": smart,
                   "disk_pool": disk_pool, "scrubs": scrubs, "kernel": os.uname().release,
                   "zfs": read("/sys/module/zfs/version"), "gpu_driver": gpu}))
@@ -605,7 +623,7 @@ POLY
 fi)
 ## avalon
 
-Processed by the \`weekly-avalon-update\` run (Sundays, after this report), using
+Processed by the \`weekly-avalon-update\` run (Saturday night, after this report), using
 \`update-policy.toml\` in the infrastructure repo. Work list: \`${IMG_JSON}\`.
 
 ### TrueNAS apps
