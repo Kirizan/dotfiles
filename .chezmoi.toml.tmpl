@@ -181,7 +181,8 @@
 {{- if env "CHEZMOI_PROFILE" -}}
 {{-   $profile = env "CHEZMOI_PROFILE" -}}
 {{- /* Auto-detect based on hostname patterns */ -}}
-{{- else if contains "work" .chezmoi.hostname -}}
+{{- /* "framework" contains "work": a Framework laptop is not a work machine */ -}}
+{{- else if contains "work" (.chezmoi.hostname | replace "framework" "") -}}
 {{-   $profile = "work" -}}
 {{- else if contains "corp" .chezmoi.hostname -}}
 {{-   $profile = "work" -}}
