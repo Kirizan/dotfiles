@@ -5,3 +5,7 @@
 .local/bin/plex-idle-update
 .config/systemd/user/plex-idle-update.service
 .config/systemd/user/plex-idle-update.timer
+
+# 1Password's "Start at login" setting writes com.onepassword.OnePassword.desktop
+# and deletes this older name; keeping both would launch 1Password twice.
+.config/autostart/1password.desktop
