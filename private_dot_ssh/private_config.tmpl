@@ -2,23 +2,44 @@
 Include "{{ .chezmoi.homeDir }}/.config/NVIDIA/Sync/config/ssh_config"
 
 {{ end -}}
-# Do not route SSH through the 1Password agent.
-#
-# The agent holds no identities, so it added nothing -- but because the Cowork
-# VM runs virtiofsd with "--shared-dir /", the guest can see
-# ~/.1password/agent.sock. Requests arriving from inside the VM cannot be
-# attributed to a host executable, so 1Password logs
-# "executable path is missing for caller process; Aborting request" and the
-# caller retries, producing a stream of auth prompts roughly every 45s.
-#
-# IdentityAgent none also overrides an inherited $SSH_AUTH_SOCK, which the
-# 1Password desktop app exports into the Plasma session.
-# If keys are ever added to 1Password, re-enable it per-host rather than on "Host *".
-Host *
-	IdentityAgent none
-	IdentityFile ~/.ssh/id_ed25519
+{{- /* 1Password's agent socket, where the app is installed or about to be
+       (run_once_install-1password.sh.tmpl covers personal Arch desktops). */ -}}
+{{- $opAgent := "" -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{-   if stat "/Applications/1Password.app" -}}
+{{-     $opAgent = "\"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"" -}}
+{{-   end -}}
+{{- else if eq .chezmoi.os "linux" -}}
+{{-   if or (stat "/opt/1Password/1password") (and (eq .profile "personal") .isArchBased (not .isWSL) (not .isHeadless)) -}}
+{{-     $opAgent = "~/.1password/agent.sock" -}}
+{{-   end -}}
+{{- end -}}
+{{- if $opAgent -}}
+# Hosts that use the 1Password SSH agent (.chezmoidata/onepassword_ssh.yaml).
+# These blocks must come before "Host *": ssh keeps the first value it gets
+# for each option, so the "IdentityAgent none" below would win otherwise.
+{{-   range .onePasswordSSHHosts }}
+Host {{ . }}
+	IdentityAgent {{ $opAgent }}
+{{-   end }}
 
+{{ end -}}
 Host avalon
 	HostName {{ .network.dns_server }}
 	User kirizan
+	IdentityFile ~/.ssh/id_ed25519
+
+# Every other host: do not use the 1Password agent.
+#
+# Cowork's VM runs virtiofsd with "--shared-dir /", so the guest can see
+# ~/.1password/agent.sock. 1Password can't tell which program inside the VM is
+# asking ("executable path is missing for caller process; Aborting request"),
+# so it aborts the request and the caller retries, producing an auth prompt
+# roughly every 45s. Limiting the agent to the hosts listed above keeps that
+# to connections that need a 1Password key.
+#
+# IdentityAgent none also overrides an inherited $SSH_AUTH_SOCK, which the
+# 1Password desktop app exports into the desktop session.
+Host *
+	IdentityAgent none
 	IdentityFile ~/.ssh/id_ed25519
