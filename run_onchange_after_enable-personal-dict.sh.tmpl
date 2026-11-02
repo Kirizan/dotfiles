@@ -23,4 +23,17 @@ fi
 
 systemctl --user daemon-reload
 systemctl --user enable --now "${UNITS[@]}"
+{{- if eq .profile "work" }}
+NOTE="{{ .obsidian.vault_root }}/{{ .obsidian.work_vault }}/3-Resources/Spelling/Personal Dictionary.md"
+{{- else }}
+NOTE="{{ .obsidian.vault_root }}/{{ .obsidian.primary_vault }}/3-Resources/Spelling/Personal Dictionary.md"
+{{- end }}
+
+# On a fresh machine the vault hasn't synced yet. The path unit is already
+# watching for the note and runs the first sync when it appears.
+if [ ! -f "$NOTE" ]; then
+  echo "Word list not synced yet — personal-dict.path will sync it when $NOTE appears"
+  exit 0
+fi
+
 systemctl --user start personal-dict.service
