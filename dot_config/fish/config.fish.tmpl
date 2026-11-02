@@ -126,6 +126,13 @@ if type -q fzf
     fzf --fish 2>/dev/null | source
 end
 
+# Tab accepts the grey autosuggestion when one is showing, otherwise completes.
+# Stock fish binds Tab to complete only; accepting a suggestion is Right/Ctrl-F.
+# \t (not "tab") keeps this working on fish 3.x as well as 4.x.
+function fish_user_key_bindings
+    bind \t 'if commandline --showing-suggestion; commandline -f accept-autosuggestion; else; commandline -f complete; end'
+end
+
 # Starship prompt
 if type -q starship
     starship init fish | source
