@@ -107,12 +107,12 @@ Confirmed wrong (source-form entries that match nothing):
 
 - the `not .isArchBased` gaming block — `run_once_install-gaming-packages.sh.tmpl`,
   `run_once_after_install-battlenet.sh.tmpl`
-- the `fleet-update-check` block — `run_onchange_after_enable-fleet-update-timer.sh.tmpl`
 - the `isHexOS` block — most of its `run_*.sh.tmpl` entries, plus two written as
   `run_once_...sh` which keep the `run_once_` prefix and so also never match
 
-The correct form is the bare target name, e.g. `install-gaming-packages.sh`,
-`enable-fleet-update-timer.sh`. The opt-in block's `install-curseforge.sh` /
+The correct form is the bare target name, e.g. `install-gaming-packages.sh`.
+(The fleet-update-check block's source-form entry was dropped on 2026-11-02 when
+that block became mimir-only; its enable script now gates itself.) The opt-in block's `install-curseforge.sh` /
 `install-minecraft.sh` entries are already written correctly and confirm the
 convention.
 

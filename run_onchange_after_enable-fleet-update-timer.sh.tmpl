@@ -1,5 +1,7 @@
 #!/bin/bash
-# Enable the weekly fleet update check timer and the daily metrics push.
+# Enable the weekly fleet update check timer and the daily metrics push on
+# mimir, and remove them from every other machine (see the fleet update block
+# in .chezmoiignore).
 #
 # Re-runs whenever either unit file changes, via the hashes below.
 # unit hash: {{ include "dot_config/systemd/user/fleet-update-check.service" | sha256sum }}
@@ -23,6 +25,8 @@ if ! systemctl --user show-environment >/dev/null 2>&1; then
   exit 0
 fi
 
+{{- if and (eq .chezmoi.hostname "mimir") .isArchBased (not .isHeadless) (eq .profile "personal") }}
+
 echo "Reloading systemd user units..."
 systemctl --user daemon-reload
 
@@ -32,3 +36,24 @@ systemctl --user enable --now "$UNIT" fleet-update-metrics.timer
 systemctl --user list-timers --all "$UNIT" fleet-update-metrics.timer --no-pager | sed 's/^/  /'
 echo "Fleet update check scheduled. Run once now with:"
 echo "  systemctl --user start fleet-update-check.service"
+{{- else }}
+
+# Not mimir: chezmoi no longer manages these files but leaves them in place,
+# so stop the timers and delete them if an earlier apply deployed them.
+UNIT_DIR="$HOME/.config/systemd/user"
+if [ ! -e "$UNIT_DIR/$UNIT" ] && [ ! -e "$UNIT_DIR/fleet-update-metrics.timer" ]; then
+  exit 0
+fi
+
+systemctl --user disable --now "$UNIT" fleet-update-metrics.timer 2>/dev/null || true
+systemctl --user stop fleet-update-check.service fleet-update-metrics.service 2>/dev/null || true
+rm -f "$UNIT_DIR/$UNIT" \
+      "$UNIT_DIR/fleet-update-check.service" \
+      "$UNIT_DIR/fleet-update-metrics.timer" \
+      "$UNIT_DIR/fleet-update-metrics.service" \
+      "$HOME/.local/bin/fleet-update-check" \
+      "$HOME/.local/bin/push-update-state"
+systemctl --user daemon-reload
+systemctl --user reset-failed fleet-update-check.service fleet-update-metrics.service 2>/dev/null || true
+echo "Removed the mimir-only fleet update check from this machine"
+{{- end }}
