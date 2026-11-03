@@ -102,6 +102,7 @@ run_once_after_disable-sleep.sh.tmpl
 {{- end }}
 {{- if or (ne .chezmoi.os "linux") (ne .profile "personal") .isWSL .isHeadless }}
 .local/share/applications/Libation.desktop
+.config/environment.d/gstreamer-fdk-aac.conf
 {{- end }}
 {{- if not .hasNvidiaPassthrough }}
 .config/libvirt/

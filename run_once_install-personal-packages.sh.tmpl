@@ -42,7 +42,12 @@ done
 # fluxkeyboard.com and ships udev rules that grant seat access to the keyboard.
 # libation is the Audible library backup tool; it builds from source with
 # dotnet-sdk. libation-to-nas copies its output into Chaptarr's layout on avalon.
+# cozy-audiobooks plays Libation's xHE-AAC books through GStreamer's fdk-aac
+# decoder (see environment.d/gstreamer-fdk-aac.conf). Upstream has been quiet
+# since 2024 and the AUR package is orphaned, so it is frozen with
+# "IgnorePkg = cozy-audiobooks" in /etc/pacman.conf once installed.
 AUR_PACKAGES=(
+    cozy-audiobooks
     libation
     nvidia-sync
     nvidia-sync-terminal-fix
