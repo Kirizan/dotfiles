@@ -114,28 +114,33 @@ run_once_install-gaming-packages.sh.tmpl
 run_once_after_install-battlenet.sh.tmpl
 {{- end }}
 
-# Fleet update check — needs pacman/checkupdates for the local half, a desktop
-# session for notify-send, and the personal homelab (OpenBao, VictoriaMetrics,
-# the Obsidian vault). Anything else has nothing for it to talk to.
-{{- if or (not .isArchBased) .isHeadless (ne .profile "personal") }}
+# Fleet update check — mimir only. Its local half reports the machine it runs on
+# as host="mimir", and it writes the weekly report to a fixed name in the synced
+# Obsidian vault, so a second machine would overwrite mimir's dashboard numbers
+# and collide with its report. It also needs a desktop session for notify-send
+# and the personal homelab (OpenBao, VictoriaMetrics).
+# run_onchange_after_enable-fleet-update-timer.sh.tmpl is not listed: on other
+# machines it disables and removes these files.
+{{- if or (ne .chezmoi.hostname "mimir") (not .isArchBased) .isHeadless (ne .profile "personal") }}
 .local/bin/fleet-update-check
 .config/systemd/user/fleet-update-check.service
 .config/systemd/user/fleet-update-check.timer
 .config/systemd/user/fleet-update-metrics.service
 .config/systemd/user/fleet-update-metrics.timer
 .local/bin/push-update-state
-run_onchange_after_enable-fleet-update-timer.sh.tmpl
 {{- end }}
 
 # OpenBao CLI token in the KWallet keyring, rotated daily (token role mimir-cli).
-# Needs a desktop session with a Secret Service keyring and the personal homelab.
-{{- if or (not .isArchBased) .isHeadless (ne .profile "personal") }}
+# Mimir only: the token is created for and stored on mimir. Other machines
+# have none, so there the daily job only failed and sent a notification every
+# 15 minutes. Elsewhere, use `bao login` when needed. run_onchange_after_enable-bao-token-rotate.sh.tmpl
+# is not listed: on other machines it disables and removes these files.
+{{- if or (ne .chezmoi.hostname "mimir") (not .isArchBased) .isHeadless (ne .profile "personal") }}
 .bao
 .local/bin/bao-token-helper
 .local/bin/bao-token-rotate
 .config/systemd/user/bao-token-rotate.service
 .config/systemd/user/bao-token-rotate.timer
-run_onchange_after_enable-bao-token-rotate.sh.tmpl
 {{- end }}
 
 # Personal spell-check word list (an Obsidian note) synced to every app's

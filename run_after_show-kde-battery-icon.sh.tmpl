@@ -1,0 +1,58 @@
+{{- if and (eq .chezmoi.os "linux") (not .isSteamOS) (not .isHeadless) (not .isWSL) (not .isDesktop) -}}
+#!/bin/bash
+# Keep the battery icon visible in the KDE Plasma system tray on machines with
+# a battery (.isDesktop is false when /sys/class/power_supply/BAT* exists).
+#
+# By default the tray hides the battery whenever it reports itself as passive
+# (on AC and charged). Listing it in the tray's shownItems pins it as "Always
+# shown". Existing shownItems entries are kept.
+#
+# run_after_ (not run_onchange_) because the tray only exists once Plasma has
+# started a session: on a fresh install the first apply runs before anyone
+# has logged in, and a later apply picks it up. It does nothing once the
+# battery is already listed.
+
+set -euo pipefail
+
+APPLETS_RC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+BATTERY="org.kde.plasma.battery"
+
+if pgrep -u "$USER" -x plasmashell > /dev/null && command -v qdbus6 > /dev/null; then
+    # plasmashell keeps the tray config in memory and writes it back over the
+    # file, so change it through the shell's scripting API while it runs.
+    out="$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        panels().forEach(p => p.widgets('org.kde.plasma.systemtray').forEach(t => {
+            t.currentConfigGroup = ['General'];
+            let shown = t.readConfig('shownItems', []);
+            if (typeof shown === 'string') shown = shown ? shown.split(',') : [];
+            if (shown.indexOf('$BATTERY') === -1) {
+                shown.push('$BATTERY');
+                t.writeConfig('shownItems', shown);
+                t.reloadConfig();
+                print('KDE tray ' + t.id + ': battery icon set to always shown\n');
+            }
+        }));")"
+    [ -n "$out" ] && echo "$out"
+    exit 0
+fi
+
+if [ ! -f "$APPLETS_RC" ] || ! command -v kwriteconfig6 > /dev/null; then
+    exit 0
+fi
+
+# Plasma isn't running: edit the file. Each tray is an applet with
+# plugin=org.kde.plasma.systemtray under [Containments][<panel>][Applets][<id>].
+awk '
+    /^\[Containments\]\[[0-9]+\]\[Applets\]\[[0-9]+\]$/ { split($0, a, /[][]+/); section = a[3] " " a[5]; next }
+    /^\[/ { section = "" }
+    section != "" && $0 == "plugin=org.kde.plasma.systemtray" { print section }
+' "$APPLETS_RC" | while read -r panel tray; do
+    group=(--file "$APPLETS_RC" --group Containments --group "$panel" --group Applets --group "$tray" --group General --key shownItems)
+    shown="$(kreadconfig6 "${group[@]}")"
+    case ",$shown," in
+        *",$BATTERY,"*) continue ;;
+    esac
+    kwriteconfig6 "${group[@]}" "${shown:+$shown,}$BATTERY"
+    echo "KDE tray $tray: battery icon set to always shown"
+done
+{{- end }}

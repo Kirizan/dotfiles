@@ -1,5 +1,6 @@
 #!/bin/bash
-# Enable the daily mimir-cli OpenBao token rotation timer.
+# Enable the daily mimir-cli OpenBao token rotation timer on mimir, and remove
+# it from every other machine (see the OpenBao block in .chezmoiignore).
 #
 # Re-runs whenever either unit file changes, via the hashes below.
 # unit hash: {{ include "dot_config/systemd/user/bao-token-rotate.service" | sha256sum }}
@@ -19,6 +20,27 @@ if ! systemctl --user show-environment >/dev/null 2>&1; then
   exit 0
 fi
 
+{{- if and (eq .chezmoi.hostname "mimir") .isArchBased (not .isHeadless) (eq .profile "personal") }}
+
 systemctl --user daemon-reload
 systemctl --user enable --now "$UNIT"
 systemctl --user list-timers --all "$UNIT" --no-pager | sed 's/^/  /'
+{{- else }}
+
+# Not mimir: chezmoi no longer manages these files but leaves them in place,
+# so stop the timer and delete them if an earlier apply deployed them.
+if [ ! -e "$HOME/.config/systemd/user/$UNIT" ]; then
+  exit 0
+fi
+
+systemctl --user disable --now "$UNIT" 2>/dev/null || true
+systemctl --user stop bao-token-rotate.service 2>/dev/null || true
+rm -f "$HOME/.config/systemd/user/$UNIT" \
+      "$HOME/.config/systemd/user/bao-token-rotate.service" \
+      "$HOME/.local/bin/bao-token-rotate" \
+      "$HOME/.local/bin/bao-token-helper" \
+      "$HOME/.bao"
+systemctl --user daemon-reload
+systemctl --user reset-failed bao-token-rotate.service 2>/dev/null || true
+echo "Removed the mimir-only OpenBao token rotation from this machine"
+{{- end }}
