@@ -1,0 +1,14 @@
+[Desktop Entry]
+# Shadows /usr/share/applications/Libation.desktop (same desktop ID) to add
+# WEBKIT_DISABLE_DMABUF_RENDERER=1. Without it, WebKitGTK's DMABUF renderer fails
+# on NVIDIA ("Failed to create GBM buffer ... Invalid argument") and the built-in
+# Audible login window stays grey. Keep the rest in step with the package's file.
+Name=Libation
+Exec=env WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 libation
+Icon=libation
+Comment=Liberate your Audiobooks
+Terminal=false
+Type=Application
+MimeType=x-content/unix-software;
+Categories=Audio;AudioVideo;
+Keywords=audible;audio;audiobook;book;
