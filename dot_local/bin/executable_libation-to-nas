@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+"""Copy Libation audiobooks onto avalon in the layout Chaptarr expects.
+
+Libation keeps its own layout locally ("<title short> [<ASIN>]/..."). Chaptarr's
+audiobook root uses:
+
+    <author folder>/<Book Title>{ - Narrator}/<Book Title>{ (NN)}.<ext>
+
+The author folder, title and narrators come from Chaptarr itself, looked up by
+the Audible ASIN Libation puts in each folder name. Books Chaptarr doesn't know
+fall back to the file's tags, with the author folder as "Last, First" to match
+the existing library.
+
+Copies go through the read-write mount (/mnt/avalon-rw); /mnt/avalon stays
+read-only. Local files are never deleted. Copied ASINs are recorded in
+~/.local/state/libation-to-nas/copied.tsv so re-runs skip them.
+
+Usage: libation-to-nas [--dry-run] [--source DIR] [--dest DIR] [--no-chaptarr] [--force]
+"""
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import urllib.request
+from pathlib import Path
+
+DEFAULT_SOURCE = Path.home() / "Audiobooks"
+DEFAULT_DEST = Path("/mnt/avalon-rw/media/audiobooks")
+CHAPTARR_URL = "https://chaptarr.internal.kirby.network/api/v1"
+CHAPTARR_ROOT = "/media/audiobooks"  # the same folder, as Chaptarr's container sees it
+STATE_FILE = Path.home() / ".local/state/libation-to-nas/copied.tsv"
+
+AUDIO_EXTS = {".m4b", ".m4a", ".mp3", ".flac", ".ogg", ".opus"}
+COVER_EXTS = {".jpg", ".jpeg", ".png"}
+ASIN_RE = re.compile(r"\[([A-Z0-9]{10})\]")
+
+
+def log(msg):
+    print(msg, flush=True)
+
+
+# --- Chaptarr ---------------------------------------------------------------
+
+def chaptarr_key():
+    """API key from OpenBao. Held in memory only, never printed."""
+    try:
+        out = subprocess.run(
+            ["bao", "kv", "get", "-field=api_key", "kv/media/chaptarr"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    key = out.stdout.strip()
+    return key if out.returncode == 0 and key else None
+
+
+def chaptarr(key, path, body=None):
+    req = urllib.request.Request(
+        CHAPTARR_URL + path,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"X-Api-Key": key, "Content-Type": "application/json"},
+        method="POST" if body is not None else "GET",
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.load(resp)
+
+
+def load_chaptarr(key):
+    """Map audible ASIN -> (book, author) for every audiobook Chaptarr knows."""
+    authors = {a["id"]: a for a in chaptarr(key, "/author")}
+    by_asin = {}
+    for book in chaptarr(key, "/book"):
+        asin = (book.get("audibleASIN") or "").upper()
+        if asin and book.get("mediaType") == "audiobook":
+            by_asin[asin] = (book, authors.get(book.get("authorId")))
+    return by_asin
+
+
+# --- naming -----------------------------------------------------------------
+
+def clean(name):
+    """Approximate Chaptarr's illegal-character handling (colons deleted)."""
+    name = name.replace(":", "")
+    name = re.sub(r"[\\/]", "+", name)
+    name = re.sub(r'[?*"<>|]', "", name)
+    name = " ".join(name.split())
+    return name.rstrip(". ")
+
+
+def last_first(author):
+    parts = author.split()
+    if len(parts) < 2:
+        return author
+    suffix = ""
+    if parts[-1].rstrip(".").lower() in {"jr", "sr", "ii", "iii", "iv"}:
+        suffix = " " + parts.pop()
+    return f"{parts[-1]}, {' '.join(parts[:-1])}{suffix}"
+
+
+def split_names(value):
+    return [n.strip() for n in re.split(r"[,;&]| and ", value or "") if n.strip()]
+
+
+def probe_tags(path):
+    out = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(path)],
+        capture_output=True, text=True,
+    )
+    if out.returncode != 0:
+        return {}
+    tags = json.loads(out.stdout).get("format", {}).get("tags", {})
+    return {k.lower(): v for k, v in tags.items()}
+
+
+def plan_book(book_dir, audio, by_asin, dest_root):
+    """Return (asin, author_dir, book_dir_name, title, source) or raise ValueError."""
+    tags = probe_tags(audio[0])
+    m = ASIN_RE.search(book_dir.name) or ASIN_RE.search(audio[0].name)
+    asin = (m.group(1) if m else tags.get("asin") or tags.get("audible_asin") or "").upper()
+
+    hit = by_asin.get(asin) if asin else None
+    if hit and hit[1]:
+        book, author = hit
+        title = book["title"]
+        narrators = [" ".join(n.split()) for n in book.get("narratorNames") or []]
+        narrators = narrators or split_names(tags.get("composer") or tags.get("narrator"))
+        apath = author["path"].rstrip("/")
+        if apath.startswith(CHAPTARR_ROOT + "/"):
+            author_dir = dest_root / apath[len(CHAPTARR_ROOT) + 1:]
+        else:  # author was first added under the ebook root
+            author_dir = dest_root / Path(apath).name
+        source = "chaptarr"
+    else:
+        authors = split_names(tags.get("album_artist") or tags.get("artist"))
+        title = (tags.get("album") or tags.get("title") or "").split(":")[0].strip()
+        if not authors or not title:
+            raise ValueError("no ASIN match in Chaptarr and no author/title tags")
+        narrators = split_names(tags.get("composer") or tags.get("narrator"))
+        author_dir = dest_root / clean(last_first(authors[0]))
+        source = "tags"
+
+    title = clean(title)
+    name = title + (" - " + " + ".join(narrators) if narrators else "")
+    return asin, author_dir, clean(name), title, source
+
+
+# --- copying ----------------------------------------------------------------
+
+def copy_file(src, dst, dry_run):
+    log(f"    {src.name} -> {dst.name}")
+    if dry_run:
+        return
+    tmp = dst.with_name(dst.name + ".part")
+    shutil.copyfile(src, tmp)
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, dst)
+
+
+def copy_book(book_dir, audio, target, title, dry_run):
+    files = []
+    if len(audio) == 1:
+        files.append((audio[0], target / f"{title}{audio[0].suffix.lower()}"))
+        for cue in book_dir.glob("*.cue"):
+            files.append((cue, target / f"{title}.cue"))
+            break
+    else:
+        width = max(2, len(str(len(audio))))
+        for n, f in enumerate(audio, 1):
+            files.append((f, target / f"{title} ({n:0{width}d}){f.suffix.lower()}"))
+    covers = [p for p in sorted(book_dir.iterdir()) if p.suffix.lower() in COVER_EXTS]
+    if covers:
+        files.append((covers[0], target / f"cover{covers[0].suffix.lower()}"))
+
+    if not dry_run:
+        target.mkdir(parents=True, exist_ok=True)
+    for src, dst in files:
+        copy_file(src, dst, dry_run)
+
+
+def load_state():
+    if not STATE_FILE.exists():
+        return set()
+    return {line.split("\t", 1)[0] for line in STATE_FILE.read_text().splitlines() if line}
+
+
+def record(asin, target):
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with STATE_FILE.open("a") as fh:
+        fh.write(f"{asin}\t{target}\n")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--source", type=Path, default=DEFAULT_SOURCE, help="Libation Books folder")
+    ap.add_argument("--dest", type=Path, default=DEFAULT_DEST, help="audiobook root on the NAS")
+    ap.add_argument("--dry-run", "-n", action="store_true", help="show the plan, copy nothing")
+    ap.add_argument("--no-chaptarr", action="store_true", help="name from file tags only")
+    ap.add_argument("--force", action="store_true", help="ignore the copied-ASIN record")
+    args = ap.parse_args()
+
+    if not args.source.is_dir():
+        sys.exit(f"source folder not found: {args.source}")
+    if not args.dry_run and not args.dest.is_dir():
+        sys.exit(f"destination not available: {args.dest} (is the avalon-rw mount up?)")
+
+    by_asin, key = {}, None
+    if not args.no_chaptarr:
+        key = chaptarr_key()
+        if key:
+            try:
+                by_asin = load_chaptarr(key)
+                log(f"Chaptarr: {len(by_asin)} audiobooks with an Audible ASIN")
+            except OSError as exc:
+                log(f"warning: Chaptarr lookup failed ({exc}); naming from tags")
+                key = None
+        else:
+            log("warning: no Chaptarr API key from OpenBao; naming from tags")
+
+    done = set() if args.force else load_state()
+    books = {}
+    for f in sorted(args.source.rglob("*")):
+        if f.is_file() and f.suffix.lower() in AUDIO_EXTS:
+            books.setdefault(f.parent, []).append(f)
+
+    copied, skipped, failed, rescan = 0, 0, 0, set()
+    for book_dir, audio in books.items():
+        try:
+            asin, author_dir, name, title, source = plan_book(book_dir, audio, by_asin, args.dest)
+        except ValueError as exc:
+            log(f"SKIP {book_dir.name}: {exc}")
+            failed += 1
+            continue
+        target = author_dir / name
+        rel = target.relative_to(args.dest)
+        if asin and asin in done:
+            skipped += 1
+            continue
+        if target.exists() and any(p.suffix.lower() in AUDIO_EXTS for p in target.iterdir()):
+            log(f"EXISTS {rel} (already on the NAS; not overwriting)")
+            if asin and not args.dry_run:
+                record(asin, target)
+            skipped += 1
+            continue
+        log(f"{'PLAN' if args.dry_run else 'COPY'} [{source}] {book_dir.name}\n  -> {rel}/")
+        try:
+            copy_book(book_dir, audio, target, title, args.dry_run)
+        except OSError as exc:
+            log(f"  FAILED: {exc}")
+            failed += 1
+            continue
+        if not args.dry_run:
+            if asin:
+                record(asin, target)
+            rescan.add(f"{CHAPTARR_ROOT}/{author_dir.relative_to(args.dest)}")
+        copied += 1
+
+    if rescan and key and args.dest == DEFAULT_DEST:
+        try:
+            chaptarr(key, "/command", {"name": "RescanFolders", "folders": sorted(rescan)})
+            log(f"Chaptarr rescan queued for {len(rescan)} author folder(s)")
+        except OSError as exc:
+            log(f"warning: could not queue a Chaptarr rescan ({exc})")
+
+    verb = "planned" if args.dry_run else "copied"
+    log(f"\n{copied} {verb}, {skipped} already done, {failed} failed")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
