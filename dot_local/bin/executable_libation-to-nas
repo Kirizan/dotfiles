@@ -37,6 +37,8 @@ STATE_FILE = Path.home() / ".local/state/libation-to-nas/copied.tsv"
 AUDIO_EXTS = {".m4b", ".m4a", ".mp3", ".flac", ".ogg", ".opus"}
 COVER_EXTS = {".jpg", ".jpeg", ".png"}
 ASIN_RE = re.compile(r"\[([A-Z0-9]{10})\]")
+# Audible's free "Your First Listen" sample sits in every new library (author "test").
+SKIP_ASINS = {"B002V8N37Q"}
 
 
 def log(msg):
@@ -69,15 +71,32 @@ def chaptarr(key, path, body=None):
         return json.load(resp)
 
 
+def norm(text):
+    """Loose key for matching names and titles: lowercase alphanumerics only."""
+    return re.sub(r"[^a-z0-9]", "", (text or "").lower())
+
+
 def load_chaptarr(key):
-    """Map audible ASIN -> (book, author) for every audiobook Chaptarr knows."""
+    """Index Chaptarr's library three ways: by audible ASIN, by author name
+    (both "First Last" and "Last, First"), and each author's books by title."""
     authors = {a["id"]: a for a in chaptarr(key, "/author")}
-    by_asin = {}
+    cat = {"asin": {}, "author": {}, "title": {}}
+    for a in authors.values():
+        for name in (a.get("authorName"), a.get("authorNameLastFirst")):
+            if name:
+                cat["author"][norm(name)] = a
     for book in chaptarr(key, "/book"):
+        author = authors.get(book.get("authorId"))
+        if not author:
+            continue
         asin = (book.get("audibleASIN") or "").upper()
         if asin and book.get("mediaType") == "audiobook":
-            by_asin[asin] = (book, authors.get(book.get("authorId")))
-    return by_asin
+            cat["asin"][asin] = (book, author)
+        # An audiobook record wins over an ebook record of the same title.
+        tkey = (author["id"], norm(book.get("title")))
+        if tkey not in cat["title"] or book.get("mediaType") == "audiobook":
+            cat["title"][tkey] = book
+    return cat
 
 
 # --- naming -----------------------------------------------------------------
@@ -93,7 +112,8 @@ def clean(name):
 
 def last_first(author):
     parts = author.split()
-    if len(parts) < 2:
+    # Single names and organisations ("Amazon Web Services (AWS)") stay as they are.
+    if len(parts) < 2 or "(" in author:
         return author
     suffix = ""
     if parts[-1].rstrip(".").lower() in {"jr", "sr", "ii", "iii", "iv"}:
@@ -116,32 +136,48 @@ def probe_tags(path):
     return {k.lower(): v for k, v in tags.items()}
 
 
-def plan_book(book_dir, audio, by_asin, dest_root):
-    """Return (asin, author_dir, book_dir_name, title, source) or raise ValueError."""
+def chaptarr_author_dir(author, dest_root):
+    apath = author["path"].rstrip("/")
+    if apath.startswith(CHAPTARR_ROOT + "/"):
+        return dest_root / apath[len(CHAPTARR_ROOT) + 1:]
+    return dest_root / Path(apath).name  # author was first added under the ebook root
+
+
+def plan_book(book_dir, audio, cat, dest_root):
+    """Return (asin, author_dir, book_dir_name, title, source) or raise ValueError.
+
+    Chaptarr is tried by ASIN, then by author name plus title (Audible often
+    sells an edition under an ASIN Chaptarr doesn't list). Anything else is
+    named from the file's tags."""
     tags = probe_tags(audio[0])
     m = ASIN_RE.search(book_dir.name) or ASIN_RE.search(audio[0].name)
     asin = (m.group(1) if m else tags.get("asin") or tags.get("audible_asin") or "").upper()
+    tag_narrators = split_names(tags.get("composer") or tags.get("narrator"))
+    tag_authors = split_names(tags.get("album_artist") or tags.get("artist"))
+    tag_title = (tags.get("album") or tags.get("title") or "").split(":")[0].strip()
 
-    hit = by_asin.get(asin) if asin else None
-    if hit and hit[1]:
-        book, author = hit
+    book, author, source = None, None, "tags"
+    if asin in cat["asin"]:
+        book, author = cat["asin"][asin]
+        source = "chaptarr"
+    elif tag_authors and norm(tag_authors[0]) in cat["author"]:
+        author = cat["author"][norm(tag_authors[0])]
+        book = cat["title"].get((author["id"], norm(tag_title)))
+        source = "chaptarr-title" if book else "chaptarr-author"
+
+    if book:
         title = book["title"]
         narrators = [" ".join(n.split()) for n in book.get("narratorNames") or []]
-        narrators = narrators or split_names(tags.get("composer") or tags.get("narrator"))
-        apath = author["path"].rstrip("/")
-        if apath.startswith(CHAPTARR_ROOT + "/"):
-            author_dir = dest_root / apath[len(CHAPTARR_ROOT) + 1:]
-        else:  # author was first added under the ebook root
-            author_dir = dest_root / Path(apath).name
-        source = "chaptarr"
+        narrators = narrators or tag_narrators
     else:
-        authors = split_names(tags.get("album_artist") or tags.get("artist"))
-        title = (tags.get("album") or tags.get("title") or "").split(":")[0].strip()
-        if not authors or not title:
-            raise ValueError("no ASIN match in Chaptarr and no author/title tags")
-        narrators = split_names(tags.get("composer") or tags.get("narrator"))
-        author_dir = dest_root / clean(last_first(authors[0]))
-        source = "tags"
+        if not tag_title or not (author or tag_authors):
+            raise ValueError("no Chaptarr match and no author/title tags")
+        title, narrators = tag_title, tag_narrators
+
+    if author:
+        author_dir = chaptarr_author_dir(author, dest_root)
+    else:
+        author_dir = dest_root / clean(last_first(tag_authors[0]))
 
     title = clean(title)
     name = title + (" - " + " + ".join(narrators) if narrators else "")
@@ -200,20 +236,23 @@ def main():
     ap.add_argument("--dry-run", "-n", action="store_true", help="show the plan, copy nothing")
     ap.add_argument("--no-chaptarr", action="store_true", help="name from file tags only")
     ap.add_argument("--force", action="store_true", help="ignore the copied-ASIN record")
+    ap.add_argument("--skip", action="append", default=[], metavar="ASIN",
+                    help="never copy this ASIN (repeatable)")
     args = ap.parse_args()
+    args.skip = {a.upper() for a in args.skip}
 
     if not args.source.is_dir():
         sys.exit(f"source folder not found: {args.source}")
     if not args.dry_run and not args.dest.is_dir():
         sys.exit(f"destination not available: {args.dest} (is the avalon-rw mount up?)")
 
-    by_asin, key = {}, None
+    cat, key = {"asin": {}, "author": {}, "title": {}}, None
     if not args.no_chaptarr:
         key = chaptarr_key()
         if key:
             try:
-                by_asin = load_chaptarr(key)
-                log(f"Chaptarr: {len(by_asin)} audiobooks with an Audible ASIN")
+                cat = load_chaptarr(key)
+                log(f"Chaptarr: {len(cat['asin'])} audiobooks with an Audible ASIN")
             except OSError as exc:
                 log(f"warning: Chaptarr lookup failed ({exc}); naming from tags")
                 key = None
@@ -229,13 +268,17 @@ def main():
     copied, skipped, failed, rescan = 0, 0, 0, set()
     for book_dir, audio in books.items():
         try:
-            asin, author_dir, name, title, source = plan_book(book_dir, audio, by_asin, args.dest)
+            asin, author_dir, name, title, source = plan_book(book_dir, audio, cat, args.dest)
         except ValueError as exc:
             log(f"SKIP {book_dir.name}: {exc}")
             failed += 1
             continue
         target = author_dir / name
         rel = target.relative_to(args.dest)
+        if asin in SKIP_ASINS or asin in args.skip:
+            log(f"IGNORED {book_dir.name}")
+            skipped += 1
+            continue
         if asin and asin in done:
             skipped += 1
             continue
