@@ -1,0 +1,45 @@
+#!/bin/bash
+# Mount Nextcloud at ~/Nextcloud on mimir (rclone WebDAV, systemd --user), and
+# remove the mount from every other machine (see the Nextcloud block in
+# .chezmoiignore).
+#
+# Re-runs whenever either file changes, via the hashes below.
+# unit hash: {{ include "dot_config/systemd/user/nextcloud-mount.service" | sha256sum }}
+# script hash: {{ include "dot_local/bin/executable_nextcloud-mount" | sha256sum }}
+
+set -euo pipefail
+
+UNIT="nextcloud-mount.service"
+
+if ! command -v systemctl >/dev/null 2>&1; then
+  echo "systemd not present — skipping $UNIT"
+  exit 0
+fi
+
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+  echo "no systemd user session — skipping $UNIT (enable manually later)"
+  exit 0
+fi
+
+{{- if and (eq .chezmoi.hostname "mimir") .isArchBased (not .isHeadless) (eq .profile "personal") }}
+
+sudo pacman -S --needed --noconfirm rclone fuse3
+
+systemctl --user daemon-reload
+systemctl --user enable "$UNIT"
+systemctl --user restart "$UNIT"
+systemctl --user --no-pager --lines=0 status "$UNIT" | sed 's/^/  /'
+{{- else }}
+
+# Not mimir: chezmoi no longer manages these files but leaves them in place,
+# so stop the mount and delete them if an earlier apply deployed them.
+if [ ! -e "$HOME/.config/systemd/user/$UNIT" ]; then
+  exit 0
+fi
+
+systemctl --user disable --now "$UNIT" 2>/dev/null || true
+rm -f "$HOME/.config/systemd/user/$UNIT" "$HOME/.local/bin/nextcloud-mount"
+systemctl --user daemon-reload
+systemctl --user reset-failed "$UNIT" 2>/dev/null || true
+echo "Removed the mimir-only Nextcloud mount from this machine"
+{{- end }}

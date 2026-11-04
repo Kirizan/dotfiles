@@ -1,0 +1,17 @@
+[Unit]
+Description=Mount Nextcloud (nextcloud.internal.kirby.network) at ~/Nextcloud via rclone WebDAV
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=%h/.local/bin/nextcloud-mount
+ExecStop=/usr/bin/fusermount3 -uz %h/Nextcloud
+Environment=BAO_ADDR=https://vault.internal.kirby.network
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Right after login the network, AdGuard or the wallet may not be ready yet.
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=default.target

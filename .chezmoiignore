@@ -143,6 +143,15 @@ run_once_after_install-battlenet.sh.tmpl
 .config/systemd/user/bao-token-rotate.timer
 {{- end }}
 
+# Nextcloud WebDAV mount at ~/Nextcloud (rclone). Mimir only: it reads its app
+# password with the mimir-cli OpenBao token, and the LAN hostname is
+# allow-listed to 192.168.1.0/24. run_onchange_after_enable-nextcloud-mount.sh.tmpl
+# is not listed: on other machines it stops the mount and removes these files.
+{{- if or (ne .chezmoi.hostname "mimir") (not .isArchBased) .isHeadless (ne .profile "personal") }}
+.local/bin/nextcloud-mount
+.config/systemd/user/nextcloud-mount.service
+{{- end }}
+
 # Personal spell-check word list (an Obsidian note) synced to every app's
 # dictionary. Needs a desktop with the vault on disk and graphical apps.
 {{- if or (ne .chezmoi.os "linux") .isHeadless .isWSL }}

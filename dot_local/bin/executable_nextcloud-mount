@@ -1,0 +1,34 @@
+#!/bin/bash
+# Mount kirizan's Nextcloud files at ~/Nextcloud over WebDAV (rclone), on the
+# LAN hostname, so every change goes through Nextcloud and shows up at once.
+# Run by nextcloud-mount.service (systemd --user).
+#
+# The app password lives in OpenBao (kv/infra/nextcloud, mimir_webdav_app_password)
+# and reaches rclone through the environment, never argv or a config file.
+# Uploads use Nextcloud chunking (50M pieces), which keeps each request under
+# Traefik's 60 s read timeout.
+set -euo pipefail
+
+MOUNT="${NEXTCLOUD_MOUNT:-$HOME/Nextcloud}"
+URL="https://nextcloud.internal.kirby.network/remote.php/dav/files/kirizan"
+export BAO_ADDR="${BAO_ADDR:-https://vault.internal.kirby.network}"
+
+pass=$(bao kv get -field=mimir_webdav_app_password kv/infra/nextcloud)
+[ -n "$pass" ] || { echo "nextcloud-mount: no app password in OpenBao" >&2; exit 1; }
+
+export RCLONE_CONFIG_NEXTCLOUD_TYPE=webdav
+export RCLONE_CONFIG_NEXTCLOUD_URL="$URL"
+export RCLONE_CONFIG_NEXTCLOUD_VENDOR=nextcloud
+export RCLONE_CONFIG_NEXTCLOUD_USER=kirizan
+RCLONE_CONFIG_NEXTCLOUD_PASS=$(printf '%s' "$pass" | rclone obscure -)
+export RCLONE_CONFIG_NEXTCLOUD_PASS
+unset pass
+
+mkdir -p "$MOUNT"
+exec rclone mount nextcloud: "$MOUNT" \
+  --vfs-cache-mode full \
+  --vfs-cache-max-size 20G \
+  --vfs-cache-max-age 24h \
+  --dir-cache-time 1m \
+  --webdav-nextcloud-chunk-size 50M \
+  --log-level NOTICE
