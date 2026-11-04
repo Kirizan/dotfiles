@@ -1,5 +1,5 @@
 #!/bin/bash
-# Mount kirizan's Nextcloud files at ~/Nextcloud over WebDAV (rclone), on the
+# Mount Nick's Nextcloud files at ~/Nextcloud over WebDAV (rclone), on the
 # LAN hostname, so every change goes through Nextcloud and shows up at once.
 # Run by nextcloud-mount.service (systemd --user).
 #
@@ -10,7 +10,10 @@
 set -euo pipefail
 
 MOUNT="${NEXTCLOUD_MOUNT:-$HOME/Nextcloud}"
-URL="https://nextcloud.internal.kirby.network/remote.php/dav/files/kirizan"
+# The GitHub sign-in account (user_oidc keys users by email); the local
+# `kirizan` account is break-glass admin only and holds no files.
+NC_USER="github@nicholas-kirby.me"
+URL="https://nextcloud.internal.kirby.network/remote.php/dav/files/${NC_USER}"
 export BAO_ADDR="${BAO_ADDR:-https://vault.internal.kirby.network}"
 
 pass=$(bao kv get -field=mimir_webdav_app_password kv/infra/nextcloud)
@@ -19,7 +22,7 @@ pass=$(bao kv get -field=mimir_webdav_app_password kv/infra/nextcloud)
 export RCLONE_CONFIG_NEXTCLOUD_TYPE=webdav
 export RCLONE_CONFIG_NEXTCLOUD_URL="$URL"
 export RCLONE_CONFIG_NEXTCLOUD_VENDOR=nextcloud
-export RCLONE_CONFIG_NEXTCLOUD_USER=kirizan
+export RCLONE_CONFIG_NEXTCLOUD_USER="$NC_USER"
 RCLONE_CONFIG_NEXTCLOUD_PASS=$(printf '%s' "$pass" | rclone obscure -)
 export RCLONE_CONFIG_NEXTCLOUD_PASS
 unset pass
