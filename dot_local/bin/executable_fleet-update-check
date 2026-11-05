@@ -470,6 +470,17 @@ for label, inst, latest, new, url in (
         emit("fleet_host_package_info", host="mimir", name=label, installed=inst, available=latest or inst,
              source="platform", held="no", update="yes" if new else "no",
              manual="yes" if label == "BIOS" else "no", url=url)
+# One series per failed unit, so the dashboard can name it instead of a bare count.
+for scope, flag in (("system", []), ("user", ["--user"])):
+    units = subprocess.run(["systemctl", *flag, "list-units", "--failed", "--no-legend", "--plain"],
+                           capture_output=True, text=True).stdout.split("\n")
+    for unit in (u.split()[0] for u in units if u.strip()):
+        show = dict(l.split("=", 1) for l in subprocess.run(
+            ["systemctl", *flag, "show", unit, "-p", "Result,StateChangeTimestamp,Description"],
+            capture_output=True, text=True).stdout.splitlines() if "=" in l)
+        emit("fleet_host_failed_unit_info", host="mimir", scope=scope, unit=unit,
+             result=show.get("Result", "").replace("success", ""), since=show.get("StateChangeTimestamp", ""),
+             description=show.get("Description", ""))
 emit("fleet_report_timestamp_seconds", target="mimir")
 
 # avalon
