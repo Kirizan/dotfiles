@@ -1,0 +1,25 @@
+{{- if and (eq .profile "personal") (eq .chezmoi.os "linux") (not .isHeadless) -}}
+#!/bin/bash
+# MCP server wrapper for the reMarkable Paper Pro (remarkable-mcp over SSH).
+#
+# Talks to the tablet over its USB network as "Host remarkable" from
+# ~/.ssh/config, which supplies the key, IdentitiesOnly and the separate
+# known_hosts file. Write tools stay enabled; deletes still ask for
+# confirmation because REMARKABLE_SKIP_CONFIRM is not set.
+#
+# The version is pinned so upstream releases can't change behaviour silently.
+# To upgrade, bump VERSION and re-run chezmoi apply.
+
+VERSION=2.1.0
+
+if ! command -v uvx >/dev/null 2>&1; then
+    echo "Error: uvx not found -- install uv" >&2
+    exit 1
+fi
+
+export REMARKABLE_SSH_HOST=remarkable
+
+# --no-cloud-fallback: fail when the tablet is unplugged instead of trying
+# the reMarkable cloud.
+exec uvx --from "remarkable-mcp==$VERSION" remarkable-mcp --ssh --no-cloud-fallback "$@"
+{{- end }}

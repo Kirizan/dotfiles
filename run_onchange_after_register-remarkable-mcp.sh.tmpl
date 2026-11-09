@@ -1,0 +1,20 @@
+{{- if and (eq .profile "personal") (eq .chezmoi.os "linux") (not .isHeadless) -}}
+#!/bin/bash
+# Register the reMarkable MCP server (~/.local/bin/mcp-remarkable-wrapper) with
+# Claude Code at user scope.
+#
+# ~/.claude.json is Claude Code's own state file, which it rewrites constantly,
+# so chezmoi doesn't own it; the CLI does the registration instead. Removing
+# first makes re-runs idempotent. Re-runs only when this script changes --
+# wrapper changes (e.g. a version bump) need no re-registration.
+
+set -euo pipefail
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "claude CLI not found — skipping reMarkable MCP registration"
+  exit 0
+fi
+
+claude mcp remove --scope user remarkable >/dev/null 2>&1 || true
+claude mcp add --scope user remarkable -- "$HOME/.local/bin/mcp-remarkable-wrapper"
+{{- end }}
