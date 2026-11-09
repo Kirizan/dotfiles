@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Move files between mimir and the reMarkable Paper Pro over its USB cable.
+
+The tablet shows up as a USB network at 10.11.99.1. Two ways in are used:
+
+  * The USB web interface (Settings > Storage > USB web interface) for
+    uploading PDFs/EPUBs and exporting documents as PDF. Uploads go through
+    it rather than SSH so the tablet's own app indexes them; files copied in
+    behind its back need an app restart to appear.
+  * SSH as root (developer mode, "Host remarkable" in ~/.ssh/config) for
+    copying the raw notebook store, which keeps everything the tablet has
+    (pages, layers, metadata) rather than just the rendered PDF. The tablet ships
+    rsync, so repeat backups only copy what changed.
+
+Usage:
+  remarkable upload FILE... [--folder "Path/On/Tablet"]
+  remarkable backup [--dest DIR] [--no-raw] [--no-pdf]
+  remarkable ls
+
+backup writes DIR/raw/ (a mirror of the tablet's xochitl directory) and
+DIR/pdf/<folder path>/<name>.pdf. PDFs are only re-exported when the
+document changed since the last export. Nothing local is ever deleted.
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+HOST = "http://10.11.99.1"
+SSH_ALIAS = "remarkable"
+XOCHITL = "/home/root/.local/share/remarkable/xochitl"
+DEFAULT_DEST = Path.home() / "Documents" / "reMarkable"
+UPLOAD_TYPES = {".pdf": "application/pdf", ".epub": "application/epub+zip"}
+
+
+def request(path, data=None, headers=None, method="POST", timeout=30):
+    req = urllib.request.Request(HOST + path, data=data, headers=headers or {}, method=method)
+    # The web interface rejects uploads without a same-origin header.
+    req.add_header("Origin", HOST)
+    req.add_header("Referer", HOST + "/")
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
+def list_folder(folder_id=""):
+    with request(f"/documents/{folder_id}") as r:
+        return json.load(r)
+
+
+def walk(folder_id="", parts=()):
+    """Yield (path parts, entry) for every document, depth first."""
+    for entry in list_folder(folder_id):
+        name = entry.get("VissibleName") or entry.get("VisibleName") or entry["ID"]
+        if entry["Type"] == "CollectionType":
+            yield from walk(entry["ID"], parts + (name,))
+        else:
+            yield parts + (name,), entry
+
+
+def find_folder(path):
+    """Return the ID of a folder given as "A/B/C", or exit if it doesn't exist."""
+    folder_id = ""
+    for name in [p for p in path.split("/") if p]:
+        match = [e for e in list_folder(folder_id)
+                 if e["Type"] == "CollectionType"
+                 and (e.get("VissibleName") or e.get("VisibleName")) == name]
+        if not match:
+            sys.exit(f"remarkable: no folder named {name!r} under {folder_id or 'the top level'}")
+        folder_id = match[0]["ID"]
+    return folder_id
+
+
+def check_web():
+    try:
+        request("/", method="GET", timeout=5).close()
+    except (urllib.error.URLError, OSError):
+        sys.exit("remarkable: can't reach http://10.11.99.1 -- is the tablet plugged in, awake, "
+                 "and Settings > Storage > USB web interface switched on?")
+
+
+def cmd_upload(args):
+    check_web()
+    files = [Path(f) for f in args.files]
+    for f in files:
+        if not f.is_file():
+            sys.exit(f"remarkable: {f} is not a file")
+        if f.suffix.lower() not in UPLOAD_TYPES:
+            sys.exit(f"remarkable: {f.name}: the tablet only accepts PDF and EPUB uploads")
+    # Uploads land in whichever folder the web interface last listed.
+    list_folder(find_folder(args.folder) if args.folder else "")
+    for f in files:
+        boundary = uuid.uuid4().hex
+        body = (f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="file"; filename="{f.name}"\r\n'
+                f"Content-Type: {UPLOAD_TYPES[f.suffix.lower()]}\r\n\r\n").encode()
+        body += f.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
+        with request("/upload", data=body, timeout=300,
+                     headers={"Content-Type": f"multipart/form-data; boundary={boundary}"}):
+            pass
+        print(f"uploaded {f.name}" + (f" to {args.folder}" if args.folder else ""))
+
+
+def cmd_ls(args):
+    check_web()
+    for parts, entry in walk():
+        print("/".join(parts) + f"  ({entry.get('fileType') or 'notebook'})")
+
+
+def backup_raw(dest):
+    raw = dest / "raw"
+    raw.mkdir(parents=True, exist_ok=True)
+    print(f"copying raw notebooks to {raw}", flush=True)
+    # No --delete: notebooks removed on the tablet stay in the backup.
+    if subprocess.run(["rsync", "-a", "--itemize-changes",
+                       f"{SSH_ALIAS}:{XOCHITL}/", f"{raw}/"]).returncode != 0:
+        sys.exit("remarkable: raw copy over SSH failed (developer mode on? key installed?)")
+
+
+def backup_pdf(dest):
+    check_web()
+    count = 0
+    for parts, entry in walk():
+        out = dest / "pdf" / Path(*parts[:-1]) / (parts[-1].replace("/", "_") + ".pdf")
+        modified = datetime.fromisoformat(entry["ModifiedClient"].replace("Z", "+00:00")).timestamp()
+        if out.exists() and out.stat().st_mtime >= modified:
+            continue
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with request(f"/download/{entry['ID']}/pdf", method="GET", timeout=600) as r:
+            out.write_bytes(r.read())
+        os.utime(out, (modified, modified))
+        print(f"exported {out.relative_to(dest)}")
+        count += 1
+    print(f"{count} PDF(s) exported" if count else "PDFs already up to date")
+
+
+def cmd_backup(args):
+    dest = Path(args.dest).expanduser()
+    if not args.no_raw:
+        backup_raw(dest)
+    if not args.no_pdf:
+        backup_pdf(dest)
+
+
+def main():
+    p = argparse.ArgumentParser(prog="remarkable", description=__doc__.splitlines()[0])
+    sub = p.add_subparsers(dest="cmd", required=True)
+    up = sub.add_parser("upload", help="upload PDFs/EPUBs")
+    up.add_argument("files", nargs="+")
+    up.add_argument("--folder", help='tablet folder, e.g. "Books/Fiction"')
+    up.set_defaults(func=cmd_upload)
+    bk = sub.add_parser("backup", help="back up raw notebooks and PDF exports")
+    bk.add_argument("--dest", default=str(DEFAULT_DEST))
+    bk.add_argument("--no-raw", action="store_true", help="skip the SSH copy")
+    bk.add_argument("--no-pdf", action="store_true", help="skip PDF exports")
+    bk.set_defaults(func=cmd_backup)
+    sub.add_parser("ls", help="list everything on the tablet").set_defaults(func=cmd_ls)
+    args = p.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

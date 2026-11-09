@@ -29,6 +29,16 @@ Host avalon
 	User kirizan
 	IdentityFile ~/.ssh/id_ed25519
 
+# reMarkable Paper Pro over its USB network (developer mode). A factory reset
+# regenerates the tablet's host key, so it gets its own known_hosts file that
+# can be cleared without touching the main one.
+Host remarkable
+	HostName 10.11.99.1
+	User root
+	IdentityFile ~/.ssh/remarkable_ed25519
+	IdentitiesOnly yes
+	UserKnownHostsFile ~/.ssh/known_hosts.remarkable
+
 # Every other host: do not use the 1Password agent.
 #
 # Cowork's VM runs virtiofsd with "--shared-dir /", so the guest can see
